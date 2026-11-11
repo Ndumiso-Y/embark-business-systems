@@ -10,7 +10,10 @@ export const CLIENT_SLUGS = {
   optometry: 'optometry',
   medical: 'medical-practice',
   automotive: 'automotive',
+  tyres: 'tyre-fitment',
   mining: 'mining',
+  construction: 'construction',
+  realestate: 'real-estate',
   legal: 'law-firm',
 };
 // Unlisted, not secret: the repository is public. See docs/SHARING_LINKS.md.

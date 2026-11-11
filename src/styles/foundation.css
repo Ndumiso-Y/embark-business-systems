@@ -199,3 +199,8 @@ body { background: var(--bg-app); }
 .gallery-modules a span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gallery-modules a:hover { background: var(--accent-tint); border-color: var(--accent-line); color: var(--ink); }
 @media (max-width: 480px) { .gallery-modules { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.gallery-family { margin-top: 26px; }
+.gallery-family-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.gallery-family-head h2 { font-size: 13px; letter-spacing: 1.6px; text-transform: uppercase; font-weight: 800; color: var(--ink-2); }
+.gallery-family-head span { font-size: 12.5px; color: var(--muted-2); }
+.gallery-family .gallery-card:only-child { grid-column: 1 / -1; }

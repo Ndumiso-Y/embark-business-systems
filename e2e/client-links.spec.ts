@@ -9,6 +9,9 @@ const SITES = [
   { slug: 'automotive', id: 'automotive', name: 'Torque Lane Auto Services' },
   { slug: 'mining', id: 'mining', name: 'Ridgeback Minerals' },
   { slug: 'law-firm', id: 'legal', name: 'Mahlaba & Rossouw Attorneys' },
+  { slug: 'real-estate', id: 'realestate', name: 'Kestrel Property Group' },
+  { slug: 'construction', id: 'construction', name: 'Ironbark Building & Civils' },
+  { slug: 'tyre-fitment', id: 'tyres', name: 'TreadRight Tyre & Fitment' },
 ];
 const HUB = 'hub-k7q3m9';
 
