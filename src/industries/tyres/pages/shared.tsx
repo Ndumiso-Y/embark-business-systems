@@ -6,9 +6,7 @@ import { useBase, useUser } from '../../../core/context';
 import { formatRand } from '../../../core/lib/money';
 import { Tag } from '../../../core/components/ui';
 import { CONDITIONS, POSITIONS, SPARE, VEHICLE_CLASSES, label, type PosKey } from '../data';
-import { dotText, fleetOfCustomer, kmText, rotationDue, torqueSpec, treadLabel, treadTone, type TreadTone } from '../helpers';
-
-export const TONE_COLOURS: Record<TreadTone, string> = { red: '#c27c77', amber: '#c39550', green: '#6f9b7d', none: '#c9ccc5' };
+import { TONE_COLOURS, dotText, fleetOfCustomer, kmText, rotationDue, torqueSpec, treadLabel, treadTone, type TreadTone } from '../helpers';
 
 const val = (v: Values, k: string): number | null => {
   const x = v[k];

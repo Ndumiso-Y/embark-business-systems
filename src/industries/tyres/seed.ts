@@ -207,8 +207,7 @@ export function buildTyresSeed(today: string) {
       customer: String(v.values.customer), vehicle: v.id, job: job.id, issuedOn, dueOn: fleet ? day(-j.d + 30) : '', fleetPo: String(job.values.fleetPo ?? ''),
       lines: ls, paid: paidFully ? Math.round(total * 100) / 100 : 0, paymentMethod: paidFully ? method : '', lastPaymentOn: paidFully ? (fleet ? day(Math.min(0, -j.d + 26)) : issuedOn) : '', notes: '',
     }, { status, createdDaysAgo: j.d, history: [
-      { daysAgo: j.d, ...STAFF.advisor, action: 'Invoice issued on QC pass' },
-      ...(fleet ? [{ daysAgo: j.d, ...STAFF.advisor, action: 'Put on fleet account (30 days)' }] : []),
+      { daysAgo: j.d, ...STAFF.advisor, action: fleet ? 'Invoice issued on QC pass · put on fleet account (30 days)' : 'Invoice issued on QC pass' },
       ...(paidFully ? [{ daysAgo: fleet ? Math.max(0, j.d - 26) : j.d, ...(fleet ? STAFF.fleet : STAFF.advisor), action: 'Payment recorded (simulated)' }] : []),
     ] });
   };
@@ -257,8 +256,8 @@ export function buildTyresSeed(today: string) {
     const t = tech(j.tech);
     const ready = j.ready ? hm(j.ready) : '';
     j.history = j.status === 'declined'
-      ? [{ daysAgo: j.d, ...STAFF.advisor, action: 'Vehicle booked in at the counter' }, { daysAgo: j.d, ...STAFF.advisor, action: 'Record customer decline', note: pick(['Customer will compare prices and come back.', 'Customer declined — budget this month. Advised on tread depth.', 'Fleet manager declined by email — replacing at month end.']) }]
-      : [{ daysAgo: j.d, ...STAFF.advisor, action: 'Vehicle booked in at the counter' }, { daysAgo: j.d, ...t, action: 'Torque check recorded' }, { daysAgo: j.d, ...STAFF.advisor, action: `Handed over to customer (ready ${ready})` }];
+      ? [{ daysAgo: j.d, ...STAFF.advisor, action: 'Record customer decline', note: pick(['Customer will compare prices and come back.', 'Customer declined — budget this month. Advised on tread depth.', 'Fleet manager declined by email — replacing at month end.']) }]
+      : [{ daysAgo: j.d, ...t, action: `Torque check recorded · handed over (ready ${ready})` }];
     j.extra = { collectedAt: j.ready ? hm(j.ready + 5) : '', torqueToolAsset: j.status === 'collected' ? (j.tech === 'lm' ? 'TR-TW-04' : pick(['TR-TW-01', 'TR-TW-02', 'TR-TW-05'])) : '' };
     const job = makeJob(j);
     const v = vehicles[j.vi];
@@ -268,6 +267,7 @@ export function buildTyresSeed(today: string) {
         const overdue = j.d > 30 && rnd() < 0.08;
         invoiceFor(job, j, j.d > 30 && !overdue ? 'paid' : 'onaccount', j.d > 30 && !overdue, 'remittance');
       } else invoiceFor(job, j, 'paid', true, pick(['card', 'card', 'cash', 'eft']));
+      delete job.values.lines; // the invoice carries the lines for historic jobs
     }
   }
 

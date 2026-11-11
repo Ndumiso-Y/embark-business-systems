@@ -6,8 +6,8 @@ import { Empty, Meters, Panel, StatusTag, Tag } from '../../../core/components/u
 import { RecordDetail } from '../../../core/components/records';
 import { useIndustry } from '../../../core/context';
 import { BRANDS, POSITIONS, ROTATION_KM, label } from '../data';
-import { kmText, rotationDue, servicesText, torqueSpec, treadOf, treadTone, wk } from '../helpers';
-import { RecordLink, TONE_COLOURS, VehicleCard, WheelDiagram } from './shared';
+import { TONE_COLOURS, kmText, rotationDue, servicesText, torqueSpec, treadOf, treadTone, wk } from '../helpers';
+import { RecordLink, VehicleCard, WheelDiagram } from './shared';
 
 export default function VehicleDetail() {
   const { id } = useParams();

@@ -4,7 +4,7 @@
 import type { DemoRecord, IndustryData, Line } from '../../core/types';
 import { findRecord, lines, linesTotals, num, records, str } from '../../core/engine';
 import { addDays, daysBetween, formatDate, toIso } from '../../core/lib/dates';
-import { formatRand } from '../../core/lib/money';
+import { formatRand, group } from '../../core/lib/money';
 import {
   ALIGN_READINGS, ALIGN_SPEC, BAYS, BRANDS, CALIBRATION_WARN_DAYS, CLAIM_OPEN_DAYS, DAMAGE_TYPES, OLD_STOCK_YEARS, POSITIONS, PRICES, QC_ITEMS, ROTATION_KM,
   TECHNICIANS, TOOL_OUT_HOURS, TOOL_TYPES, TREAD_ADVISE, TREAD_LEGAL_MIN, VEHICLE_CLASSES, label, type PosKey,
@@ -34,7 +34,7 @@ export function minutesBetween(from: string, to: string): number | null {
 
 export const minText = (m: number | null) => (m === null ? '—' : m < 60 ? `${Math.round(m)} min` : `${Math.floor(m / 60)} h ${String(Math.round(m % 60)).padStart(2, '0')} min`);
 
-export const kmText = (n: number) => `${Math.round(n).toLocaleString('en-ZA').replace(/ /g, ' ')} km`;
+export const kmText = (n: number) => `${group(Math.round(n))} km`;
 
 /* ---------------- Tyre sizes ---------------- */
 
@@ -142,6 +142,9 @@ export function treadTone(mm: number | null | undefined): TreadTone {
   if (mm < TREAD_ADVISE) return 'amber';
   return 'green';
 }
+
+/** Display colours for tread tones (wheel diagram, history). */
+export const TONE_COLOURS: Record<TreadTone, string> = { red: '#c27c77', amber: '#c39550', green: '#6f9b7d', none: '#c9ccc5' };
 
 export const treadLabel = (t: TreadTone) =>
   t === 'red' ? `Below ${TREAD_LEGAL_MIN.toFixed(1)} mm (demo legal minimum)` : t === 'amber' ? `Under ${TREAD_ADVISE.toFixed(1)} mm — advise replacement` : t === 'green' ? 'Serviceable' : 'Not measured';
