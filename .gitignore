@@ -1,0 +1,31 @@
+# dependencies / build
+node_modules/
+dist/
+dist-ssr/
+*.local
+.vite/
+
+# test output
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# --- Internal execution materials: NEVER publish ---
+# Execution pack (playbook docx, mockup PNGs, prompts) stays local only.
+JNL_Claude_Code_Execution_Pack_v1_2026-11-04/
+*.zip
+00_PASTE_INTO_CLAUDE_CODE.txt
+JNL_CLAUDE_CODE_MASTER_PROMPT_*.txt
+internal/
+
+# tool state
+*.tsbuildinfo
+.claude/
