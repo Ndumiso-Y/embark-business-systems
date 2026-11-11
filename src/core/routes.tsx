@@ -1,5 +1,6 @@
 import type { RouteObject } from 'react-router-dom';
-import { useParams } from 'react-router-dom';
+import { Navigate, useParams } from 'react-router-dom';
+import { LOCKED_INDUSTRY } from '../industries/registry';
 import IndustryLayout from './IndustryLayout';
 import Gallery from './pages/Gallery';
 import UsersPage from './pages/UsersPage';
@@ -25,7 +26,8 @@ function ModuleRoute({ detail }: { detail?: boolean }) {
 }
 
 export const routes: RouteObject[] = [
-  { path: '/', element: <Gallery /> },
+  // A locked client build has no gallery: the root opens that industry's dashboard.
+  { path: '/', element: LOCKED_INDUSTRY ? <Navigate to={`/${LOCKED_INDUSTRY}`} replace /> : <Gallery /> },
   {
     path: '/:industry',
     element: <IndustryLayout />,
@@ -39,5 +41,5 @@ export const routes: RouteObject[] = [
       { path: '*', element: <NotFound /> },
     ],
   },
-  { path: '*', element: <div className="content"><NotFound /></div> },
+  { path: '*', element: LOCKED_INDUSTRY ? <Navigate to={`/${LOCKED_INDUSTRY}`} replace /> : <div className="content"><NotFound /></div> },
 ];

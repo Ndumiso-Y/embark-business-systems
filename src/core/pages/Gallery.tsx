@@ -1,10 +1,11 @@
-import type { CSSProperties } from 'react';
+import { useEffect, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { INDUSTRIES } from '../../industries/registry';
 import { IcoArrow } from '../components/Icons';
 
 /** Landing page: one card per industry configuration. */
 export default function Gallery() {
+  useEffect(() => { document.title = 'Industry Demos · Embark Digitals'; }, []);
   const list = [...INDUSTRIES].sort((a, b) => (a.priority ?? 9) - (b.priority ?? 9));
   return (
     <div className="gallery">

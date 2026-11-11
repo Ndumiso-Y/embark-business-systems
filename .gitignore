@@ -30,3 +30,4 @@ internal/
 *.tsbuildinfo
 .claude/
 dist-preview/
+dist-pages/

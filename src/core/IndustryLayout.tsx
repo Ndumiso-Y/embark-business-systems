@@ -1,11 +1,11 @@
 import { useEffect, useLayoutEffect, useState, type CSSProperties } from 'react';
-import { Link, NavLink, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { IcoBack, IcoGrid, IcoHome, IcoKey, IcoMenu, IcoSearch, IcoSettings } from './components/Icons';
 import { Toasts } from './components/ui';
 import { IndustryContext } from './context';
 import { useStore } from './store';
 import { currentUser, hasModule } from './engine';
-import { getIndustry } from '../industries/registry';
+import { getIndustry, LOCKED_INDUSTRY } from '../industries/registry';
 import NotFound from './pages/NotFound';
 
 /** Shell for one industry: themed sidebar, top bar with simulated sign-in, routed content. */
@@ -16,7 +16,7 @@ export default function IndustryLayout() {
   const data = useStore((s) => (config ? s.data[config.id] : undefined));
 
   useLayoutEffect(() => { if (config) ensure(config); }, [config, ensure]);
-  if (!config) return <div className="content"><NotFound /></div>;
+  if (!config) return LOCKED_INDUSTRY ? <Navigate to={`/${LOCKED_INDUSTRY}`} replace /> : <div className="content"><NotFound /></div>;
   if (!data) return null;
   return (
     <IndustryContext.Provider value={config}>
@@ -38,6 +38,7 @@ function Shell() {
   const base = `/${config.id}`;
   const roleLabel = config.roles.find((r) => r.key === user.role)?.label ?? user.role;
   useEffect(() => { setOpen(false); window.scrollTo?.(0, 0); }, [location.pathname]);
+  useEffect(() => { document.title = `${config.businessName} · Demonstration`; }, [config.businessName]);
 
   const visible = config.modules.filter((m) => hasModule(user, m.key));
   const groups: Array<{ name: string; items: typeof visible }> = [];
@@ -83,7 +84,7 @@ function Shell() {
         <nav>
           {hasModule(user, 'admin') && <NavLink to={`${base}/admin`} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}><IcoKey /><span>Users &amp; permissions</span></NavLink>}
           <NavLink to={`${base}/settings`} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}><IcoSettings /><span>Settings &amp; reset</span></NavLink>
-          <Link to="/" className="nav-item"><IcoGrid /><span>All industry demos</span></Link>
+          {!LOCKED_INDUSTRY && <Link to="/" className="nav-item"><IcoGrid /><span>All industry demos</span></Link>}
         </nav>
         <div className="help-card">
           <div className="help-head">Demonstration only</div>
@@ -99,7 +100,7 @@ function Shell() {
         <header className="topbar">
           <div className="breadcrumb">
             <button className="circle-button menu-button" aria-label="Open navigation" aria-expanded={open} onClick={() => setOpen(true)}><IcoMenu /></button>
-            <Link to="/" className="crumb-home" aria-label="All industry demos"><IcoBack /></Link>
+            {!LOCKED_INDUSTRY && <Link to="/" className="crumb-home" aria-label="All industry demos"><IcoBack /></Link>}
             <b>{config.businessName}</b>
             <span aria-hidden="true">/</span>
             <span>{crumb}</span>

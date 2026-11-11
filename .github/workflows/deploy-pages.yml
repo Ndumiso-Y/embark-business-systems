@@ -26,15 +26,14 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
-      - run: npm run build
-      - name: SPA fallback (hash routing makes this a safety net only)
-        run: cp dist/index.html dist/404.html
+      # One locked site per industry + unlisted hub + neutral root page (see docs/SHARING_LINKS.md)
+      - run: npm run build:pages
       - uses: actions/configure-pages@v5
         with:
           enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: dist-pages
 
   deploy:
     needs: build

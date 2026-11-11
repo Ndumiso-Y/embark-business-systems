@@ -16,13 +16,24 @@ Embark Digitals as discovery demonstrations. It is **not** a production system.
 - Users, roles and permissions are a **simulation**. There is no real sign-in and no server-side access control.
 - No backend, integrations, messaging, payments, or medical/legal/safety/financial compliance.
 
-## Live demo
+## Live links
 
-- **One link for everything:** https://ndumiso-y.github.io/embark-business-systems/
-  The opening screen has a card per industry; every module on a card links straight into it.
+Each industry has its own link. A client link contains **only that industry** — no gallery, no links to the
+other demos, and none of their code or data.
+
+| Industry | Client link |
+| --- | --- |
+| Optometry | https://ndumiso-y.github.io/embark-business-systems/optometry/ |
+| General medical practice | https://ndumiso-y.github.io/embark-business-systems/medical-practice/ |
+| Automotive services | https://ndumiso-y.github.io/embark-business-systems/automotive/ |
+| Mining | https://ndumiso-y.github.io/embark-business-systems/mining/ |
+| Law firm | https://ndumiso-y.github.io/embark-business-systems/law-firm/ |
+
+The site root shows a neutral Embark Digitals page that lists nothing. The full hub with every industry is at an
+unlisted address for internal use — see `docs/SHARING_LINKS.md`.
+
 - **Repository:** https://github.com/Ndumiso-Y/embark-business-systems
-- **Deploys:** GitHub Actions on every push to `main` (typecheck → unit tests → build → Pages). The build uses a
-  relative base and hash routing, so it works at any path or on a custom domain without code changes.
+- **Deploys:** GitHub Actions on every push to `main` (typecheck → unit tests → `npm run build:pages` → Pages).
 
 Lineage: the visual language, shell and money/date helpers are adapted from
 `Ndumiso-Y/jnl-traders-business-system-demo` (that repository was read only and not changed).
@@ -50,7 +61,8 @@ npm run e2e          # Playwright browser tests (first time: npx playwright inst
 ```
 
 ```bash
-npm run build        # static build in dist/ (works at any path)
+npm run build        # full hub build in dist/ (all industries)
+npm run build:pages  # GitHub Pages site in dist-pages/ (one locked site per industry + hub + root page)
 npm run build:preview  # portable build with relative paths (dist-preview/)
 ```
 
@@ -65,6 +77,7 @@ npm run build:preview  # portable build with relative paths (dist-preview/)
 
 | File | Contents |
 | --- | --- |
+| `docs/SHARING_LINKS.md` | Client links, the unlisted hub, and what "private" means on a public site |
 | `docs/REUSE_GUIDE.md` | How the foundation works and how to add or adapt an industry |
 | `docs/INDUSTRY_MODULES.md` | Modules, workflows and rules per industry, with the research behind them |
 | `docs/BUSINESS_SCOPE_AND_LIMITATIONS.md` | What is demonstrated, simulated, and not built |

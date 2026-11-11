@@ -31,7 +31,8 @@ plus `/admin`, `/settings`, `/search`.
 ## 2. Steps to add an industry
 
 1. **Create** `src/industries/<id>/index.ts` exporting a default `IndustryConfig`, and add the id to
-   `IndustryId` in `src/core/types.ts` and to `INDUSTRIES` in `src/industries/registry.ts`.
+   `IndustryId` in `src/core/types.ts` and to `INDUSTRY_IDS` in `src/industries/ids.ts`. To give it a client link,
+   add it to `CLIENT_SLUGS` in `scripts/build-pages.mjs` (see `docs/SHARING_LINKS.md`).
 2. **Describe the business**: `industry`, fictional `businessName`, `monogram` (2 letters), `workspaceTag`,
    `summary`, `highlights` (3–4 bullets for the gallery), `theme` (six accent colours; keep text contrast ≥ 4.5:1
    for `accentText` on `accentTint`).
