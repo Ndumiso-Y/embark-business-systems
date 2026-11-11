@@ -129,6 +129,38 @@ low stock), lab pipeline, six-month exams vs orders chart, activity feed.
 | Warranty claims | Logged → inspected → sent → approved / rejected | Only manufacturing defects go to the supplier; open > 21 days flagged |
 | Invoices, Reports | Paid or on fleet account; tyres sold by size/brand, bay throughput, tool utilisation, warranty rate | Payment never exceeds the balance |
 
+## 9. Security services — Sentinel Ridge Security
+
+**Roles:** operations director (all access), control room operator, site supervisor / inspector, HR & compliance officer, accounts clerk, armoury / equipment controller.
+
+| Module | What it does | Rules worth showing |
+| --- | --- | --- |
+| Duty roster | Day and night posts per site with coverage % and unfilled posts; officer picker | An officer cannot be posted with expired PSIRA registration (fictional numbers), a grade below the post's, no firearm competency for an armed post, no site induction, an overlapping shift, or straight after a night shift (demo rest rule); absence needs a note; relief runs the same checks |
+| Occurrence book | Sequential, time-stamped entries per site | Signed entries are locked; a signed handover entry is needed before booking off |
+| Incidents | Reported → responding → investigating → report to client → closed | Root cause and logged client report before closing; high severity needs a `DEMO-CAS` number or a reason; only the right role closes |
+| Armed response | Signal → dispatched → on scene → stood down, response time vs contract SLA | Dispatch needs an available response vehicle; times must be in order |
+| Patrols | Rounds with simulated checkpoint scans | Missed checkpoints need a reason; late rounds flagged |
+| Site inspections | Scored checklist | Low items raise corrective actions; sites not inspected in 14 days flagged |
+| Officers | Grades, registration, competency, training expiries; "deployable" | Expiring ≤ 30 days / expired flags; HR notes restricted |
+| Equipment & armoury | Issue at book-on, return at book-off | Firearms only to a competent officer on an armed post that shift, one per officer, licence in date; not-returned flag |
+| Sites, Contracts, Invoicing, Reports | Posts × rate less unfilled-shift penalties plus call-out extras; coverage, absenteeism, response times, compliance | |
+
+## 10. Cleaning services — BrightPath Cleaning Services
+
+**Roles:** managing director (all access), operations manager, area supervisor, stores & procurement clerk, accounts clerk, client liaison.
+
+| Module | What it does | Rules worth showing |
+| --- | --- | --- |
+| Daily schedule & attendance | Today's board by site: clock-ins, absences, relief cover, daily checklist | Relief list shows who is eligible and why others are not (leave, no site induction, infection-control training for clinics, overlapping shift); completing needs the checklist ticked or a note |
+| Sites & contracts | Scope by frequency, SLA score, consumables budget, contract dates | Ending ≤ 60 days, below-SLA and over-budget flags |
+| Periodic tasks | Carpet extraction, windows, strip & seal … | Working-at-heights training for at-height tasks; done sets the next due date |
+| Quality inspections | Six areas scored 1–5 → % vs site SLA | An area at 2 or below needs a corrective action; a below-SLA inspection creates a re-inspection in 7 days |
+| Complaints & requests | Response clock by priority, assign and resolve | Breach flags; reopening needs a note; acknowledgement previewed, never sent |
+| Consumables, Issues to sites, Purchase orders | Stock by item, issues deduct stock, POs add it | Cannot issue more than in store; hazardous chemicals need an SDS on file and a trained cleaner at the site |
+| Equipment | Machines by site | Cannot allocate with an overdue electrical test |
+| Quotes & jobs | Once-off cleans from quote to invoice | Above R15,000 or below 25 % margin needs approval (demo thresholds) |
+| Invoicing, Reports, Staff | Month-end drafts with a credit for unstaffed shifts; attendance, scores, complaints, costs; training and PPE | |
+
 ## Research notes
 
 Module choices were checked against public vendor and directory descriptions of sector software (vendor

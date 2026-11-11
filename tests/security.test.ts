@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import config, {
-  SEED, absenteeism, activeShiftFor, availableVehicles, bookOffProblem, buildInvoiceValues, contractMonthly, coverage, coverageNow, currentSlot, dailyCoverage,
+  DAYS_AHEAD, DAYS_BACK, SEED, absenteeism, activeShiftFor, availableVehicles, bookOffProblem, buildInvoiceValues, contractMonthly, coverage, coverageNow, currentSlot, dailyCoverage,
   deployability, entrySlot, handoverEntry, inspectionOverdue, inspectionScore, invoiceTotals, issueProblems, kindOf, minutesFromTo, notReturned, officerExpiries,
   patrolLateBy, patrolMissed, postOf, postingProblems, rec, responseMinutes, responseStats, setTodayForTests, siteOfShift, slaState, slotPhase, suggestedTime,
   unfilledShifts,
@@ -53,15 +53,15 @@ describe('security configuration', () => {
     expect(records(data, 'equipment')).toHaveLength(60);
     expect(records(data, 'incidents')).toHaveLength(18);
     expect(records(data, 'callouts')).toHaveLength(25);
-    // 48 posts × (14 days back + today + 3 days ahead).
-    expect(records(data, 'roster')).toHaveLength(48 * 18);
+    // 48 posts × (roster history + today + the days ahead).
+    expect(records(data, 'roster')).toHaveLength(48 * (DAYS_BACK + 1 + DAYS_AHEAD));
     expect(records(data, 'invoices')).toHaveLength(20);
     expect(records(data, 'ob').length).toBeGreaterThan(50);
     expect(records(data, 'patrols').length).toBeGreaterThan(30);
   });
 
-  it('keeps the stored seed under 400 KB', () => {
-    expect(JSON.stringify(data).length).toBeLessThan(400_000);
+  it('keeps the stored seed under 350 KB', () => {
+    expect(JSON.stringify(data).length).toBeLessThan(350_000);
   });
 
   it('uses only fictional contact details and identifiers', () => {
@@ -107,6 +107,10 @@ describe('security configuration', () => {
       const candidates = records(d, 'officers').map((o) => postingProblems(d, guide, o.id).length);
       expect(candidates.filter((n) => n === 0).length).toBeGreaterThanOrEqual(2);
       expect(candidates.filter((n) => n > 0).length).toBeGreaterThan(40);
+      // The shift the walkthrough books off is on duty at a site whose handover entry is still outstanding.
+      const onDuty = rec(d, 'roster', SEED.onDutyShift)!;
+      expect(onDuty).toMatchObject({ status: 'onduty', values: { date: day } });
+      expect(bookOffProblem(d, onDuty)).toMatch(/No signed shift handover entry/);
       expect(rec(d, 'callouts', SEED.guideCallout)!.status).toBe('received');
       expect(availableVehicles(d, SEED.guideCallout, day).length).toBeGreaterThanOrEqual(2);
       const firearm = rec(d, 'equipment', SEED.guideFirearm)!;
@@ -166,8 +170,8 @@ describe('duty roster — posting rules', () => {
   it('refuses officers who are suspended or lack the site induction', () => {
     const suspended = records(data, 'officers').find((o) => str(o, 'employment') === 'suspended')!;
     expect(reason(post(suspended.id))).toMatch(/is suspended and cannot be posted/);
-    const needsInduction = records(data, 'roster').find((r) => r.status === 'open' && siteOfShift(data, r)?.values.requiresInduction === true && str(r, 'date') > TODAY)!;
-    expect(postingProblems(data, needsInduction, SEED.notInducted).join(' ')).toMatch(/has not completed the Marula Data Centre site induction/);
+    const needsInduction = records(data, 'roster').find((r) => siteOfShift(data, r)?.values.requiresInduction === true && str(r, 'date') > TODAY)!;
+    expect(postingProblems(data, needsInduction, SEED.notInducted).join(' ')).toMatch(new RegExp(`has not completed the ${str(siteOfShift(data, needsInduction), 'name')} site induction`));
     // The same officer is fine at a site that needs no induction.
     expect(postingProblems(data, guide(), SEED.notInducted)).toEqual([]);
   });
@@ -261,7 +265,7 @@ describe('coverage helpers', () => {
   });
 
   it('measures absenteeism over the roster history', () => {
-    const a = absenteeism(data, addDays(TODAY, -14), addDays(TODAY, -1));
+    const a = absenteeism(data, addDays(TODAY, -DAYS_BACK), addDays(TODAY, -1));
     expect(a.absent).toBeGreaterThan(5);
     expect(a.relieved).toBeLessThan(a.absent);
     expect(a.pct).toBe(Math.round((a.absent / a.shifts) * 1000) / 10);
@@ -532,7 +536,8 @@ describe('guided walkthrough, end to end through the store', () => {
 
   it('step 2: book off is refused until the handover entry is signed', () => {
     signIn('u_ctl');
-    const shift = records(live(), 'roster').find((r) => r.status === 'onduty')!;
+    const shift = rec(live(), 'roster', SEED.onDutyShift)!;
+    expect(config.guide![1].to).toBe(`roster/${SEED.onDutyShift}`);
     expect(act('roster', shift.id, 'off')).toMatchObject({ ok: false });
     const entry = store().createRecord(config, 'ob', { site: siteOfShift(live(), shift)!.id, date: TODAY, time: NOW, shift: 'day', type: 'handover', entry: 'Handed over, all in order.', by: 'Tester' }, 'draft');
     expect(act('roster', shift.id, 'off')).toMatchObject({ ok: false });

@@ -144,7 +144,7 @@ function Shell() {
             <Link to={`${base}/search`} className="circle-button search-mobile" aria-label="Open search"><IcoSearch /></Link>
             <label className="user-switch" title="Simulated sign-in — not real authentication">
               <span className="top-avatar" aria-hidden="true">{initials}</span>
-              <span className="user-switch-text"><b>{user.name}</b><small>{user.title === roleLabel ? user.title : `${user.title} · ${roleLabel}`}</small></span>
+              <span className="user-switch-text"><b>{user.name}</b><small>{user.title.toLowerCase().includes(roleLabel.toLowerCase()) ? user.title : `${user.title} · ${roleLabel}`}</small></span>
               <select aria-label="Signed in as (simulated user)" value={user.id} onChange={(e) => signInAs(config.id, e.target.value)} data-testid="user-switcher">
                 {data.users.map((u) => <option key={u.id} value={u.id}>{u.name} · {u.title}</option>)}
               </select>

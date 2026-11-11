@@ -11,7 +11,7 @@ import {
   CHECK_ITEMS, CONTRACT_WINDOW_DAYS, EMPLOYMENT, EQUIPMENT_CATEGORIES, GRADES, INCIDENT_TYPES, INSPECTION_INTERVAL_DAYS, OB_TYPES, OUTCOMES, PERMIT_LABEL,
   SCORES, SEVERITIES, SHIFT_KINDS, SHIFT_SHORT, SIGNALS, SITE_TYPES, label,
 } from './data';
-import { buildSecuritySeed } from './seed';
+import { DAYS_AHEAD, DAYS_BACK, SEED, buildSecuritySeed } from './seed';
 import {
   SAPS_RE, bookOffProblem, bookOnProblem, calloutSla, contractMonthly, daysSinceInspection, deployability, dispatchProblem, duration, equipmentLabel,
   activeShiftFor, fullName, incidentCloseProblems, incidentReportProblem, inspectionOverdue, inspectionScore, inspectionSubmitProblem, invoiceOverdue,
@@ -20,7 +20,7 @@ import {
   shiftTitle, siteName, siteOfPost, slaState, slotPhase, standDownProblem, suggestedTime, todayStr, workingOfficerId,
 } from './helpers';
 export * from './helpers';
-export { SEED, DAYS_BACK, DAYS_AHEAD } from './seed';
+export { SEED, DAYS_BACK, DAYS_AHEAD };
 import Dashboard from './pages/Dashboard';
 import Roster from './pages/Roster';
 import RosterDetail from './pages/RosterDetail';
@@ -288,7 +288,7 @@ const collections: CollectionDef[] = [
       { key: 'type', label: 'Entry type', type: 'select', options: OB_TYPES, required: true, table: true },
       { key: 'entry', label: 'Entry', type: 'textarea', required: true },
       { key: 'by', label: 'Entered by', type: 'text', required: true },
-      { key: 'followsUp', label: 'Follows up entry', type: 'ref', ref: 'ob' },
+      { key: 'followsUp', label: 'Follows up entry', type: 'ref', ref: 'ob', hint: 'Signed entries in the same site’s book.', refFilter: (t, v) => t.status === 'signed' && (!v.site || t.values.site === v.site) },
       { key: 'shiftDate', label: 'Shift date', type: 'date', hidden: true },
     ],
   },
@@ -616,7 +616,7 @@ const config: IndustryConfig = {
   ],
   guide: [
     { title: 'Fill an unfilled post', detail: 'Tomorrow’s armed cash-office post has nobody on it. Try posting an officer with a lapsed PSIRA registration, too low a grade or no firearm competency — each is refused with the reason — then post an eligible one.', to: 'roster/roster_1', as: 'u_ctl' },
-    { title: 'Book an officer off', detail: 'Open any on-duty shift from the grid and press “Book off”. It is refused until the site’s shift handover entry is written and signed in the occurrence book — the “Shift handover” panel on the same page does both.', to: 'roster', as: 'u_ctl' },
+    { title: 'Book an officer off', detail: 'This officer is on duty at the Kloofview Mall main entrance. Press “Book off”: it is refused until the site’s shift handover entry is written and signed in the occurrence book. The “Shift handover” panel on the same page does both — then book off works.', to: `roster/${SEED.onDutyShift}`, as: 'u_ctl' },
     { title: 'Dispatch armed response', detail: 'A panic signal is waiting for a vehicle. Pick one in the dispatch form — vehicles in repair, unlicensed or already committed are refused — then mark it on scene to see the response time against the SLA.', to: 'callouts/callouts_1', as: 'u_ctl' },
     { title: 'Close an incident properly', detail: 'This break-in cannot go to the client without a root cause and a SAPS case number (or the reason there is none), and cannot be closed without an outcome. Try the steps, fill in the close-out form on the page, log the client report, then close it.', to: 'incidents/incidents_1', as: 'u_dir' },
     { title: 'Issue a firearm', detail: 'Use the issue form: an officer on an unarmed post or without firearm competency is refused; an officer on an armed post this shift is accepted. Nothing leaves a real armoury.', to: 'equipment/equipment_1', as: 'u_arm' },

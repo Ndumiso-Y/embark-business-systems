@@ -7,7 +7,7 @@ import { addDays, formatDate } from '../../../core/lib/dates';
 import { Empty, Field, Notice, PageHeader, Panel, Stat, Tag } from '../../../core/components/ui';
 import { RecordTable } from '../../../core/components/records';
 import { PATROL_GRACE_MIN, SHIFT_SHORT, checkpointList } from '../data';
-import { currentSlot, kindOfTime, officerName, patrolCompleteProblem, patrolLateBy, patrolMissed, shiftsIn, siteName, siteOfShift, workingOfficerId } from '../helpers';
+import { currentSlot, officerName, patrolCompleteProblem, patrolLateBy, patrolMissed, shiftsIn, siteName, siteOfShift, workingOfficerId } from '../helpers';
 import { useClock } from './format';
 
 export default function Patrols() {
@@ -37,7 +37,7 @@ export default function Patrols() {
     if (!s) { act.toast('Choose the site for the patrol round.', 'err'); return; }
     if (!(num(s, 'checkpoints') > 0)) { act.toast(`${str(s, 'name')} has no patrol checkpoints set up.`, 'err'); return; }
     const who = officer || (onDuty[0] ? workingOfficerId(onDuty[0]) : '');
-    const r = act.create('patrols', { site, date: today, shift: kindOfTime(time), dueAt: due || time, startedAt: time, officer: who, checkpoints: num(s, 'checkpoints') }, 'started', 'Patrol round started');
+    const r = act.create('patrols', { site, date: today, shift: cur.kind, dueAt: due || time, startedAt: time, officer: who, checkpoints: num(s, 'checkpoints') }, 'started', 'Patrol round started');
     act.toast(`${r.ref} started at ${str(s, 'name')} — scan the checkpoints below`);
     setDue('');
   };
@@ -67,9 +67,9 @@ export default function Patrols() {
                   </select>
                 </Field>
                 <Field label="Patrolling officer" hint="Officers on duty at the site.">
-                  <select className="select" aria-label="Patrolling officer" value={officer} onChange={(e) => setOfficer(e.target.value)}>
-                    <option value="">{onDuty.length ? 'First officer on duty' : 'Nobody on duty here'}</option>
-                    {onDuty.map((r) => <option key={r.id} value={workingOfficerId(r)}>{officerName(data, workingOfficerId(r))}</option>)}
+                  <select className="select" aria-label="Patrolling officer" value={officer} disabled={!site} onChange={(e) => setOfficer(e.target.value)}>
+                    <option value="">{!site ? 'Choose the site first' : onDuty.length ? 'First officer on duty' : 'Nobody on duty here'}</option>
+                    {site && onDuty.map((r) => <option key={r.id} value={workingOfficerId(r)}>{officerName(data, workingOfficerId(r))}</option>)}
                   </select>
                 </Field>
                 <Field label="Round was due at" hint="Leave empty if it starts on time.">

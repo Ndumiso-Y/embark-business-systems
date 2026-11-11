@@ -103,35 +103,35 @@ export default function Roster() {
         </Panel>
       )}
       {view === 'grid' ? (
-        <Panel title="Roster grid by site" meta="Each card is one post for the shift: officer, status and the post’s requirements. Click a card to open the shift. The demo always treats today’s day shift as the shift on duty.">
-          <div className="table-wrap">
-            <table className="table" data-testid="roster-grid">
-              <thead><tr><th style={{ width: '22%' }}>Site</th>{SHIFT_KINDS.map((k) => <th key={k.value}>{k.label}<small> · {cover[k.value as 'day' | 'night'].pct}% covered</small></th>)}</tr></thead>
-              <tbody>
-                {sites.map((s) => {
-                  const mine = posts.filter((p) => str(p, 'site') === s.id);
-                  const d = coverage(data, date, 'day', s.id);
-                  const n = coverage(data, date, 'night', s.id);
-                  const p = d.posts + n.posts ? Math.round(((d.covered + n.covered) / (d.posts + n.posts)) * 100) : 0;
-                  return (
-                    <tr key={s.id}>
-                      <td style={{ verticalAlign: 'top' }}>
-                        <Link to={`${base}/sites/${s.id}`}><strong>{str(s, 'name')}</strong></Link>
-                        <small>{str(s, 'code')} · {mine.length} post{mine.length === 1 ? '' : 's'}</small>
-                        <div style={{ marginTop: 6 }}><Tag tone={pctTone(p)}>{d.covered + n.covered}/{d.posts + n.posts} · {p}%</Tag></div>
-                      </td>
-                      {(['day', 'night'] as const).map((k) => (
-                        <td key={k} style={{ verticalAlign: 'top' }}>
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 8 }}>
-                            {mine.filter((x) => (str(x, 'shift') === 'night' ? 'night' : 'day') === k).map(chip)}
-                          </div>
-                        </td>
-                      ))}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+        <Panel title="Roster grid by site" meta={`Each card is one post for the shift: officer, status and the post’s requirements. Click a card to open the shift. Day shift ${cover.day.pct}% covered · night shift ${cover.night.pct}% covered. The demo always treats today’s day shift as the shift on duty.`}>
+          <div data-testid="roster-grid">
+            {sites.map((s) => {
+              const mine = posts.filter((p) => str(p, 'site') === s.id);
+              const d = coverage(data, date, 'day', s.id);
+              const n = coverage(data, date, 'night', s.id);
+              const p = d.posts + n.posts ? Math.round(((d.covered + n.covered) / (d.posts + n.posts)) * 100) : 0;
+              return (
+                // One row per site that wraps on narrow screens: site, then the day posts, then the night posts.
+                <div key={s.id} data-testid="roster-site" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 16px', padding: '14px 0', borderTop: '1px solid var(--line)' }}>
+                  <div style={{ flex: '1 1 150px', maxWidth: 220 }}>
+                    <Link to={`${base}/sites/${s.id}`}><strong>{str(s, 'name')}</strong></Link>
+                    <div className="muted-note">{str(s, 'code')} · {mine.length} post{mine.length === 1 ? '' : 's'}</div>
+                    <div style={{ marginTop: 6 }}><Tag tone={pctTone(p)}>{d.covered + n.covered}/{d.posts + n.posts} · {p}%</Tag></div>
+                  </div>
+                  {(['day', 'night'] as const).map((k) => {
+                    const list = mine.filter((x) => (str(x, 'shift') === 'night' ? 'night' : 'day') === k);
+                    return (
+                      <div key={k} style={{ flex: '3 1 260px', minWidth: 0 }}>
+                        <div className="muted-note" style={{ marginBottom: 6 }}>{SHIFT_KINDS.find((x) => x.value === k)?.label}</div>
+                        {list.length
+                          ? <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 8 }}>{list.map(chip)}</div>
+                          : <div className="muted-note">No {k} posts on this contract.</div>}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
           </div>
         </Panel>
       ) : (

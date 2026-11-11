@@ -33,30 +33,6 @@ const ACCOUNTS = 'Hannes Botha';
 const ARMOURY = 'Lucky Mahlaba';
 const ROLE = { ctl: 'Control room operator', sup: 'Site supervisor / inspector', dir: 'Operations director', acc: 'Accounts clerk', arm: 'Armoury / equipment controller' };
 
-export const DAYS_BACK = 14;
-export const DAYS_AHEAD = 3;
-/** Index (in post order) of the armed Grade C post left unfilled tomorrow for the walkthrough. */
-const GUIDE_POST = 3;
-/** Deterministic ids the walkthrough and the tests rely on. */
-export const SEED = {
-  guideShift: 'roster_1',
-  guideIncident: 'incidents_1',
-  reportedIncident: 'incidents_2',
-  guideCallout: 'callouts_1',
-  guideFirearm: 'equipment_1',
-  expiredFirearm: 'equipment_2',
-  guideInspection: 'inspections_1',
-  lapsedRegular: 'officers_4',
-  standby: 'officers_61',
-  expiredPsira: 'officers_63',
-  lowGrade: 'officers_64',
-  noCompetency: 'officers_65',
-  notInducted: 'officers_69',
-  vehicleAvailable: 'VEH-01',
-  vehicleBusy: 'VEH-02',
-  vehicleRepair: 'VEH-04',
-} as const;
-
 const FIRST = [
   'Sibusiso', 'Thabo', 'Nomsa', 'Johan', 'Lindiwe', 'Mpho', 'Andile', 'Zodwa', 'Pieter', 'Kagiso', 'Nokuthula', 'Themba', 'Charmaine', 'Tshepo', 'Vusi', 'Ayanda', 'Gert', 'Palesa',
   'Mandla', 'Busisiwe', 'Riaan', 'Lebogang', 'Siphiwe', 'Dineo', 'Jabulani', 'Marlene', 'Sizwe', 'Khanyisile', 'Dumisani', 'Faith', 'Bheki', 'Ntombi', 'Wayne', 'Katlego', 'Xolani',
@@ -116,6 +92,33 @@ const POSTS: Array<[number, string, ShiftKind, string, boolean]> = [
   [12, 'Gate', 'day', 'E', false], [12, 'Gate', 'night', 'D', false],
   [13, 'Showroom floor', 'day', 'D', false], [13, 'Yard', 'night', 'C', true],
 ];
+/** Roster history kept in the seed. Ten days keeps the stored demo small; the pages read this constant for their labels. */
+export const DAYS_BACK = 10;
+export const DAYS_AHEAD = 3;
+/** Index (in post order) of the armed Grade C post left unfilled tomorrow for the walkthrough. */
+const GUIDE_POST = 3;
+/** Deterministic ids the walkthrough and the tests rely on. */
+export const SEED = {
+  guideShift: 'roster_1',
+  /** Today's day shift at the first post (Kloofview Mall main entrance): on duty, handover not yet written. */
+  onDutyShift: `roster_${2 + DAYS_BACK * POSTS.length}`,
+  guideIncident: 'incidents_1',
+  reportedIncident: 'incidents_2',
+  guideCallout: 'callouts_1',
+  guideFirearm: 'equipment_1',
+  expiredFirearm: 'equipment_2',
+  guideInspection: 'inspections_1',
+  lapsedRegular: 'officers_4',
+  standby: 'officers_61',
+  expiredPsira: 'officers_63',
+  lowGrade: 'officers_64',
+  noCompetency: 'officers_65',
+  notInducted: 'officers_69',
+  vehicleAvailable: 'VEH-01',
+  vehicleBusy: 'VEH-02',
+  vehicleRepair: 'VEH-04',
+} as const;
+
 const BASE_RATE: Record<string, number> = { A: 29500, B: 24500, C: 19500, D: 16800, E: 14500 };
 
 const OB_TEXT: Array<[string, string]> = [
@@ -211,7 +214,7 @@ function buildCollections(today: string) {
   officer(69, 'E', { psira: 340, inductions: 'JCG', refresher: 14, medical: 320, hrNotes: 'New recruit on probation.' });
   const name = (o: DemoRecord | undefined) => (o ? `${String(o.values.firstName)} ${String(o.values.lastName)}` : 'Site officer');
 
-  /* ---------- Duty roster: 14 days back, today and 3 days ahead ---------- */
+  /* ---------- Duty roster: DAYS_BACK days back, today and DAYS_AHEAD days ahead ---------- */
   const busy = new Set<string>();
   const key = (id: string, s: Slot) => `${id}|${slotKey(s.date, s.kind)}`;
   const free = (id: string, s: Slot) => !busy.has(key(id, s)) && !busy.has(key(id, prevSlot(s))) && !busy.has(key(id, nextSlot(s)));
@@ -277,7 +280,7 @@ function buildCollections(today: string) {
         }
         if (who) busy.add(key(who.id, slot));
         const r = rec('roster', 'RS', values, { status, createdDaysAgo: Math.max(0, -d), history });
-        // 864 shifts dominate the stored size, so their timestamps are kept to day precision.
+        // The roster shifts dominate the stored size, so their timestamps are kept to day precision.
         r.createdAt = r.updatedAt = r.createdAt.slice(0, 10);
         made.push(r);
       });
@@ -434,7 +437,10 @@ function buildCollections(today: string) {
     return rec('patrols', 'PR', {
       site: sites[siteIdx].id, date: started.date, shift: s.kind, dueAt: dueAt.time, startedAt: started.time, officer: workerAt(s, siteIdx)?.id ?? '', checkpoints: total,
       ...(status === 'completed' ? { completedAt: at(s, due + lateBy + 25 + total).time, scanned: total - missed, missedPoints: missed ? `CP${total - 1} — gate locked, no key on site${missed > 1 ? `; CP${total} — area flooded` : ''}` : '' } : {}),
-    }, { status, createdDaysAgo: ago(started.date), history: [] });
+    }, {
+      status, createdDaysAgo: ago(started.date),
+      history: [{ daysAgo: ago(started.date), by: workerAt(s, siteIdx) ? name(workerAt(s, siteIdx)) : CTL, role: 'Security officer', action: status === 'completed' ? 'Complete round' : 'Patrol round started' }],
+    });
   };
   [...past].slice(0, 4).reverse().forEach((s) => patrolSites.forEach((si) => {
     const rounds = s.kind === 'night' ? [120, 420] : [300];

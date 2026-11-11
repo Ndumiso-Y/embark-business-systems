@@ -11,7 +11,7 @@ import { RecordFormModal } from '../../../core/components/fields';
 import RoleBar from '../../../core/components/RoleBar';
 import { IcoBack, IcoEdit, IcoPlus } from '../../../core/components/Icons';
 import { OB_TYPES, SHIFT_KINDS, label } from '../data';
-import { kindOfTime, rec, siteName } from '../helpers';
+import { currentSlot, rec, siteName } from '../helpers';
 import { useClock } from './format';
 
 export default function ObDetail() {
@@ -87,7 +87,7 @@ export default function ObDetail() {
         </div>
       </div>
       {editing && (
-        <RecordFormModal def={def} record={r} open onClose={() => setEditing(false)} onSave={(v) => {
+        <RecordFormModal def={def} record={r} open title={`Correct draft entry ${r.ref}`} onClose={() => setEditing(false)} onSave={(v) => {
           if (rec(data, 'ob', r.id)?.status !== 'draft') { act.toast('This entry has been signed and can no longer be edited.', 'err'); setEditing(false); return; }
           act.update('ob', r.id, v, 'Draft corrected');
           act.toast(`${r.ref} saved`);
@@ -96,7 +96,7 @@ export default function ObDetail() {
       )}
       {following && (
         <RecordFormModal def={def} open title={`Follow-up to ${r.ref}`} onClose={() => setFollowing(false)}
-          initial={{ site: str(r, 'site'), date: today, time, shift: kindOfTime(time), type: 'followup', by: user.name, followsUp: r.id }}
+          initial={{ site: str(r, 'site'), date: today, time, shift: currentSlot(today).kind, type: 'followup', by: user.name, followsUp: r.id }}
           onSave={(v) => {
             const n = act.create('ob', { ...v, followsUp: r.id }, 'draft', `Follow-up to ${r.ref}`);
             act.toast(`${n.ref} written as a follow-up to ${r.ref}`);
