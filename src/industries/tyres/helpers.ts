@@ -7,7 +7,7 @@ import { addDays, daysBetween, formatDate, toIso } from '../../core/lib/dates';
 import { formatRand, group } from '../../core/lib/money';
 import {
   ALIGN_READINGS, ALIGN_SPEC, BAYS, BRANDS, CALIBRATION_WARN_DAYS, CLAIM_OPEN_DAYS, DAMAGE_TYPES, OLD_STOCK_YEARS, POSITIONS, PRICES, QC_ITEMS, ROTATION_KM,
-  TECHNICIANS, TOOL_OUT_HOURS, TOOL_TYPES, TREAD_ADVISE, TREAD_LEGAL_MIN, VEHICLE_CLASSES, label, type PosKey,
+  TECHNICIANS, TOOL_TYPES, TREAD_ADVISE, TREAD_LEGAL_MIN, VEHICLE_CLASSES, label, type PosKey,
 } from './data';
 
 // Indirection so tests can pin "today" (see tests/tyres.test.ts).
@@ -351,7 +351,9 @@ export function toolHoursOut(tool: DemoRecord, now: Date = new Date()): number {
   return Math.max(0, Math.round(((now.getTime() - at.getTime()) / 3_600_000) * 10) / 10);
 }
 
-export const toolNotReturned = (tool: DemoRecord, now?: Date) => toolHoursOut(tool, now) > TOOL_OUT_HOURS;
+/** Demo rule: a tool still checked out from a previous day was not returned overnight. Independent of the time of day the demo is shown. */
+export const toolNotReturned = (tool: DemoRecord, today: string = todayStr()) =>
+  tool.status === 'checkedout' && !!str(tool, 'checkedOutOn') && str(tool, 'checkedOutOn') < today;
 
 export function toolCheckoutProblem(tool: DemoRecord, today: string): string | null {
   if (calibrationState(tool, today) === 'expired') return `${str(tool, 'assetNo')} calibration ${str(tool, 'calibrationDue') ? `expired on ${formatDate(str(tool, 'calibrationDue'))}` : 'is not recorded'}. Send it for calibration — it may not be issued.`;

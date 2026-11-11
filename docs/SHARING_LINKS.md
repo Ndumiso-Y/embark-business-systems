@@ -9,7 +9,10 @@
 | Workshop client | https://ndumiso-y.github.io/embark-business-systems/automotive/ | Torque Lane Auto Services only |
 | Mining client | https://ndumiso-y.github.io/embark-business-systems/mining/ | Ridgeback Minerals only |
 | Law firm client | https://ndumiso-y.github.io/embark-business-systems/law-firm/ | Mahlaba & Rossouw Attorneys only |
-| Embark Digitals (internal) | https://ndumiso-y.github.io/embark-business-systems/hub-k7q3m9/ | Gallery of all five |
+| Estate agency client | https://ndumiso-y.github.io/embark-business-systems/real-estate/ | Kestrel Property Group only |
+| Construction client | https://ndumiso-y.github.io/embark-business-systems/construction/ | Ironbark Building & Civils only |
+| Tyre fitment client | https://ndumiso-y.github.io/embark-business-systems/tyre-fitment/ | TreadRight Tyre & Fitment only |
+| Embark Digitals (internal) | https://ndumiso-y.github.io/embark-business-systems/hub-k7q3m9/ | Gallery of all eight, grouped by family |
 | Anyone at the root | https://ndumiso-y.github.io/embark-business-systems/ | Neutral page, lists nothing |
 
 ## How the separation works

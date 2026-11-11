@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import config, {
   diameterDiffPct, dotAgeYears, dotDate, dotFromDate, fittingProblem, invoiceBalance, isOldDot, parseTyreSize, proRataCredit, sameSize, setTodayForTests, sizeKey,
-  stockForSize, treadTone, toolHoursOut,
+  stockForSize, treadTone, toolHoursOut, toolNotReturned,
 } from '../src/industries/tyres';
 import { applyTransition, findRecord, findTransition, num, records, str, validateConfig } from '../src/core/engine';
 import { buildIndustryData } from '../src/core/seed';
@@ -241,5 +241,15 @@ describe('tyre helpers', () => {
     expect(treadTone(1.0)).toBe('amber');
     expect(treadTone(3.0)).toBe('green');
     expect(treadTone(null)).toBe('none');
+  });
+});
+
+describe('tool return rule', () => {
+  it('flags only tools kept overnight, whatever time the demo is shown', () => {
+    const t = tool('TR-TW-02');
+    const out = (on: string) => ({ ...t, status: 'checkedout', values: { ...t.values, checkedOutOn: on, checkedOutAt: '07:30' } });
+    expect(toolNotReturned(out('2026-11-10'), '2026-11-11')).toBe(true);
+    expect(toolNotReturned(out('2026-11-11'), '2026-11-11')).toBe(false);
+    expect(toolNotReturned({ ...t, status: 'available' }, '2026-11-11')).toBe(false);
   });
 });

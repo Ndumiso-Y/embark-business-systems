@@ -1,6 +1,6 @@
 # Embark Digitals — Industry management demos
 
-A reusable, browser-only application foundation with five industry configurations, built by
+A reusable, browser-only application foundation with eight industry configurations, built by
 Embark Digitals as discovery demonstrations. It is **not** a production system.
 
 | # | Industry | Fictional business | Depth |
@@ -10,6 +10,9 @@ Embark Digitals as discovery demonstrations. It is **not** a production system.
 | 3 | Automotive services | Torque Lane Auto Services | Interactive core workflows |
 | 4 | Mining | Ridgeback Minerals | Interactive core workflows |
 | 5 | Law firm | Mahlaba & Rossouw Attorneys | Interactive core workflows |
+| 6 | Real estate | Kestrel Property Group | Interactive core workflows |
+| 7 | Construction | Ironbark Building & Civils | Interactive core workflows |
+| 8 | Tyre & fitment centre | TreadRight Tyre & Fitment | Interactive core workflows |
 
 - Every business, person, record, code and figure is **fictional**.
 - Data lives only in the visitor's browser (localStorage). Another browser or device starts fresh.
@@ -28,6 +31,9 @@ other demos, and none of their code or data.
 | Automotive services | https://ndumiso-y.github.io/embark-business-systems/automotive/ |
 | Mining | https://ndumiso-y.github.io/embark-business-systems/mining/ |
 | Law firm | https://ndumiso-y.github.io/embark-business-systems/law-firm/ |
+| Real estate | https://ndumiso-y.github.io/embark-business-systems/real-estate/ |
+| Construction | https://ndumiso-y.github.io/embark-business-systems/construction/ |
+| Tyre & fitment centre | https://ndumiso-y.github.io/embark-business-systems/tyre-fitment/ |
 
 The site root shows a neutral Embark Digitals page that lists nothing. The full hub with every industry is at an
 unlisted address for internal use — see `docs/SHARING_LINKS.md`.
@@ -78,6 +84,7 @@ npm run build:preview  # portable build with relative paths (dist-preview/)
 | File | Contents |
 | --- | --- |
 | `docs/SHARING_LINKS.md` | Client links, the unlisted hub, and what "private" means on a public site |
+| `docs/INDUSTRY_STRATEGY.md` | How industries are chosen, the four families, and what to build next |
 | `docs/REUSE_GUIDE.md` | How the foundation works and how to add or adapt an industry |
 | `docs/INDUSTRY_MODULES.md` | Modules, workflows and rules per industry, with the research behind them |
 | `docs/BUSINESS_SCOPE_AND_LIMITATIONS.md` | What is demonstrated, simulated, and not built |

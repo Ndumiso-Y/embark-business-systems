@@ -86,6 +86,49 @@ low stock), lab pipeline, six-month exams vs orders chart, activity feed.
 | Practice reports | WIP by fee earner, utilisation vs 6 h/day, realisation, matters by type, deadlines | |
 
 
+## 6. Real estate — Kestrel Property Group
+
+**Roles:** principal (all access), sales agents, rental agent, property manager / admin, bookkeeper.
+
+| Module | What it does | Rules worth showing |
+| --- | --- | --- |
+| Listings & mandates | Valuation → mandate signed → listed → under offer → sold (pending transfer) → registered | Going live needs a signed, unexpired mandate, seller FICA (simulated) and an agent with a valid Fidelity Fund Certificate; flags for expiring mandates, 90+ days on market, price reductions |
+| Buyers & leads | Pipeline from new lead to bought/lost | Detail page matches the buyer to listings (budget ±10 %, suburb, bedrooms, type) |
+| Viewings & show days | Planner per agent | Feedback and interest level required to complete; no double-booking |
+| Offers to purchase | Submitted → accepted / countered / declined → conditions met / lapsed | Accepting moves the listing under offer; conditions met needs bond approval and deposit and marks the listing sold |
+| Transfers | OTP → bond/cash → documents → lodged → registered (board) | Lodging needs conveyancer, transfer duty receipt and rates clearance (simulated); registration creates the commission |
+| Rentals & leases | Application → vetting → approved → signed → active → notice → ended | Signing needs approved vetting (simulated credit check) and deposit in trust (simulated); arrears block ending |
+| Maintenance | Logged → quoted → approved → contractor → completed | Quotes over R2,500 need owner approval |
+| Agents & FFCs, Commission & reports | FFC expiries, commission split, pipeline value, days on market, conversion, arrears | |
+
+## 7. Construction — Ironbark Building & Civils
+
+**Roles:** managing director (all access), project manager, site agent, quantity surveyor, safety officer, procurement & stores.
+
+| Module | What it does | Rules worth showing |
+| --- | --- | --- |
+| Projects | Tender → awarded → on site → practical completion → final completion | Practical completion blocked by open critical or uncategorised snags; final completion needs the snag list closed and retention release |
+| Programme & milestones | Bar-chart programme, % complete weighted by duration vs time elapsed | Overdue and slipping flags |
+| Site diary | Daily weather, labour, plant, work, delays | Signing needs a cause for any delay or rain day; feeds an indicative extension-of-time table |
+| Variations | Instructed → priced → submitted → approved / rejected | Needs instruction reference and price; non-compliant subcontractor blocks it; approved value raises the revised contract sum |
+| Payment valuations | Monthly claim with retention (capped at 5 % of contract), previous certificates and VAT | One open valuation per project; certified ≤ submitted |
+| Procurement | Requisition → approved → PO → delivered | Delivery note required; late deliveries flagged |
+| Plant & equipment | Owned and hired plant, running hire cost | Idle, off-hire overdue and service flags |
+| Subcontractors, Snags & defects, Health & safety | COIDA/tax/safety-file compliance; snag verification; incidents close only with corrective action | |
+
+## 8. Tyre & fitment centre — TreadRight Tyre & Fitment
+
+**Roles:** branch manager (all access), counter sales, fitment technicians, alignment technician, stock controller, fleet accounts clerk.
+
+| Module | What it does | Rules worth showing |
+| --- | --- | --- |
+| Bay queue | Arrived → inspected → quoted → approved → fitting → balancing → alignment → torque check → ready → collected; unsold steps skipped | Tread depth for all four wheels; tyres under 1.0 mm (demo rule) quoted or refusal recorded; fleet PO and credit limit; stock checked and deducted at fitting; alignment before/after readings in tolerance; **torque check needs a calibrated torque wrench checked out to that technician** and every wheel in spec; QC creates the invoice |
+| Tools & equipment | Tool board of who holds what; register with calibration and service | Cannot issue a tool with expired calibration or out of service; tools kept overnight flagged |
+| Tyre stock | Search by size with same-rim alternatives (±3 % diameter) | Low stock, old stock (DOT > 5 years, demo rule), price below cost |
+| Vehicles, Customers, Fleet accounts | Tyre history per wheel position, rotation due every 10,000 km, fleet statements and credit | |
+| Warranty claims | Logged → inspected → sent → approved / rejected | Only manufacturing defects go to the supplier; open > 21 days flagged |
+| Invoices, Reports | Paid or on fleet account; tyres sold by size/brand, bay throughput, tool utilisation, warranty rate | Payment never exceeds the balance |
+
 ## Research notes
 
 Module choices were checked against public vendor and directory descriptions of sector software (vendor

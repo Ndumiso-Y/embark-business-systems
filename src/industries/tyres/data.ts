@@ -50,8 +50,7 @@ export const TREAD_ADVISE = 3.0;
 export const OLD_STOCK_YEARS = 5;
 /** Demo rule: rotation every 10,000 km. */
 export const ROTATION_KM = 10_000;
-/** Demo rule: a tool out for longer than this is "not returned". */
-export const TOOL_OUT_HOURS = 10;
+/** Demo rule: tools must be back on the tool board by close of business; anything still out from a previous day is "not returned". */
 /** Tools whose calibration falls due within this many days are flagged. */
 export const CALIBRATION_WARN_DAYS = 14;
 /** Warranty claims open longer than this are flagged. */

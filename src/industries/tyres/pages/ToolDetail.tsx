@@ -5,8 +5,8 @@ import { findRecord, num, records, str } from '../../../core/engine';
 import { daysBetween, formatDate } from '../../../core/lib/dates';
 import { Empty, Field, KeyValues, Meters, Notice, Panel, Tag } from '../../../core/components/ui';
 import { RecordDetail } from '../../../core/components/records';
-import { TECHNICIANS, TOOL_LOCATIONS, TOOL_OUT_HOURS, TOOL_TYPES, label } from '../data';
-import { calibrationState, IN_BAY, servicesText, techLabel, todayStr, toolCheckoutProblem, toolHoursOut, toolType, vehicleLabel } from '../helpers';
+import { TECHNICIANS, TOOL_LOCATIONS, TOOL_TYPES, label } from '../data';
+import { calibrationState, IN_BAY, servicesText, techLabel, todayStr, toolCheckoutProblem, toolHoursOut, toolNotReturned, toolType, vehicleLabel } from '../helpers';
 import { RecordLink } from './shared';
 
 export default function ToolDetail() {
@@ -75,11 +75,11 @@ function Holding({ id }: { id: string }) {
   const h = toolHoursOut(t);
   const job = findRecord(data, 'jobs', str(t, 'forJob'));
   return (
-    <Panel title="Currently checked out" right={h > TOOL_OUT_HOURS ? <Tag tone="red">Not returned</Tag> : <Tag tone="accent">In use</Tag>}>
+    <Panel title="Currently checked out" right={toolNotReturned(t) ? <Tag tone="red">Not returned overnight</Tag> : <Tag tone="accent">In use</Tag>}>
       <KeyValues items={[
         { label: 'Held by', value: techLabel(str(t, 'holder')) },
         { label: 'Since', value: `${formatDate(str(t, 'checkedOutOn'))} ${str(t, 'checkedOutAt')}` },
-        { label: 'Hours out', value: `${h} h${h > TOOL_OUT_HOURS ? ` — over the ${TOOL_OUT_HOURS} h limit (demo rule)` : ''}` },
+        { label: 'Hours out', value: `${h} h${toolNotReturned(t) ? ' — kept overnight; tools go back on the board at close of business (demo rule)' : ''}` },
         { label: 'Issued for', value: job ? <RecordLink module="jobs" record={job}>{job.ref} · {vehicleLabel(data, job.values.vehicle)}</RecordLink> : 'General use' },
       ]} />
       <p className="muted-note" style={{ marginTop: 10 }}>Use “Check in” in the workflow panel when the tool is back in its bay or the store.</p>

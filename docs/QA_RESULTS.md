@@ -6,8 +6,8 @@ Run on 11 Nov 2026 in a Linux cloud container (Node 22, Chromium via Playwright 
 | --- | --- | --- |
 | Typecheck | `npm run typecheck` | Pass |
 | Lint | `npm run lint` | 0 errors, 8 warnings (react-refresh "only export components" — dev hot-reload hint only) |
-| Unit tests | `npm test` | **87 passed** in 6 files: engine 13 · optometry 11 · medical 13 · automotive 12 · mining 17 · legal 21 |
-| Browser tests | `npm run e2e` | **21 passed**: 5 cross-industry smoke, 9 optometry workflows, 7 client-link checks (run with `PAGES_URL` against the Pages build) |
+| Unit tests | `npm test` | **148 passed** in 9 files: engine 13 · optometry 11 · medical 13 · automotive 12 · tyres 17 · mining 17 · construction 23 · real estate 21 · legal 21 |
+| Browser tests | `npm run e2e` | **27 passed**: 8 cross-industry smoke, 9 optometry workflows, 10 client-link checks (run with `PAGES_URL` against the Pages build) |
 | Production build | `npm run build` | Pass — JS 780 kB (238 kB gzip), CSS 37 kB |
 | Preview build | `npm run build:preview` | Single self-contained HTML (~800 kB) boots with no console errors |
 
@@ -37,10 +37,10 @@ fewer modules than the administrator; no page errors or console errors throughou
 
 ## Client links
 
-`e2e/client-links.spec.ts` builds on `npm run build:pages` served at the same path as GitHub Pages: each of the five
+`e2e/client-links.spec.ts` builds on `npm run build:pages` served at the same path as GitHub Pages: each of the eight
 client links opens its own dashboard with the right page title, shows no "All industry demos" link, redirects the
 gallery route and every other industry's route back to its own dashboard, and contains none of the other businesses'
-names; the root page has no links; the unlisted hub shows all five industries.
+names; the root page has no links; the unlisted hub shows all eight industries.
 
 ## Deployment check (11 Nov 2026)
 

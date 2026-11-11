@@ -9,6 +9,17 @@ import { todayIso } from './lib/dates';
 
 export const STORAGE_KEY = 'embark-industry-demos-v1';
 
+/**
+ * localStorage that never throws. If the browser blocks storage or the quota is
+ * full, the demo keeps working in memory for the current visit instead of crashing.
+ */
+const memory = new Map<string, string>();
+export const safeStorage = {
+  getItem: (k: string) => { try { return localStorage.getItem(k) ?? memory.get(k) ?? null; } catch { return memory.get(k) ?? null; } },
+  setItem: (k: string, v: string) => { memory.set(k, v); try { localStorage.setItem(k, v); } catch { /* quota or blocked: keep in memory */ } },
+  removeItem: (k: string) => { memory.delete(k); try { localStorage.removeItem(k); } catch { /* ignore */ } },
+};
+
 let seq = Date.now() % 100000;
 export function newId(prefix: string): string {
   seq += 1;
@@ -196,7 +207,7 @@ export const useStore = create<State>()(
     {
       name: STORAGE_KEY,
       version: SCHEMA_VERSION,
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => safeStorage),
       partialize: (s) => ({ data: s.data }),
     },
   ),

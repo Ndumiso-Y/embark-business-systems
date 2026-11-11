@@ -11,7 +11,7 @@ import {
 import { buildTyresSeed } from './seed';
 import {
   IN_BAY, ON_SITE, alignmentProblem, approvalProblem, belowLegal, calibrationState, claimAge, claimOverdue, customerName, damageWarrantable, dotAgeYears, dotText, fittingProblem,
-  fleetBalance, fleetOfCustomer, hmToMin, inspectionProblem, invoiceBalance, invoiceOverdue, isOldDot, jobCustomer, jobFleet, jobInvoice, nowHm, parseTyreSize, paymentProblem,
+  fleetBalance, fleetOfCustomer, inspectionProblem, invoiceBalance, invoiceOverdue, isOldDot, jobCustomer, jobFleet, jobInvoice, jobMinutes, minText, nowHm, parseTyreSize, paymentProblem,
   quoteLines, quoteProblem, readyProblem, releaseProblem, replacePositions, rotationDue, servicesText, stockLabel, todayStr, toolCheckoutProblem, toolHoursOut, toolNotReturned,
   toolType, torqueWrench, techLabel, vehicleLabel, REFUSAL_WORDS,
 } from './helpers';
@@ -267,7 +267,6 @@ const phoneRule = (v: unknown) => (/^0\d{2} \d{3} \d{4}$/.test(String(v)) ? null
 const emailRule = (v: unknown) => (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(v)) ? null : 'Enter a valid email address.');
 const sizeRule = (v: unknown) => (parseTyreSize(String(v)) ? null : 'Use a tyre size like 205/55R16.');
 const dotRule = (v: unknown) => (/^(0[1-9]|[1-4]\d|5[0-3])\d{2}$/.test(String(v)) ? null : 'DOT date code is the week and year, e.g. 1424.');
-const minutesSince = (hm: string) => { const d = new Date(); return d.getHours() * 60 + d.getMinutes() - hmToMin(hm); };
 
 const collections: CollectionDef[] = [
   {
@@ -283,10 +282,8 @@ const collections: CollectionDef[] = [
       const fleet = jobFleet(d, r);
       if (fleet?.values.poRequired && !str(r, 'fleetPo') && ['arrived', 'inspected', 'quoted'].includes(r.status ?? '')) out.push({ tone: 'amber', label: 'Fleet PO missing' });
       if (fleet) out.push({ tone: 'dark', label: 'Fleet' });
-      if (open && str(r, 'workDate') === today && r.status !== 'ready' && str(r, 'arrivedAt')) {
-        const m = minutesSince(str(r, 'arrivedAt'));
-        if (m > 60) out.push({ tone: 'amber', label: 'Over an hour on site' });
-      }
+      const mins = jobMinutes(r);
+      if (str(r, 'workDate') === today && mins !== null && mins > 60) out.push({ tone: 'amber', label: `${minText(mins)} to ready` });
       if (r.status === 'ready') {
         const inv = jobInvoice(d, r.id);
         if (inv && inv.status === 'issued') out.push({ tone: 'amber', label: fleet ? 'Put invoice on account' : 'Awaiting payment' });
@@ -329,7 +326,7 @@ const collections: CollectionDef[] = [
       if (cal === 'expired') out.push({ tone: 'red', label: 'Calibration expired' });
       if (cal === 'due') out.push({ tone: 'amber', label: `Calibration due in ${daysBetween(today, str(r, 'calibrationDue'))} d` });
       if (str(r, 'serviceDue') && str(r, 'serviceDue') < today) out.push({ tone: 'amber', label: 'Service overdue' });
-      if (toolNotReturned(r)) out.push({ tone: 'red', label: `Not returned (${Math.round(toolHoursOut(r))} h)` });
+      if (toolNotReturned(r)) out.push({ tone: 'red', label: `Not returned overnight (${Math.round(toolHoursOut(r))} h)` });
       if (r.status === 'missing') out.push({ tone: 'red', label: 'Missing' });
       if (str(r, 'condition') === 'poor' && r.status !== 'outofservice') out.push({ tone: 'amber', label: 'Poor condition' });
       return out;
