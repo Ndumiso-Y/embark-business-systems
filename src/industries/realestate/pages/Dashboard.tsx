@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useBase, useData, useIndustry, useUser } from '../../../core/context';
 import { num, records, str } from '../../../core/engine';
-import { addDays, daysBetween, formatDate, monthShort, relativeWhen } from '../../../core/lib/dates';
+import { addDays, daysBetween, formatDate, monthKeys, monthShort, relativeWhen } from '../../../core/lib/dates';
 import { toCents } from '../../../core/lib/money';
 import { BarChart, Empty, Flags, PageHeader, Panel, Pipeline, Stat, Tag } from '../../../core/components/ui';
 import RoleBar from '../../../core/components/RoleBar';
@@ -42,7 +42,7 @@ export default function Dashboard() {
   const todays = viewings.filter((v) => str(v, 'date') === today && v.status !== 'cancelled').sort(byDateTime);
 
   // Six months: mandates signed vs sales registered.
-  const months = Array.from({ length: 6 }, (_, i) => addDays(`${month}-15`, -30.4 * (5 - i)).slice(0, 7));
+  const months = monthKeys(today, 6);
   const chart = months.map((m) => ({
     label: monthShort(m),
     value: listings.filter((l) => str(l, 'mandateSigned').startsWith(m)).length,

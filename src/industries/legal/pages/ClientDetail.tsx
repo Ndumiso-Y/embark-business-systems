@@ -60,10 +60,10 @@ function Matters({ id }: { id: string }) {
         ) : <Empty title="No matters yet" body={mayOpen ? 'Open the first matter for this client with the button above.' : undefined} />}
       </Panel>
       {opening && (
-        <RecordFormModal def={matterDef} open title={`New matter · ${str(findRecord(data, 'clients', id), 'name')}`} initial={{ client: id, feeBasis: 'hourly' }}
+        <RecordFormModal def={matterDef} open title={`New matter · ${str(findRecord(data, 'clients', id), 'name')}`} initial={{ ...matterDef.createDefaults?.(todayStr(), data), client: id }}
           onClose={() => setOpening(false)}
           onSave={(v) => {
-            const m = act.create('matters', { ...v, opened: todayStr(), engagementSigned: false, ficaVerified: false }, 'intake', 'Matter opened at intake');
+            const m = act.create('matters', v, 'intake', 'Matter opened at intake');
             act.toast(`Matter ${m.ref} opened at intake — send it for a conflict check`);
             setOpening(false);
             if (hasModule('matters')) navigate(`${base}/matters/${m.id}`);

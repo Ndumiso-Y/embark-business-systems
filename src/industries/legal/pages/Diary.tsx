@@ -79,7 +79,7 @@ export default function Diary() {
         <Panel><RecordTable def={def} rows={[...all].sort((a, b) => str(b, 'date').localeCompare(str(a, 'date')))} moduleKey="diary" /></Panel>
       )}
       {creating && (
-        <RecordFormModal def={def} open initial={{ date: today, type: 'court' }} onClose={() => setCreating(false)}
+        <RecordFormModal def={def} open initial={def.createDefaults?.(today, data)} onClose={() => setCreating(false)}
           onSave={(v) => { const r = act.create('diary', v, 'upcoming'); act.toast(`Diary entry ${r.ref} added`); setCreating(false); }} />
       )}
     </>

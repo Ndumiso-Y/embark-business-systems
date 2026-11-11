@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useBase, useData, useIndustry, useUser } from '../../../core/context';
 import { records, str } from '../../../core/engine';
-import { addDays, daysBetween, formatDate, monthShort, relativeWhen } from '../../../core/lib/dates';
+import { daysBetween, formatDate, monthKeys, monthShort, relativeWhen } from '../../../core/lib/dates';
 import { formatRand } from '../../../core/lib/money';
 import { BarChart, Empty, PageHeader, Panel, Pipeline, Stat, Tag } from '../../../core/components/ui';
 import RoleBar from '../../../core/components/RoleBar';
@@ -34,7 +34,7 @@ export default function Dashboard() {
   const blockedScripts = records(data, 'scripts').filter((s) => s.status === 'draft' && scriptAllergyBlock(s, data));
   const consults = records(data, 'consults');
 
-  const months = Array.from({ length: 6 }, (_, i) => addDays(today, -30.4 * (5 - i)).slice(0, 7));
+  const months = monthKeys(today, 6);
   const chart = months.map((m) => ({
     label: monthShort(m),
     value: consults.filter((c) => c.status === 'signed' && str(c, 'date').startsWith(m)).length,

@@ -302,7 +302,7 @@ describe('guided walkthrough and follow-on effects', () => {
     const postpone = findTransition(wf('diary'), 'upcoming', 'postponed')!;
     const presc = records(data, 'diary').find((d) => str(d, 'type') === 'prescription')!;
     expect(postpone.guard!({ record: presc, data, user: user('u_mp'), note: 'x' })).toMatch(/cannot be postponed/);
-    expect(def('diary').createFields).not.toContain('newDate');
+    expect(def('diary').fields.find((f) => f.key === 'newDate')?.hidden).toBe(true); // set by the Postpone dialog only
   });
 
   it('seed data does not hard-code the firm name (client branding replaces it at runtime)', () => {

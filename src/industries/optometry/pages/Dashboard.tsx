@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useBase, useData, useIndustry, useUser } from '../../../core/context';
 import { records, str, num } from '../../../core/engine';
 import { formatRand } from '../../../core/lib/money';
-import { addDays, daysBetween, formatDate, monthShort, relativeWhen } from '../../../core/lib/dates';
+import { daysBetween, formatDate, monthKeys, monthShort, relativeWhen } from '../../../core/lib/dates';
 import { BarChart, Empty, PageHeader, Panel, Pipeline, Stat, StatusTag, Tag } from '../../../core/components/ui';
 import RoleBar from '../../../core/components/RoleBar';
 import { APPOINTMENT_TYPES, PRACTITIONERS, label } from '../data';
@@ -32,7 +32,7 @@ export default function Dashboard() {
   const drafts = records(data, 'exams').filter((e) => e.status !== 'final');
 
   // Six months: exams vs optical orders (conversion)
-  const months = Array.from({ length: 6 }, (_, i) => addDays(today, -30.4 * (5 - i)).slice(0, 7));
+  const months = monthKeys(today, 6);
   const exams = records(data, 'exams');
   const chart = months.map((m) => ({
     label: monthShort(m),

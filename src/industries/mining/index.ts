@@ -1,8 +1,8 @@
 // Mining operations demo. Fictional business: Ridgeback Minerals — Kgotso Shaft,
 // an invented South African underground mine. Not a certified safety system.
 import type { CollectionDef, Flag, GuardContext, IndustryConfig, Values, WorkflowDef } from '../../core/types';
-import { findRecord, num, str } from '../../core/engine';
-import { formatDate } from '../../core/lib/dates';
+import { currentUser, findRecord, num, str } from '../../core/engine';
+import { addDays, formatDate } from '../../core/lib/dates';
 import { IcoBriefcase, IcoChart, IcoHelmet, IcoLeaf, IcoPermit, IcoPickaxe, IcoTruck, IcoWrench } from '../../core/components/Icons';
 import {
   ARTISANS, AVAILABILITY, DELAY_REASONS, ENV_PARAMS, ENV_POINTS, EQUIPMENT_CATEGORIES, INCIDENT_CATEGORIES, INCIDENT_TYPES, LOCATIONS,
@@ -38,7 +38,7 @@ const shiftWorkflow: WorkflowDef = {
   transitions: [
     { from: 'open', to: 'submitted', label: 'Submit shift', permission: 'production.log', intent: 'primary', guard: ({ record }) => shiftSubmitProblem(record) },
     { from: 'submitted', to: 'verified', label: 'Verify shift', permission: 'production.verify', intent: 'primary', guard: ({ record, user }) => shiftVerifyProblem(record, user) },
-    { from: 'submitted', to: 'open', label: 'Return for correction', permission: 'production.verify', requiresNote: true },
+    { from: 'submitted', to: 'open', label: 'Return for correction', permission: 'production.verify', requiresNote: true, noteHint: 'say what the supervisor must correct' },
   ],
 };
 
@@ -55,7 +55,7 @@ const incidentWorkflow: WorkflowDef = {
     { from: 'reported', to: 'investigating', label: 'Start investigation', permission: 'safety.investigate', intent: 'primary' },
     { from: 'investigating', to: 'actions', label: 'Agree corrective actions', permission: 'safety.investigate', intent: 'primary', guard: ({ record }) => incidentActionsProblem(record) },
     { from: 'actions', to: 'investigating', label: 'Reopen investigation', permission: 'safety.investigate', requiresNote: true },
-    { from: 'actions', to: 'closed', label: 'Close incident', permission: 'safety.investigate', requiresNote: true, intent: 'primary', guard: ({ record }) => incidentCloseProblem(record, todayStr()) },
+    { from: 'actions', to: 'closed', label: 'Close incident', permission: 'safety.investigate', requiresNote: true, noteHint: 'say how the corrective actions were verified', intent: 'primary', guard: ({ record }) => incidentCloseProblem(record, todayStr()) },
   ],
 };
 
@@ -86,9 +86,9 @@ const permitWorkflow: WorkflowDef = {
       },
     },
     { from: 'approved', to: 'active', label: 'Activate permit', permission: 'permits.issue', intent: 'primary', guard: activation },
-    { from: 'active', to: 'suspended', label: 'Suspend permit', permission: 'permits.issue', requiresNote: true, intent: 'danger' },
+    { from: 'active', to: 'suspended', label: 'Suspend permit', permission: 'permits.issue', requiresNote: true, noteHint: 'say why work is being stopped', intent: 'danger' },
     { from: 'suspended', to: 'active', label: 'Resume permit', permission: 'permits.issue', guard: activation },
-    { from: ['active', 'suspended'], to: 'closed', label: 'Close permit', permission: 'permits.issue', requiresNote: true },
+    { from: ['active', 'suspended'], to: 'closed', label: 'Close permit', permission: 'permits.issue', requiresNote: true, noteHint: 'confirm the area was inspected and the isolations removed' },
     { from: ['requested', 'approved'], to: 'cancelled', label: 'Cancel permit', permission: 'permits.request', requiresNote: true, intent: 'danger' },
   ],
 };
@@ -177,9 +177,9 @@ const collections: CollectionDef[] = [
       { key: 'section', label: 'Section', type: 'select', options: SECTIONS, required: true },
       { key: 'crew', label: 'Crew', type: 'text', required: true, placeholder: 'e.g. Crew A — TL name' },
       { key: 'supervisor', label: 'Shift supervisor', type: 'select', options: SUPERVISORS },
-      { key: 'tonnesHoisted', label: 'Tonnes hoisted', type: 'number', min: 0, max: 2000, table: true },
-      { key: 'targetTonnes', label: 'Target tonnes', type: 'number', min: 0, max: 2000, required: true, table: true, hint: 'From the (fictional) mine plan. Check it if you change the section or shift.' },
-      { key: 'delayMinutes', label: 'Delay minutes', type: 'number', min: 0, max: 480, table: true },
+      { key: 'tonnesHoisted', label: 'Tonnes hoisted', type: 'number', min: 0, max: 2000, table: true, unit: 't' },
+      { key: 'targetTonnes', label: 'Target tonnes', type: 'number', min: 0, max: 2000, required: true, table: true, unit: 't', hint: 'From the (fictional) mine plan. Check it if you change the section or shift.' },
+      { key: 'delayMinutes', label: 'Delay minutes', type: 'number', min: 0, max: 480, table: true, unit: 'min' },
       { key: 'delayReason', label: 'Main delay reason', type: 'select', options: DELAY_REASONS, table: true, hint: 'Required before verification when delays exceed 30 minutes.' },
       { key: 'notes', label: 'Shift notes', type: 'textarea' },
     ],
@@ -190,6 +190,7 @@ const collections: CollectionDef[] = [
     subtitle: (r) => `${label(INCIDENT_TYPES, str(r, 'type'))} · ${label(LOCATIONS, str(r, 'location'))} · ${formatDate(str(r, 'date'))}`,
     sort: (a, b) => str(b, 'date').localeCompare(str(a, 'date')),
     createFields: ['date', 'title', 'type', 'category', 'severity', 'lti', 'lostDays', 'location', 'reportedBy', 'description'],
+    createDefaults: (today, data) => ({ date: today, type: 'nearmiss', reportedBy: currentUser(data).name }),
     flags: (r, _d, today) => {
       const f: Flag[] = [];
       if (r.values.lti === true) f.push({ tone: 'red', label: 'Lost-time injury' });
@@ -222,6 +223,8 @@ const collections: CollectionDef[] = [
     sort: (a, b) => str(b, 'validFrom').localeCompare(str(a, 'validFrom')),
     // Isolation and the gas test are recorded on the permit itself, at the workplace, not when it is requested.
     createFields: ['type', 'location', 'description', 'holder', 'contractor', 'validFrom', 'validTo', 'expiresAt', 'precautions'],
+    // Valid from today until tomorrow afternoon, so a new permit is never already expired at any time of day.
+    createDefaults: (today) => ({ validFrom: today, validTo: addDays(today, 1), expiresAt: '16:00' }),
     flags: (r, data, today) => {
       const f: Flag[] = [];
       if (r.status === 'active' && permitExpired(r, today)) f.push({ tone: 'red', label: 'Active past expiry' });
@@ -253,6 +256,7 @@ const collections: CollectionDef[] = [
     subtitle: (r) => `${label(EQUIPMENT_CATEGORIES, str(r, 'category'))} · ${label(LOCATIONS, str(r, 'location'))}`,
     sort: (a, b) => str(a, 'fleetNo').localeCompare(str(b, 'fleetNo')),
     createFields: ['fleetNo', 'model', 'category', 'location', 'availability', 'engineHours', 'lastServiceHours', 'serviceInterval', 'nextServiceHours'],
+    createDefaults: () => ({ availability: 'available', engineHours: 0, lastServiceHours: 0, serviceInterval: 250, nextServiceHours: 250 }),
     flags: (r) => {
       const f: Flag[] = [];
       const s = serviceState(r);
@@ -268,7 +272,7 @@ const collections: CollectionDef[] = [
       { key: 'category', label: 'Category', type: 'select', options: EQUIPMENT_CATEGORIES, required: true, table: true },
       { key: 'location', label: 'Location', type: 'select', options: LOCATIONS, table: true },
       { key: 'availability', label: 'Availability', type: 'select', options: AVAILABILITY, required: true, table: true },
-      { key: 'engineHours', label: 'Engine / run hours', type: 'number', min: 0, required: true, table: true },
+      { key: 'engineHours', label: 'Engine / run hours', type: 'number', min: 0, required: true, table: true, unit: 'h' },
       { key: 'lastServiceHours', label: 'Last service at (h)', type: 'number', min: 0 },
       { key: 'serviceInterval', label: 'Service interval (h)', type: 'number', min: 1, required: true },
       { key: 'nextServiceHours', label: 'Next service at (h)', type: 'number', min: 0, required: true, table: true },
@@ -281,6 +285,7 @@ const collections: CollectionDef[] = [
     subtitle: (r, d) => `${equipmentName(d, r.values.equipment)} · ${label(WO_TYPES, str(r, 'type'))}`,
     sort: (a, b) => str(b, 'raisedOn').localeCompare(str(a, 'raisedOn')),
     createFields: ['equipment', 'type', 'title', 'priority', 'raisedOn', 'plannedDate', 'assignedTo', 'description'],
+    createDefaults: (today) => ({ type: 'breakdown', priority: 'routine', raisedOn: today }),
     flags: (r, _d, today) => {
       const f: Flag[] = [];
       if (['raised', 'planned'].includes(r.status ?? '') && str(r, 'plannedDate') && str(r, 'plannedDate') < today) f.push({ tone: 'red', label: 'Past planned date' });
@@ -337,6 +342,7 @@ const collections: CollectionDef[] = [
     subtitle: (r) => `${withUnit(str(r, 'value'), envParam(r)?.unit)} · ${formatDate(str(r, 'date'))} ${str(r, 'time')}`,
     sort: (a, b) => (str(b, 'date') + str(b, 'time')).localeCompare(str(a, 'date') + str(a, 'time')),
     flags: (r) => (envExceedance(r) ? [{ tone: 'red', label: 'Outside demo threshold' }] : []),
+    createDefaults: (today, data) => ({ date: today, recordedBy: currentUser(data).name }),
     fields: [
       { key: 'date', label: 'Date', type: 'date', required: true, table: true, validate: (v) => (String(v) > todayStr() ? 'A reading cannot be dated in the future.' : null) },
       { key: 'time', label: 'Time', type: 'time' },

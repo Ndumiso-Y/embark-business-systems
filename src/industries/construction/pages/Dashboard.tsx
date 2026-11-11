@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useBase, useData, useIndustry, useUser } from '../../../core/context';
 import { num, records, str } from '../../../core/engine';
-import { addDays, daysBetween, formatDate, monthShort, relativeWhen } from '../../../core/lib/dates';
+import { addDays, daysBetween, formatDate, monthKeys, monthShort, relativeWhen } from '../../../core/lib/dates';
 import { BarChart, Empty, Meters, PageHeader, Panel, Pipeline, Stat } from '../../../core/components/ui';
 import RoleBar from '../../../core/components/RoleBar';
 import type { Tone } from '../../../core/types';
@@ -47,7 +47,7 @@ export default function Dashboard() {
   const lateDeliveries = records(data, 'requisitions').filter((r) => deliveryLate(r, today));
   const unsignedDelay = records(data, 'diary').filter((d) => d.status === 'draft' && num(d, 'delayHours') > 0 && !str(d, 'delayCause'));
 
-  const months = Array.from({ length: 6 }, (_, i) => addDays(`${month}-15`, -30 * (5 - i)).slice(0, 7));
+  const months = monthKeys(today, 6);
   const chart = months.map((m) => ({
     label: monthShort(m),
     value: valuations.filter((v) => ['certified', 'paid'].includes(v.status ?? '') && str(v, 'certifiedOn').startsWith(m)).reduce((n, v) => n + num(v, 'certifiedAmount'), 0),

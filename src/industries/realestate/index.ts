@@ -76,7 +76,7 @@ const listingWorkflow: WorkflowDef = {
       } },
     { from: 'listed', to: 'underoffer', label: 'Mark under offer', permission: 'offers.manage',
       guard: ({ record, data }) => (offersFor(data, record.id).some(binding) ? null : 'Accept an offer to purchase first — the listing moves under offer automatically.') },
-    { from: 'underoffer', to: 'listed', label: 'Back on the market', permission: 'offers.manage', requiresNote: true,
+    { from: 'underoffer', to: 'listed', label: 'Back on the market', permission: 'offers.manage', requiresNote: true, noteHint: 'say why the sale fell through',
       guard: ({ record, data }) => {
         const live = offersFor(data, record.id).find(binding);
         return live ? `Offer ${live.ref} is still accepted. Lapse it first (Offers → Lapse offer).` : null;
@@ -97,12 +97,12 @@ const listingWorkflow: WorkflowDef = {
       } },
     { from: 'sold', to: 'registered', label: 'Registered at deeds office', permission: 'offers.manage', intent: 'primary',
       guard: ({ record, data }) => (records(data, 'transfers').some((t) => str(t, 'listing') === record.id && t.status === 'registered') ? null : 'The transfer has not been registered yet — record registration on the Transfers board.') },
-    { from: ['valuation', 'mandate', 'listed', 'underoffer'], to: 'withdrawn', label: 'Withdraw', permission: 'listings.manage', requiresNote: true, intent: 'danger',
+    { from: ['valuation', 'mandate', 'listed', 'underoffer'], to: 'withdrawn', label: 'Withdraw', permission: 'listings.manage', requiresNote: true, noteHint: 'say why the seller is taking the property off the market', intent: 'danger',
       guard: ({ record, data }) => {
         const live = offersFor(data, record.id).find(binding);
         return live ? `Offer ${live.ref} has been accepted — it must lapse or be cancelled before the listing can be withdrawn.` : null;
       } },
-    { from: ['mandate', 'listed'], to: 'expired', label: 'Mandate expired', permission: 'listings.manage', requiresNote: true,
+    { from: ['mandate', 'listed'], to: 'expired', label: 'Mandate expired', permission: 'listings.manage', requiresNote: true, noteHint: 'note what the seller decided',
       guard: ({ record }) => {
         const exp = str(record, 'mandateExpiry');
         return exp && exp > todayStr() ? `The mandate runs until ${formatDate(exp)}. Withdraw the listing instead if the seller has cancelled.` : null;
@@ -130,7 +130,7 @@ const leadWorkflow: WorkflowDef = {
       guard: ({ record, data }) => (records(data, 'offers').some((o) => str(o, 'lead') === record.id) ? null : 'Capture the offer to purchase first — use “Capture offer” on this buyer.') },
     { from: ['new', 'contacted', 'viewing', 'offer'], to: 'bought', label: 'Bought', permission: 'leads',
       guard: ({ record, data }) => (records(data, 'offers').some((o) => str(o, 'lead') === record.id && o.status === 'unconditional') ? null : 'None of this buyer’s offers has had its conditions met yet.') },
-    { from: ['new', 'contacted', 'viewing', 'offer'], to: 'lost', label: 'Mark lost', permission: 'leads', requiresNote: true, intent: 'danger' },
+    { from: ['new', 'contacted', 'viewing', 'offer'], to: 'lost', label: 'Mark lost', permission: 'leads', requiresNote: true, noteHint: 'say why the buyer dropped out', intent: 'danger' },
     { from: 'lost', to: 'contacted', label: 'Re-activate', permission: 'leads', requiresNote: true },
   ],
 };
@@ -153,7 +153,7 @@ const viewingWorkflow: WorkflowDef = {
       } },
     { from: 'booked', to: 'noshow', label: 'No-show', permission: 'leads',
       guard: ({ record }) => (str(record, 'date') > todayStr() ? 'The viewing has not happened yet.' : null) },
-    { from: 'booked', to: 'cancelled', label: 'Cancel viewing', permission: 'leads', requiresNote: true, intent: 'danger' },
+    { from: 'booked', to: 'cancelled', label: 'Cancel viewing', permission: 'leads', requiresNote: true, noteHint: 'say who cancelled and why', intent: 'danger' },
   ],
 };
 
@@ -180,7 +180,7 @@ const offerWorkflow: WorkflowDef = {
         onOfferAccepted(ctx);
       } },
     { from: 'countered', to: 'submitted', label: 'Buyer revises offer', permission: 'offers.manage', requiresNote: true },
-    { from: ['submitted', 'countered'], to: 'declined', label: 'Decline', permission: 'offers.manage', requiresNote: true, intent: 'danger' },
+    { from: ['submitted', 'countered'], to: 'declined', label: 'Decline', permission: 'offers.manage', requiresNote: true, noteHint: 'record the seller’s reason for declining', intent: 'danger' },
     { from: 'accepted', to: 'unconditional', label: 'Conditions met', permission: 'offers.manage', intent: 'primary',
       guard: ({ record }) => conditionsProblems(record)[0] ?? null,
       after: ({ record, data, api }) => {
@@ -192,7 +192,7 @@ const offerWorkflow: WorkflowDef = {
         const lead = findRecord(data, 'leads', str(record, 'lead'));
         if (lead && !['bought', 'lost'].includes(lead.status ?? '')) api.transition('leads', lead.id, 'bought');
       } },
-    { from: 'accepted', to: 'lapsed', label: 'Lapse offer', permission: 'offers.manage', requiresNote: true, intent: 'danger',
+    { from: 'accepted', to: 'lapsed', label: 'Lapse offer', permission: 'offers.manage', requiresNote: true, noteHint: 'say which condition failed, e.g. bond declined — the listing goes back on the market', intent: 'danger',
       after: ({ record, data, api, note }) => {
         const listing = listingOf(data, record);
         if (listing?.status === 'underoffer') api.transition('listings', listing.id, 'listed', `Offer ${record.ref} lapsed: ${note ?? ''}`.trim());
@@ -257,12 +257,12 @@ const leaseWorkflow: WorkflowDef = {
         if (v === 'declined') return 'The vetting outcome is “Declined” — decline the application instead.';
         return v === 'approved' ? null : 'Record the vetting outcome first — use “Record vetting outcome” on the lease. Credit checks are simulated in this demo.';
       } },
-    { from: 'vetting', to: 'declined', label: 'Decline application', permission: 'tenants.vet', requiresNote: true, intent: 'danger' },
+    { from: 'vetting', to: 'declined', label: 'Decline application', permission: 'tenants.vet', requiresNote: true, noteHint: 'record the reason — it is kept on the history', intent: 'danger' },
     { from: 'approved', to: 'signed', label: 'Lease signed', permission: 'rentals.manage', intent: 'primary',
       guard: ({ record }) => leaseSignProblems(record)[0] ?? null },
     { from: 'signed', to: 'active', label: 'Tenant moved in', permission: 'rentals.manage', intent: 'primary',
       guard: ({ record }) => (str(record, 'startDate') && str(record, 'startDate') <= todayStr() ? null : `The lease only starts on ${formatDate(str(record, 'startDate'))}.`) },
-    { from: 'active', to: 'notice', label: 'Notice given', permission: 'rentals.manage', requiresNote: true,
+    { from: 'active', to: 'notice', label: 'Notice given', permission: 'rentals.manage', requiresNote: true, noteHint: 'say who gave notice and the last day of the tenancy',
       after: ({ record, api, today }) => api.update('leases', record.id, { noticeDate: today }, 'Notice date recorded') },
     { from: 'notice', to: 'active', label: 'Notice withdrawn', permission: 'rentals.manage', requiresNote: true },
     { from: 'notice', to: 'ended', label: 'End lease', permission: 'rentals.manage',
@@ -287,8 +287,8 @@ const maintenanceWorkflow: WorkflowDef = {
       guard: ({ record }) => maintenanceApprovalProblem(record) },
     { from: 'approved', to: 'assigned', label: 'Assign contractor', permission: 'maintenance', intent: 'primary',
       guard: ({ record }) => (str(record, 'contractor') ? null : 'Select a contractor first — open the job and use “Quote & approval”.') },
-    { from: 'assigned', to: 'completed', label: 'Mark completed', permission: 'maintenance', requiresNote: true, intent: 'primary' },
-    { from: ['logged', 'quoted', 'approved', 'assigned'], to: 'cancelled', label: 'Cancel job', permission: 'maintenance', requiresNote: true, intent: 'danger' },
+    { from: 'assigned', to: 'completed', label: 'Mark completed', permission: 'maintenance', requiresNote: true, noteHint: 'say what the contractor did', intent: 'primary' },
+    { from: ['logged', 'quoted', 'approved', 'assigned'], to: 'cancelled', label: 'Cancel job', permission: 'maintenance', requiresNote: true, noteHint: 'say why the job is not going ahead', intent: 'danger' },
   ],
 };
 
@@ -317,6 +317,7 @@ const collections: CollectionDef[] = [
     subtitle: (r, d) => `${suburbLabel(str(r, 'suburb'))} · ${num(r, 'beds')} bed ${label(PROPERTY_TYPES, str(r, 'type')).toLowerCase()} · ${randOf(num(r, 'askingPrice'))} · ${agentName(d, r.values.agent)}`,
     sort: byRefDesc,
     createFields: ['address', 'suburb', 'type', 'beds', 'baths', 'erf', 'floor', 'valuation', 'askingPrice', 'agent', 'sellerName', 'sellerPhone', 'sellerEmail', 'mandateType', 'commissionRate'],
+    createDefaults: () => ({ mandateType: 'sole', commissionRate: 7.5, sellerFica: false }),
     flags: (r, d, today) => {
       const out: FlagList = [];
       const st = r.status ?? '';
@@ -367,6 +368,7 @@ const collections: CollectionDef[] = [
     subtitle: (r) => `Budget ${randOf(num(r, 'budget'))} · ${num(r, 'minBeds')}+ bed · ${str(r, 'suburbs') || 'any suburb'}`,
     sort: byRefDesc,
     createFields: ['name', 'phone', 'email', 'source', 'budget', 'suburbs', 'minBeds', 'propertyType', 'preApproved', 'agent', 'notes'],
+    createDefaults: () => ({ propertyType: 'any', minBeds: 2, preApproved: false }),
     flags: (r, d, today) => {
       const out: FlagList = [];
       if (r.status === 'new' && daysBetween(r.createdAt.slice(0, 10), today) >= 2) out.push({ tone: 'amber', label: 'Not contacted 48 h+' });
@@ -397,6 +399,7 @@ const collections: CollectionDef[] = [
     title: (r, d) => listingName(d, r.values.listing),
     subtitle: (r, d) => `${formatDate(str(r, 'date'))} ${str(r, 'time')} · ${str(r, 'lead') ? leadName(d, r.values.lead) : label(VIEWING_KINDS, str(r, 'kind'))} · ${agentName(d, r.values.agent)}`,
     sort: (a, b) => (str(b, 'date') + str(b, 'time')).localeCompare(str(a, 'date') + str(a, 'time')),
+    createDefaults: (today) => ({ kind: 'private', date: today, time: '10:00' }),
     flags: (r, _d, today) => {
       if (r.status !== 'booked') return [];
       if (str(r, 'date') < today) return [{ tone: 'red', label: 'Feedback outstanding' }];
@@ -420,6 +423,7 @@ const collections: CollectionDef[] = [
     subtitle: (r, d) => `${leadName(d, r.values.lead)} · ${randOf(num(r, 'amount'))} (asking ${randOf(num(listingOf(d, r), 'askingPrice'))})`,
     sort: byRefDesc,
     createFields: ['listing', 'lead', 'amount', 'deposit', 'bondRequired', 'bondAmount', 'bondDeadline', 'conditions', 'validUntil', 'notes'],
+    createDefaults: (today) => ({ validUntil: addDays(today, 3), bondRequired: true, bondDeadline: addDays(today, 30), deposit: 0 }),
     flags: (r, d, today) => {
       const out: FlagList = [];
       if (r.status === 'accepted') {
@@ -487,6 +491,7 @@ const collections: CollectionDef[] = [
     subtitle: (r) => `${suburbLabel(str(r, 'suburb'))} · ${str(r, 'tenant') || 'no tenant yet'} · ${randOf(num(r, 'rent'))}/month`,
     sort: byRefDesc,
     createFields: ['address', 'suburb', 'propertyType', 'beds', 'landlord', 'tenant', 'tenantPhone', 'tenantEmail', 'rent', 'escalation', 'deposit', 'startDate', 'endDate', 'agent', 'management'],
+    createDefaults: (today) => ({ escalation: 8, management: 'full', vetting: 'pending', depositReceived: false, arrears: 0, startDate: addDays(today, 30), endDate: addDays(today, 394) }),
     flags: (r, _d, today) => {
       const out: FlagList = [];
       if (num(r, 'arrears') > 0 && ['active', 'notice', 'signed'].includes(r.status ?? '')) out.push({ tone: 'red', label: `Arrears ${randOf(num(r, 'arrears'))}` });
@@ -528,6 +533,7 @@ const collections: CollectionDef[] = [
     subtitle: (r, d) => `${leaseName(d, r.values.lease)} · ${label(PRIORITIES, str(r, 'priority'))}${num(r, 'quote') ? ` · quote ${randOf(num(r, 'quote'))}` : ''}`,
     sort: byRefDesc,
     createFields: ['lease', 'title', 'category', 'priority', 'reportedOn', 'contractor', 'quote', 'notes'],
+    createDefaults: (today) => ({ reportedOn: today, priority: 'normal', category: 'general', ownerApproved: false }),
     flags: (r, _d, today) => {
       const out: FlagList = [];
       const open = ['logged', 'quoted', 'approved', 'assigned'].includes(r.status ?? '');

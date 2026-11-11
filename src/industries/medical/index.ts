@@ -77,7 +77,7 @@ const visitWorkflow: WorkflowDef = {
     { from: 'billing', to: 'done', label: 'Check out', permission: 'bookings', intent: 'primary' },
     { from: 'booked', to: 'dna', label: 'Mark did not attend', permission: 'bookings', intent: 'danger',
       guard: ({ record }) => (str(record, 'date') > todayStr() ? 'A future visit cannot be marked as did not attend.' : null) },
-    { from: ['booked', 'arrived'], to: 'cancelled', label: 'Cancel', permission: 'bookings', requiresNote: true, intent: 'danger' },
+    { from: ['booked', 'arrived'], to: 'cancelled', label: 'Cancel', permission: 'bookings', requiresNote: true, noteHint: 'why the visit is cancelled', intent: 'danger' },
   ],
 };
 
@@ -107,7 +107,7 @@ const consultWorkflow: WorkflowDef = {
   ],
   transitions: [
     signTransition('draft', 'Sign consultation'),
-    { from: 'signed', to: 'addendum', label: 'Add addendum', permission: 'clinical.record', requiresNote: true },
+    { from: 'signed', to: 'addendum', label: 'Add addendum', permission: 'clinical.record', requiresNote: true, noteHint: 'why the signed note is being reopened' },
     signTransition('addendum', 'Sign addendum'),
   ],
 };
@@ -124,7 +124,7 @@ const scriptWorkflow: WorkflowDef = {
   transitions: [
     { from: 'draft', to: 'issued', label: 'Sign & issue', permission: 'prescribe', intent: 'primary', guard: ({ record, data }) => scriptProblems(record, data)[0] ?? null },
     { from: 'issued', to: 'dispensed', label: 'Mark dispensed', intent: 'primary', guard: ({ record, data }) => scriptProblems(record, data)[0] ?? null },
-    { from: ['draft', 'issued'], to: 'cancelled', label: 'Cancel script', requiresNote: true, intent: 'danger' },
+    { from: ['draft', 'issued'], to: 'cancelled', label: 'Cancel script', requiresNote: true, noteHint: 'why the script is cancelled', intent: 'danger' },
   ],
 };
 
@@ -144,9 +144,9 @@ const resultWorkflow: WorkflowDef = {
       after: ({ record, api, today }) => { if (!str(record, 'receivedOn')) api.update('results', record.id, { receivedOn: today }); } },
     { from: 'received', to: 'reviewed', label: 'Mark reviewed', permission: 'results.review', intent: 'primary',
       after: ({ record, api, today }) => api.update('results', record.id, { reviewedOn: today }) },
-    { from: 'reviewed', to: 'informed', label: 'Patient informed', requiresNote: true, intent: 'primary',
+    { from: 'reviewed', to: 'informed', label: 'Patient informed', requiresNote: true, noteHint: 'how the patient was told (phone call, next visit …) — nothing is sent from the demo', intent: 'primary',
       after: ({ record, api, today }) => api.update('results', record.id, { informedOn: today }) },
-    { from: 'requested', to: 'cancelled', label: 'Cancel request', requiresNote: true, intent: 'danger' },
+    { from: 'requested', to: 'cancelled', label: 'Cancel request', requiresNote: true, noteHint: 'why the test is no longer needed', intent: 'danger' },
   ],
 };
 
@@ -159,9 +159,9 @@ const chronicWorkflow: WorkflowDef = {
     { key: 'discharged', label: 'Removed from register', tone: 'dark', terminal: true },
   ],
   transitions: [
-    { from: 'active', to: 'lapsed', label: 'Mark lapsed', permission: 'chronic', requiresNote: true },
+    { from: 'active', to: 'lapsed', label: 'Mark lapsed', permission: 'chronic', requiresNote: true, noteHint: 'what was tried to bring the patient back for review' },
     { from: 'lapsed', to: 'active', label: 'Re-activate', permission: 'chronic', intent: 'primary' },
-    { from: ['active', 'lapsed'], to: 'discharged', label: 'Remove from register', permission: 'chronic', requiresNote: true, intent: 'danger' },
+    { from: ['active', 'lapsed'], to: 'discharged', label: 'Remove from register', permission: 'chronic', requiresNote: true, noteHint: 'why the patient leaves the register', intent: 'danger' },
   ],
 };
 
@@ -183,9 +183,9 @@ const claimWorkflow: WorkflowDef = {
       after: ({ record, api, today }) => api.update('claims', record.id, { submittedOn: today }) },
     { from: 'submitted', to: 'paid', label: 'Record full remittance', permission: 'billing',
       guard: ({ record }) => (num(record, 'schemePaid') * 100 >= claimTotal(record) - 1 ? null : 'Enter what the scheme paid in “Scheme remittance” on this page first — it must cover the account total.') },
-    { from: 'submitted', to: 'partpaid', label: 'Record part payment', permission: 'billing', requiresNote: true,
+    { from: 'submitted', to: 'partpaid', label: 'Record part payment', permission: 'billing', requiresNote: true, noteHint: 'why the scheme paid less, e.g. paid at scheme rate',
       guard: ({ record }) => (num(record, 'schemePaid') > 0 && num(record, 'schemePaid') * 100 < claimTotal(record) ? null : 'Enter what the scheme paid in “Scheme remittance” on this page first — a part payment is less than the account total.') },
-    { from: 'submitted', to: 'rejected', label: 'Record rejection', permission: 'billing', requiresNote: true, intent: 'danger' },
+    { from: 'submitted', to: 'rejected', label: 'Record rejection', permission: 'billing', requiresNote: true, noteHint: 'the scheme’s rejection reason', intent: 'danger' },
     { from: 'rejected', to: 'draft', label: 'Correct & reopen', permission: 'billing' },
     { from: ['draft', 'rejected'], to: 'patient', label: 'Bill patient privately', permission: 'billing' },
     { from: ['partpaid', 'patient'], to: 'settled', label: 'Patient balance settled', permission: 'billing', intent: 'primary',
@@ -255,6 +255,7 @@ const collections: CollectionDef[] = [
     subtitle: (r) => `${formatDate(str(r, 'date'))} · ${label(CLINICIANS, str(r, 'doctor'))}`,
     sort: (a, b) => str(b, 'date').localeCompare(str(a, 'date')) || b.createdAt.localeCompare(a.createdAt),
     createFields: ['patient', 'visit', 'date', 'doctor'],
+    createDefaults: (today) => ({ date: today, sickNoteDays: 0 }),
     flags: (r, _d, today) => (r.status !== 'signed' && str(r, 'date') < today ? [{ tone: 'red', label: 'Unsigned from a previous day' }] : []),
     fields: [
       { key: 'patient', label: 'Patient', type: 'ref', ref: 'patients', required: true },
@@ -276,6 +277,7 @@ const collections: CollectionDef[] = [
     subtitle: (r) => `${label(MEDICINES, str(r, 'medicine'))} ${str(r, 'strength')} · ${formatDate(str(r, 'date'))}`,
     sort: (a, b) => str(b, 'date').localeCompare(str(a, 'date')) || b.createdAt.localeCompare(a.createdAt),
     createFields: ['patient', 'consult', 'date', 'prescriber', 'medicine', 'strength', 'dose', 'frequency', 'durationDays', 'repeats', 'instructions'],
+    createDefaults: (today) => ({ date: today, dose: '1 tablet', frequency: 'bd', durationDays: 5, repeats: 0 }),
     flags: (r, data, _t, user) => {
       if (r.status !== 'draft' && r.status !== 'issued') return [];
       const p = findRecord(data, 'patients', str(r, 'patient'));
@@ -303,6 +305,7 @@ const collections: CollectionDef[] = [
     subtitle: (r) => `${label(TESTS, str(r, 'test'))} · requested ${formatDate(str(r, 'requestedOn'))}`,
     sort: (a, b) => str(b, 'requestedOn').localeCompare(str(a, 'requestedOn')),
     createFields: ['patient', 'consult', 'test', 'lab', 'requestedOn', 'requestedBy'],
+    createDefaults: (today) => ({ requestedOn: today, lab: 'highveld', abnormal: false }),
     flags: (r, _d, today) => resultFlags(r, today),
     fields: [
       { key: 'patient', label: 'Patient', type: 'ref', ref: 'patients', required: true },
@@ -325,6 +328,7 @@ const collections: CollectionDef[] = [
     subtitle: (r) => `${label(CHRONIC_CONDITIONS, str(r, 'condition'))} · next review ${formatDate(str(r, 'nextReview'))}`,
     sort: (a, b) => str(a, 'nextReview').localeCompare(str(b, 'nextReview')),
     createFields: ['patient', 'condition', 'diagnosedOn', 'doctor', 'lastReview', 'nextReview', 'control', 'targets', 'carePlan'],
+    createDefaults: () => ({ control: 'unknown' }),
     flags: (r, _d, today) => {
       const f: Flag[] = [];
       if (r.status !== 'active') return f;
@@ -352,6 +356,7 @@ const collections: CollectionDef[] = [
     title: (r, d) => patientName(d, r.values.patient),
     subtitle: (r) => `${label(SCHEMES, str(r, 'scheme'))} · ${formatDate(str(r, 'date'))}`,
     sort: (a, b) => str(b, 'date').localeCompare(str(a, 'date')) || b.createdAt.localeCompare(a.createdAt),
+    createDefaults: (today) => ({ date: today, schemePaid: 0, patientPaid: 0 }),
     flags: (r, _d, today) => (r.status === 'submitted' && daysBetween(str(r, 'submittedOn') || str(r, 'date'), today) > 30 ? [{ tone: 'amber', label: 'No remittance 30+ days' }] : []),
     fields: [
       { key: 'patient', label: 'Patient', type: 'ref', ref: 'patients', required: true },

@@ -45,7 +45,7 @@ const appointmentWorkflow: WorkflowDef = {
     { from: ['arrived', 'inexam', 'dispensing'], to: 'completed', label: 'Complete visit', intent: 'primary' },
     { from: 'booked', to: 'noshow', label: 'Mark did not attend', permission: 'bookings', intent: 'danger',
       guard: ({ record }) => (str(record, 'date') > todayStr() ? 'A future appointment cannot be marked as a no-show.' : null) },
-    { from: 'booked', to: 'cancelled', label: 'Cancel', permission: 'bookings', requiresNote: true, intent: 'danger' },
+    { from: 'booked', to: 'cancelled', label: 'Cancel', permission: 'bookings', requiresNote: true, noteHint: 'why the appointment is cancelled', intent: 'danger' },
   ],
 };
 
@@ -91,7 +91,7 @@ const examWorkflow: WorkflowDef = {
         api.toast(done.join(', ').replace(/^r/, 'R'));
       },
     },
-    { from: 'final', to: 'amending', label: 'Open amendment', permission: 'clinical.record', requiresNote: true },
+    { from: 'final', to: 'amending', label: 'Open amendment', permission: 'clinical.record', requiresNote: true, noteHint: 'what needs correcting — finalising again issues a new prescription' },
   ],
 };
 
@@ -119,7 +119,7 @@ const orderWorkflow: WorkflowDef = {
     { from: ['ordered'], to: 'received', label: 'Receive from lab', permission: 'dispense' },
     { from: 'received', to: 'ready', label: 'Pass quality check', permission: 'dispense', intent: 'primary',
       after: ({ record, api, today }) => api.update('orders', record.id, { readySince: today }) },
-    { from: 'received', to: 'remake', label: 'Fail quality check', permission: 'dispense', requiresNote: true, intent: 'danger' },
+    { from: 'received', to: 'remake', label: 'Fail quality check', permission: 'dispense', requiresNote: true, noteHint: 'what is wrong with the job — this is what the lab is told for the remake', intent: 'danger' },
     { from: 'remake', to: 'ordered', label: 'Resend to lab', permission: 'dispense' },
     {
       from: 'ready', to: 'collected', label: 'Mark collected', intent: 'primary',
@@ -144,7 +144,7 @@ const orderWorkflow: WorkflowDef = {
         api.toast(`Draft claim ${claim.ref} created for the eyewear`);
       },
     },
-    { from: 'quote', to: 'cancelled', label: 'Cancel quote', requiresNote: true, intent: 'danger' },
+    { from: 'quote', to: 'cancelled', label: 'Cancel quote', requiresNote: true, noteHint: 'why the patient is not going ahead', intent: 'danger' },
   ],
 };
 
@@ -168,9 +168,9 @@ const claimWorkflow: WorkflowDef = {
     },
     { from: 'submitted', to: 'paid', label: 'Record full remittance', permission: 'billing',
       guard: ({ record }) => (num(record, 'schemePaid') * 100 >= claimTotal(record) - 1 ? null : 'Enter what the scheme paid in “Scheme remittance” on this page first — it must cover the claim total.') },
-    { from: 'submitted', to: 'partpaid', label: 'Record part payment', permission: 'billing', requiresNote: true,
+    { from: 'submitted', to: 'partpaid', label: 'Record part payment', permission: 'billing', requiresNote: true, noteHint: 'why the scheme paid less, e.g. paid at scheme rate',
       guard: ({ record }) => (num(record, 'schemePaid') > 0 && num(record, 'schemePaid') * 100 < claimTotal(record) ? null : 'Enter what the scheme paid in “Scheme remittance” on this page first — a part payment is less than the claim total.') },
-    { from: 'submitted', to: 'rejected', label: 'Record rejection', permission: 'billing', requiresNote: true, intent: 'danger' },
+    { from: 'submitted', to: 'rejected', label: 'Record rejection', permission: 'billing', requiresNote: true, noteHint: 'the scheme’s rejection reason', intent: 'danger' },
     { from: 'rejected', to: 'draft', label: 'Correct & reopen', permission: 'billing' },
     { from: ['draft', 'rejected'], to: 'patient', label: 'Bill patient privately', permission: 'billing' },
     { from: ['partpaid', 'patient'], to: 'settled', label: 'Patient balance settled', permission: 'billing', intent: 'primary',
@@ -197,6 +197,7 @@ const collections: CollectionDef[] = [
     subtitle: (r) => `${label(SCHEMES, str(r, 'scheme'))}${str(r, 'dob') ? ` · born ${formatDate(str(r, 'dob'))}` : ''}`,
     sort: (a, b) => str(a, 'lastName').localeCompare(str(b, 'lastName')),
     createFields: ['firstName', 'lastName', 'dob', 'phone', 'email', 'scheme', 'memberNo', 'preferredContact', 'consentRecall'],
+    createDefaults: () => ({ preferredContact: 'sms' }),
     flags: (r, _d, today) => {
       const f = [] as Array<{ tone: 'red' | 'amber' | 'dark'; label: string }>;
       const s = dueState(str(r, 'recallDue'), today, 30);
@@ -242,6 +243,7 @@ const collections: CollectionDef[] = [
     subtitle: (r) => `${formatDate(str(r, 'date'))} · ${label(PRACTITIONERS, str(r, 'optometrist'))}`,
     sort: (a, b) => str(b, 'date').localeCompare(str(a, 'date')),
     createFields: ['patient', 'date', 'optometrist', 'reason'],
+    createDefaults: (today) => ({ date: today, recallMonths: '24', recallType: 'annual', referral: 'none' }),
     fields: [
       { key: 'patient', label: 'Patient', type: 'ref', ref: 'patients', required: true },
       { key: 'date', label: 'Exam date', type: 'date', required: true, table: true },
@@ -274,7 +276,7 @@ const collections: CollectionDef[] = [
       states: [{ key: 'issued', label: 'Current', tone: 'green' }, { key: 'superseded', label: 'Superseded', tone: 'dark', terminal: true }, { key: 'void', label: 'Voided', tone: 'red', terminal: true }],
       transitions: [
         { from: 'issued', to: 'superseded', label: 'Mark superseded', permission: 'clinical.record' },
-        { from: 'issued', to: 'void', label: 'Void prescription', permission: 'clinical.record', requiresNote: true, intent: 'danger' },
+        { from: 'issued', to: 'void', label: 'Void prescription', permission: 'clinical.record', requiresNote: true, noteHint: 'why the prescription is void', intent: 'danger' },
       ],
     },
     title: (r, d) => patientName(d, r.values.patient),
@@ -303,6 +305,7 @@ const collections: CollectionDef[] = [
     title: (r, d) => patientName(d, r.values.patient),
     subtitle: (r) => `${label(LENS_OPTIONS, str(r, 'lens'))}`,
     createFields: ['patient', 'prescription', 'kind', 'frame', 'lens', 'lab', 'pd', 'heights', 'promised', 'funding', 'deposit', 'lines'],
+    createDefaults: (today) => ({ kind: 'spectacles', lab: 'clearpoint', promised: addDays(today, 7), funding: 'scheme', deposit: 0 }),
     flags: (r, _d, today) => {
       const out: Array<{ tone: 'red' | 'amber'; label: string }> = [];
       if (['ordered', 'received', 'remake'].includes(r.status ?? '') && str(r, 'promised') && str(r, 'promised') < today) out.push({ tone: 'red', label: 'Past promised date' });
@@ -347,6 +350,7 @@ const collections: CollectionDef[] = [
     title: (r, d) => patientName(d, r.values.patient),
     subtitle: (r) => `${label(SCHEMES, str(r, 'scheme'))} · ${formatDate(str(r, 'date'))}`,
     sort: (a, b) => str(b, 'date').localeCompare(str(a, 'date')),
+    createDefaults: (today) => ({ date: today, schemePaid: 0, patientPaid: 0 }),
     flags: (r, _d, today) => (r.status === 'submitted' && daysBetween(str(r, 'submittedOn') || str(r, 'date'), today) > 30 ? [{ tone: 'amber', label: 'No remittance 30+ days' }] : []),
     fields: [
       { key: 'patient', label: 'Patient', type: 'ref', ref: 'patients', required: true },

@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import type { DemoRecord, IndustryData, Values } from '../../../core/types';
 import { findRecord, num, str } from '../../../core/engine';
 import { useActions, useBase, useData, useIndustry, useUser } from '../../../core/context';
-import { addDays, daysBetween, formatDate } from '../../../core/lib/dates';
+import { daysBetween, formatDate } from '../../../core/lib/dates';
 import { Tag } from '../../../core/components/ui';
 import { RecordFormModal } from '../../../core/components/fields';
 import { DESIGNATIONS, PROPERTY_TYPES, label, suburbLabel } from '../data';
@@ -105,7 +105,7 @@ export function OfferCapture({ initial, title, onClose }: { initial: Values; tit
   const offerDef = config.collections.find((c) => c.key === 'offers')!;
   return (
     <RecordFormModal def={offerDef} open title={title}
-      initial={{ validUntil: addDays(today, 3), bondRequired: true, bondDeadline: addDays(today, 30), deposit: 0, ...initial }}
+      initial={{ ...offerDef.createDefaults?.(today, data), ...initial }}
       onClose={onClose}
       onSave={(v) => {
         const o = act.create('offers', v, 'submitted', 'Offer captured');

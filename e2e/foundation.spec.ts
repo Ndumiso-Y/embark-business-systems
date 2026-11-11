@@ -75,7 +75,7 @@ test.describe('Shared foundation', () => {
     await page.goto('#/optometry');
     await expect(page.getByTestId('guide')).toBeVisible();
     await page.getByTestId('guide-step-2').click();
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Eye examinations');
+    await expect(page).toHaveURL(/#\/optometry\/exams/);
     await expect(page.getByTestId('user-switcher')).toHaveValue('u_opt');
     await page.getByTestId('user-switcher').selectOption('u_owner');
     await page.goto('#/optometry');

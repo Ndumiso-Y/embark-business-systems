@@ -3,7 +3,7 @@
 // time becomes fee notes; a simulated trust ledger can never go negative.
 import type { CollectionDef, IndustryConfig, WorkflowDef } from '../../core/types';
 import { findRecord, num, str } from '../../core/engine';
-import { daysBetween, formatDate } from '../../core/lib/dates';
+import { addDays, daysBetween, formatDate } from '../../core/lib/dates';
 import { toCents } from '../../core/lib/money';
 import { IcoCalendar, IcoChart, IcoDoc, IcoReceipt, IcoScale, IcoShield, IcoTimer, IcoUsers, IcoWallet } from '../../core/components/Icons';
 import {
@@ -47,10 +47,10 @@ const matterWorkflow: WorkflowDef = {
     { from: 'engagement', to: 'active', label: 'Open for work', permission: 'matters.manage', intent: 'primary',
       guard: ({ record }) => activationProblems(record)[0] ?? null },
     { from: 'active', to: 'closing', label: 'Start closing', permission: 'matters.manage' },
-    { from: 'closing', to: 'active', label: 'Reopen', permission: 'matters.manage', requiresNote: true },
+    { from: 'closing', to: 'active', label: 'Reopen', permission: 'matters.manage', requiresNote: true, noteHint: 'say why work on the matter continues' },
     { from: 'closing', to: 'closed', label: 'Close matter', permission: 'matters.manage', intent: 'primary',
       guard: ({ record, data }) => closeProblems(record, data)[0] ?? null },
-    { from: ['intake', 'conflict', 'engagement'], to: 'declined', label: 'Decline matter', permission: 'matters.manage', requiresNote: true, intent: 'danger' },
+    { from: ['intake', 'conflict', 'engagement'], to: 'declined', label: 'Decline matter', permission: 'matters.manage', requiresNote: true, noteHint: 'record why the firm will not act, e.g. a confirmed conflict', intent: 'danger' },
   ],
 };
 
@@ -77,7 +77,7 @@ const conflictWorkflow: WorkflowDef = {
         const res = api.transition('matters', m.id, 'engagement');
         api.toast(res.ok ? `${m.ref} moved to Engagement — get the engagement letter signed and confirm FICA` : `${m.ref} can now be moved to Engagement by someone who manages matters`, 'info');
       } },
-    { from: 'pending', to: 'conflict', label: 'Confirm conflict', permission: 'conflicts.clear', requiresNote: true, intent: 'danger' },
+    { from: 'pending', to: 'conflict', label: 'Confirm conflict', permission: 'conflicts.clear', requiresNote: true, noteHint: 'say why the firm cannot act — then decline the matter', intent: 'danger' },
   ],
 };
 
@@ -95,7 +95,7 @@ const timeWorkflow: WorkflowDef = {
         if (!findRecord(data, 'invoices', str(record, 'invoice'))) return 'Time is billed through a fee note — use “Bill unbilled time” on the matter.';
         return null;
       } },
-    { from: 'unbilled', to: 'writtenoff', label: 'Write off', permission: 'billing', requiresNote: true, intent: 'danger' },
+    { from: 'unbilled', to: 'writtenoff', label: 'Write off', permission: 'billing', requiresNote: true, noteHint: 'say why the time will not be charged', intent: 'danger' },
   ],
 };
 
@@ -119,7 +119,7 @@ const trustWorkflow: WorkflowDef = {
         const res = full ? api.transition('invoices', inv.id, 'paid') : inv.status === 'issued' ? api.transition('invoices', inv.id, 'partpaid') : { ok: true as const };
         api.toast(res.ok ? `Fee note ${inv.ref} ${full ? 'is now paid in full' : 'part paid'} from trust (simulated)` : `Fee note ${inv.ref} payment updated — the bookkeeper records it as paid on the fee note`, 'info');
       } },
-    { from: 'captured', to: 'rejected', label: 'Reject', permission: 'trust.approve', requiresNote: true, intent: 'danger' },
+    { from: 'captured', to: 'rejected', label: 'Reject', permission: 'trust.approve', requiresNote: true, noteHint: 'say why the entry is rejected — the balance does not change', intent: 'danger' },
   ],
 };
 
@@ -172,7 +172,7 @@ const documentWorkflow: WorkflowDef = {
   transitions: [
     { from: 'drafting', to: 'review', label: 'Send for partner review', permission: 'time.record', intent: 'primary',
       guard: ({ record }) => (str(record, 'version') ? null : 'Record the version number first.') },
-    { from: 'review', to: 'drafting', label: 'Return for changes', permission: 'documents.approve', requiresNote: true },
+    { from: 'review', to: 'drafting', label: 'Return for changes', permission: 'documents.approve', requiresNote: true, noteHint: 'tell the author what to change' },
     { from: 'review', to: 'signed', label: 'Approve & sign', permission: 'documents.approve', intent: 'primary' },
     { from: 'signed', to: 'filed', label: 'Mark filed (simulated)', permission: 'diary',
       guard: ({ record }) => {
@@ -194,6 +194,7 @@ const collections: CollectionDef[] = [
     subtitle: (r, d) => `${clientName(d, r.values.client)} · ${label(MATTER_TYPES, str(r, 'type'))} · ${earner(str(r, 'feeEarner'))?.short ?? '—'}`,
     sort: (a, b) => b.ref.localeCompare(a.ref),
     createFields: ['name', 'client', 'type', 'opposingParty', 'otherParties', 'feeEarner', 'feeBasis', 'estimate', 'privilegedNotes'],
+    createDefaults: (today) => ({ feeBasis: 'hourly', opened: today, engagementSigned: false, ficaVerified: false }),
     flags: (r, d) => {
       const out: Array<{ tone: 'red' | 'amber' | 'dark' | 'accent'; label: string }> = [];
       if (r.status === 'conflict' && conflictStatus(d, r.id) !== 'cleared') out.push({ tone: 'amber', label: 'Awaiting conflict clearance' });
@@ -230,6 +231,7 @@ const collections: CollectionDef[] = [
     subtitle: (r) => `Searched “${str(r, 'searchTerms')}” · ${label(CONFLICT_OUTCOMES, str(r, 'outcome'))}`,
     sort: (a, b) => b.ref.localeCompare(a.ref),
     flags: (r) => (r.status === 'pending' && str(r, 'outcome') === 'potential' ? [{ tone: 'amber', label: 'Potential conflict' }] : []),
+    createDefaults: (today) => ({ checkedOn: today, hits: 0 }),
     fields: [
       { key: 'matter', label: 'Matter', type: 'ref', ref: 'matters', required: true },
       { key: 'searchTerms', label: 'Names searched', type: 'text', required: true, table: true },
@@ -243,6 +245,7 @@ const collections: CollectionDef[] = [
   },
   {
     key: 'clients', singular: 'Client', plural: 'Clients', refPrefix: 'CL', editPermission: 'intake',
+    createDefaults: () => ({ kind: 'individual', ficaStatus: 'outstanding' }),
     title: (r) => str(r, 'name'),
     subtitle: (r) => `${label(CLIENT_KINDS, str(r, 'kind'))}${str(r, 'contact') ? ` · ${str(r, 'contact')}` : ''}`,
     sort: (a, b) => str(a, 'name').localeCompare(str(b, 'name')),
@@ -271,6 +274,7 @@ const collections: CollectionDef[] = [
     subtitle: (r) => `${earner(str(r, 'feeEarner'))?.short ?? '—'} · ${str(r, 'hours')}h · ${formatCents(timeValue(r))}`,
     sort: (a, b) => str(b, 'date').localeCompare(str(a, 'date')) || b.ref.localeCompare(a.ref),
     createFields: ['matter', 'feeEarner', 'date', 'hours', 'rate', 'billable', 'narrative'],
+    createDefaults: (today) => ({ date: today, billable: true, hours: 0.5 }),
     flags: (r, _d, today) => {
       const out: Array<{ tone: 'amber' | 'dark'; label: string }> = [];
       if (r.values.billable !== true) out.push({ tone: 'dark', label: 'Non-billable' });
@@ -310,7 +314,7 @@ const collections: CollectionDef[] = [
     title: (r) => str(r, 'title'),
     subtitle: (r, d) => `${label(DIARY_TYPES, str(r, 'type'))} · ${formatDate(str(r, 'date'))}${str(r, 'time') ? ` ${str(r, 'time')}` : ''} · ${matterName(d, r.values.matter)}`,
     sort: (a, b) => str(a, 'date').localeCompare(str(b, 'date')),
-    createFields: ['title', 'matter', 'type', 'date', 'time', 'venue', 'feeEarner', 'notes'],
+    createDefaults: (today) => ({ date: today, type: 'court' }),
     flags: (r, _d, today) => {
       if (r.status !== 'upcoming') return [];
       const diff = daysBetween(today, str(r, 'date'));
@@ -329,12 +333,13 @@ const collections: CollectionDef[] = [
       { key: 'time', label: 'Time', type: 'time' },
       { key: 'venue', label: 'Court / venue / action', type: 'text' },
       { key: 'feeEarner', label: 'Responsible', type: 'select', options: FEE_EARNER_OPTIONS, required: true, table: true },
-      { key: 'newDate', label: 'New date (when postponing)', type: 'date' },
+      { key: 'newDate', label: 'New date (when postponing)', type: 'date', hidden: true }, // set by the Postpone dialog
       { key: 'notes', label: 'Notes', type: 'textarea' },
     ],
   },
   {
     key: 'invoices', singular: 'Fee note', plural: 'Fee notes', refPrefix: 'FN', workflow: invoiceWorkflow, editPermission: 'billing',
+    createDefaults: (today) => ({ date: today, dueDate: addDays(today, 30), paid: 0 }),
     title: (r, d) => clientName(d, findRecord(d, 'matters', str(r, 'matter'))?.values.client),
     subtitle: (r, d) => `${matterName(d, r.values.matter)} · ${formatDate(str(r, 'date'))} · ${formatCents(invoiceTotal(r))}`,
     sort: (a, b) => str(b, 'date').localeCompare(str(a, 'date')) || b.ref.localeCompare(a.ref),
@@ -354,6 +359,7 @@ const collections: CollectionDef[] = [
   },
   {
     key: 'documents', singular: 'Document', plural: 'Documents register', refPrefix: 'DOC', workflow: documentWorkflow, editPermission: 'time.record',
+    createDefaults: () => ({ version: 'v1' }),
     title: (r) => str(r, 'title'),
     subtitle: (r, d) => `${label(DOC_TYPES, str(r, 'docType'))} · ${str(r, 'version')} · ${matterName(d, r.values.matter)}`,
     fields: [

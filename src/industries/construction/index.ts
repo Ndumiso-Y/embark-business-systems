@@ -2,8 +2,8 @@
 // an invented South African building and civils contractor. Not a contract
 // administration, payment-certificate or Construction Regulations system.
 import type { CollectionDef, Flag, IndustryConfig, WorkflowDef } from '../../core/types';
-import { findRecord, num, str } from '../../core/engine';
-import { daysBetween, formatDate } from '../../core/lib/dates';
+import { currentUser, findRecord, num, str } from '../../core/engine';
+import { addDays, daysBetween, formatDate } from '../../core/lib/dates';
 import { toCents } from '../../core/lib/money';
 import { IcoAlert, IcoBox, IcoBriefcase, IcoCalendar, IcoDoc, IcoFlag, IcoHelmet, IcoReceipt, IcoTruck, IcoUsers } from '../../core/components/Icons';
 import {
@@ -51,7 +51,7 @@ const projectWorkflow: WorkflowDef = {
     { from: 'tender', to: 'awarded', label: 'Mark awarded', permission: 'projects.manage', intent: 'primary', guard: ({ record }) => (num(record, 'contractValue') > 0 ? null : 'Record the contract value before marking the tender awarded.') },
     { from: 'tender', to: 'lost', label: 'Not awarded', permission: 'projects.manage', requiresNote: true, intent: 'danger' },
     { from: 'awarded', to: 'onsite', label: 'Start on site', permission: 'projects.manage', intent: 'primary', guard: ({ record }) => startOnSiteProblem(record) },
-    { from: ['awarded', 'onsite'], to: 'onhold', label: 'Put on hold', permission: 'projects.manage', requiresNote: true, intent: 'danger' },
+    { from: ['awarded', 'onsite'], to: 'onhold', label: 'Put on hold', permission: 'projects.manage', requiresNote: true, noteHint: 'say why work is stopping', intent: 'danger' },
     { from: 'onhold', to: 'onsite', label: 'Resume work', permission: 'projects.manage', guard: ({ record }) => startOnSiteProblem(record) },
     {
       from: 'onsite', to: 'practical', label: 'Certify practical completion', permission: 'projects.manage', intent: 'primary',
@@ -123,7 +123,7 @@ const variationWorkflow: WorkflowDef = {
       guard: ({ record, data }) => variationSubcontractorProblem(record, data, todayStr()),
       after: ({ record, api, today }) => api.update('variations', record.id, { approvedOn: today }),
     },
-    { from: 'submitted', to: 'rejected', label: 'Record rejection', permission: 'variations.approve', requiresNote: true, intent: 'danger' },
+    { from: 'submitted', to: 'rejected', label: 'Record rejection', permission: 'variations.approve', requiresNote: true, noteHint: 'record the client’s reason', intent: 'danger' },
     { from: 'rejected', to: 'priced', label: 'Re-price for resubmission', permission: 'variations.price', requiresNote: true },
   ],
 };
@@ -184,8 +184,8 @@ const snagWorkflow: WorkflowDef = {
   ],
   transitions: [
     { from: 'open', to: 'fixed', label: 'Mark fixed', permission: 'snags', intent: 'primary', after: ({ record, api, today }) => api.update('snags', record.id, { fixedOn: today }) },
-    { from: 'fixed', to: 'verified', label: 'Verify fix', permission: 'projects.manage', requiresNote: true, intent: 'primary' },
-    { from: 'fixed', to: 'open', label: 'Reject fix', permission: 'projects.manage', requiresNote: true, intent: 'danger' },
+    { from: 'fixed', to: 'verified', label: 'Verify fix', permission: 'projects.manage', requiresNote: true, noteHint: 'say what was inspected and accepted', intent: 'primary' },
+    { from: 'fixed', to: 'open', label: 'Reject fix', permission: 'projects.manage', requiresNote: true, noteHint: 'say what is still wrong', intent: 'danger' },
   ],
 };
 
@@ -212,6 +212,7 @@ const collections: CollectionDef[] = [
     subtitle: (r) => `${str(r, 'client')} · ${randShort(num(r, 'contractValue'))} · ${label(CONTRACT_TYPES, str(r, 'contractType'))}`,
     sort: (a, b) => str(b, 'startDate').localeCompare(str(a, 'startDate')),
     createFields: ['name', 'client', 'site', 'kind', 'contractType', 'contractValue', 'startDate', 'plannedCompletion', 'retentionPct', 'projectManager', 'siteAgent', 'budgetCost'],
+    createDefaults: () => ({ kind: 'building', contractType: 'lumpsum', retentionPct: 5 }),
     flags: (r, data, today) => {
       const f: Flag[] = [];
       if (r.status === 'onhold') f.push({ tone: 'amber', label: 'On hold' });
@@ -310,6 +311,7 @@ const collections: CollectionDef[] = [
     subtitle: (r, d) => `${str(r, 'instructionRef') || 'No SI ref'} · ${projectName(d, r.values.project)}${num(r, 'value') ? ` · ${rand(toCents(num(r, 'value')))}` : ''}`,
     sort: (a, b) => str(b, 'instructedOn').localeCompare(str(a, 'instructedOn')),
     createFields: ['project', 'instructionRef', 'description', 'instructedBy', 'instructedOn', 'value', 'timeImpactDays', 'subcontractor', 'notes'],
+    createDefaults: (today) => ({ instructedOn: today, timeImpactDays: 0 }),
     flags: (r, data, today) => {
       const f: Flag[] = [];
       if (!str(r, 'instructionRef') && !['approved', 'rejected'].includes(r.status ?? '')) f.push({ tone: 'amber', label: 'Verbal — no SI reference' });
@@ -342,6 +344,7 @@ const collections: CollectionDef[] = [
     subtitle: (r, d) => `Valuation date ${formatDate(str(r, 'periodEnd'))} · due ${rand(valuationFigures(d, r).amountDue)} excl. VAT`,
     sort: (a, b) => str(b, 'periodEnd').localeCompare(str(a, 'periodEnd')) || str(a, 'project').localeCompare(str(b, 'project')),
     createFields: ['project', 'valuationNo', 'periodEnd', 'workDone', 'materialsOnSite', 'variationsToDate', 'notes'],
+    createDefaults: (today) => ({ periodEnd: today, materialsOnSite: 0, variationsToDate: 0 }),
     flags: (r, data, today) => {
       const f: Flag[] = [];
       if (r.status === 'draft' && openValuations(data, str(r, 'project'), r.id).length) f.push({ tone: 'red', label: 'Another valuation is open' });
@@ -371,6 +374,7 @@ const collections: CollectionDef[] = [
     subtitle: (r, d) => `${projectName(d, r.values.project)} · ${rand(requisitionValue(r))} excl. VAT${str(r, 'poNumber') ? ` · ${str(r, 'poNumber')}` : ''}`,
     sort: (a, b) => b.createdAt.localeCompare(a.createdAt),
     createFields: ['project', 'description', 'supplier', 'requiredBy', 'lines', 'notes'],
+    createDefaults: (today, data) => ({ requiredBy: addDays(today, 7), requestedBy: currentUser(data).name }),
     flags: (r, _d, today) => {
       const f: Flag[] = [];
       if (deliveryLate(r, today)) f.push({ tone: 'red', label: `Delivery late ${daysBetween(str(r, 'expectedDelivery'), today)} d` });
@@ -397,6 +401,7 @@ const collections: CollectionDef[] = [
     subtitle: (r, d) => `${label(OWNERSHIP, str(r, 'ownership'))} · ${str(r, 'project') ? projectName(d, r.values.project) : 'Yard'}`,
     sort: (a, b) => str(a, 'ownership').localeCompare(str(b, 'ownership')) || str(a, 'fleetNo').localeCompare(str(b, 'fleetNo')),
     flags: (r, _d, today) => plantAlerts(r, today),
+    createDefaults: () => ({ ownership: 'owned', state: 'yard' }),
     fields: [
       { key: 'description', label: 'Description', type: 'text', required: true },
       { key: 'fleetNo', label: 'Fleet / hire no.', type: 'text', required: true },
@@ -425,6 +430,7 @@ const collections: CollectionDef[] = [
       return rank(a) - rank(b) || str(b, 'raisedOn').localeCompare(str(a, 'raisedOn'));
     },
     createFields: ['project', 'location', 'description', 'category', 'responsible', 'raisedOn', 'dueBy'],
+    createDefaults: (today) => ({ raisedOn: today, dueBy: addDays(today, 14) }),
     flags: (r, _d, today) => {
       const f: Flag[] = [];
       if (str(r, 'category') === 'critical' && r.status !== 'verified') f.push({ tone: 'red', label: 'Open critical' });
@@ -479,6 +485,7 @@ const collections: CollectionDef[] = [
     subtitle: (r, d) => `${label(SAFETY_TYPES, str(r, 'type'))} · ${projectName(d, r.values.project)} · ${formatDate(str(r, 'date'))}`,
     sort: (a, b) => str(b, 'date').localeCompare(str(a, 'date')),
     createFields: ['date', 'type', 'project', 'title', 'severity', 'attendees', 'lostTime', 'reportedBy', 'description', 'correctiveAction'],
+    createDefaults: (today, data) => ({ date: today, reportedBy: currentUser(data).name }),
     flags: (r, _d, today) => {
       const f: Flag[] = [];
       if (r.values.lostTime === true) f.push({ tone: 'red', label: 'Lost-time injury' });

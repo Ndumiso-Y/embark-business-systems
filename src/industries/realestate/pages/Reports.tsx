@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useBase, useData, useIndustry, useUser } from '../../../core/context';
 import { num, records, str } from '../../../core/engine';
-import { addDays, formatDate, monthShort } from '../../../core/lib/dates';
+import { formatDate, monthKeys, monthShort } from '../../../core/lib/dates';
 import { toCents } from '../../../core/lib/money';
 import { BarChart, Empty, Meters, Notice, PageHeader, Panel, Stat } from '../../../core/components/ui';
 import { RecordTable, WorkflowActions } from '../../../core/components/records';
@@ -69,7 +69,7 @@ export default function Reports() {
 
   // Commission registered per month (last 6 months).
   const month = today.slice(0, 7);
-  const months = Array.from({ length: 6 }, (_, i) => addDays(`${month}-15`, -30.4 * (5 - i)).slice(0, 7));
+  const months = monthKeys(today, 6);
   const chart = months.map((m) => ({
     label: monthShort(m),
     value: Math.round(commissions.filter((c) => str(c, 'registeredOn').startsWith(m)).reduce((n, c) => n + commissionSplit(c).gross, 0) / 100),

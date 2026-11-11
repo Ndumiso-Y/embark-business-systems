@@ -1,6 +1,6 @@
 import { useData, useIndustry } from '../../../core/context';
 import { lines, linesTotals, num, records, str } from '../../../core/engine';
-import { addDays, monthShort } from '../../../core/lib/dates';
+import { addDays, monthKeys, monthShort } from '../../../core/lib/dates';
 import { formatRand } from '../../../core/lib/money';
 import { BarChart, Meters, Notice, PageHeader, Panel, Stat } from '../../../core/components/ui';
 import { LENS_OPTIONS, OPTOMETRISTS, SCHEMES, label } from '../data';
@@ -10,7 +10,7 @@ export default function Reports() {
   const config = useIndustry();
   const data = useData();
   const today = todayStr();
-  const months = Array.from({ length: 6 }, (_, i) => addDays(today, -30.4 * (5 - i)).slice(0, 7));
+  const months = monthKeys(today, 6);
   const exams = records(data, 'exams').filter((e) => e.status === 'final');
   const orders = records(data, 'orders').filter((o) => o.status !== 'cancelled');
   const claims = records(data, 'claims');

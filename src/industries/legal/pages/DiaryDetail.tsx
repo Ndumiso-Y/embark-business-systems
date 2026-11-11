@@ -77,7 +77,7 @@ export default function DiaryDetail() {
       </div>
       {postponing && <PostponeModal entry={d} onClose={() => setPostponing(false)} />}
       {editing && (
-        <RecordFormModal def={{ ...def, fields: def.fields.filter((f) => f.key !== 'newDate') }} record={d} open onClose={() => setEditing(false)}
+        <RecordFormModal def={def} record={d} open onClose={() => setEditing(false)}
           onSave={(v) => { act.update('diary', d.id, v, 'Details edited'); act.toast(`${d.ref} saved`); setEditing(false); }} />
       )}
     </>

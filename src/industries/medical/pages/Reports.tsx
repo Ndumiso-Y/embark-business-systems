@@ -1,6 +1,6 @@
 import { useData, useIndustry } from '../../../core/context';
 import { records, str } from '../../../core/engine';
-import { addDays, daysBetween, monthShort } from '../../../core/lib/dates';
+import { addDays, daysBetween, monthKeys, monthShort } from '../../../core/lib/dates';
 import { formatRand } from '../../../core/lib/money';
 import { BarChart, Meters, Notice, PageHeader, Panel, Stat } from '../../../core/components/ui';
 import { CHRONIC_CONDITIONS, DOCTORS, LABS, SCHEMES, label } from '../data';
@@ -13,7 +13,7 @@ export default function Reports() {
   const data = useData();
   const today = todayStr();
   const from = addDays(today, -182);
-  const months = Array.from({ length: 6 }, (_, i) => addDays(today, -30.4 * (5 - i)).slice(0, 7));
+  const months = monthKeys(today, 6);
   const consults = records(data, 'consults').filter((c) => c.status === 'signed' && str(c, 'date') >= from);
   const visits = records(data, 'visits').filter((v) => str(v, 'date') >= from && str(v, 'date') <= today);
   const attended = visits.filter((v) => !['booked', 'cancelled', 'dna'].includes(v.status ?? ''));
