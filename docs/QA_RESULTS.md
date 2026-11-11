@@ -35,11 +35,20 @@ fewer modules than the administrator; no page errors or console errors throughou
 - Long attention tags overflowed narrow board cards; they now wrap.
 - The trust-ledger table was squashed at desktop width; it now keeps a minimum width and scrolls inside its panel.
 
+## Deployment check (11 Nov 2026)
+
+- Pushed to `Ndumiso-Y/embark-business-systems`; GitHub Actions run 43086155126 succeeded (typecheck, unit tests,
+  build, upload, deploy). GitHub reports the `github-pages` deployment as **success** at
+  https://ndumiso-y.github.io/embark-business-systems/.
+- The cloud container that ran these checks cannot reach `github.io` (blocked by its network policy), so the live URL
+  itself was not opened from there. Instead the same production build was served locally at the identical path
+  (`/embark-business-systems/`) and the full browser suite passed: **14 passed**.
+- Open the live link once in a normal browser to confirm.
+
 ## Not tested
 
 - Real devices and browsers other than Chromium (Safari/Firefox untested).
 - Screen-reader walkthrough (keyboard focus states and labels exist but were not audited with assistive technology).
-- The GitHub Pages deployment — no repository has been created or pushed yet.
 - Printing: the prescription Print button uses the browser print dialog, which the hosted artifact preview blocks.
 
 ## Screenshots

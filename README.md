@@ -16,6 +16,14 @@ Embark Digitals as discovery demonstrations. It is **not** a production system.
 - Users, roles and permissions are a **simulation**. There is no real sign-in and no server-side access control.
 - No backend, integrations, messaging, payments, or medical/legal/safety/financial compliance.
 
+## Live demo
+
+- **One link for everything:** https://ndumiso-y.github.io/embark-business-systems/
+  The opening screen has a card per industry; every module on a card links straight into it.
+- **Repository:** https://github.com/Ndumiso-Y/embark-business-systems
+- **Deploys:** GitHub Actions on every push to `main` (typecheck → unit tests → build → Pages). The build uses a
+  relative base and hash routing, so it works at any path or on a custom domain without code changes.
+
 Lineage: the visual language, shell and money/date helpers are adapted from
 `Ndumiso-Y/jnl-traders-business-system-demo` (that repository was read only and not changed).
 
