@@ -167,7 +167,7 @@ export type Theme = {
   accentText: string;
 };
 
-export type IndustryId = 'optometry' | 'medical' | 'automotive' | 'mining' | 'legal' | 'realestate' | 'construction' | 'tyres';
+export type IndustryId = 'optometry' | 'medical' | 'automotive' | 'mining' | 'legal' | 'realestate' | 'construction' | 'tyres' | 'security' | 'cleaning';
 
 export type IndustryConfig = {
   id: IndustryId;
@@ -192,4 +192,17 @@ export type IndustryConfig = {
   boundaries: string[];
   /** Short highlights for the gallery card. */
   highlights: string[];
+  /** Guided walkthrough shown on the dashboard: the few things a first-time visitor should try. */
+  guide?: GuideStep[];
+};
+
+export type GuideStep = {
+  /** Imperative and short, e.g. "Check a patient in". */
+  title: string;
+  /** What to click and what will happen, in one or two sentences. */
+  detail: string;
+  /** Module key to open (optionally "module/recordId"); empty string for the dashboard. */
+  to: string;
+  /** User id to switch to first, when the step needs a particular role. */
+  as?: string;
 };

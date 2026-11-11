@@ -207,6 +207,16 @@ export function validateConfig(config: IndustryConfig): string[] {
     for (const m of u.modules) if (!moduleKeys.has(m) && !BUILTIN_MODULES.includes(m)) problems.push(`User ${u.id} → unknown module ${m}`);
     for (const p of u.permissions) if (!perms.has(p)) problems.push(`User ${u.id} → unknown permission ${p}`);
   }
+  for (const g of config.guide ?? []) {
+    const mod = g.to.split('/')[0];
+    if (mod && !moduleKeys.has(mod) && !['admin', 'settings'].includes(mod)) problems.push(`Guide step "${g.title}" → unknown module ${mod}`);
+    if (g.as && !seed.users.some((u) => u.id === g.as)) problems.push(`Guide step "${g.title}" → unknown user ${g.as}`);
+    const recId = g.to.split('/')[1];
+    if (recId && mod) {
+      const col = config.modules.find((m) => m.key === mod)?.collection;
+      if (!col || !(seed.collections[col] ?? []).some((r) => r.id === recId)) problems.push(`Guide step "${g.title}" → unknown record ${g.to}`);
+    }
+  }
   for (const [k, recs] of Object.entries(seed.collections)) {
     if (!keys.has(k)) { problems.push(`Seed has undeclared collection ${k}`); continue; }
     const def = config.collections.find((c) => c.key === k)!;

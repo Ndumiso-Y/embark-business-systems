@@ -378,6 +378,14 @@ const config: IndustryConfig = {
     'Medical aid names, membership numbers and tariff codes are invented. Claims are not sent to any scheme or switching house.',
     'Recall reminders are logged only — no SMS or email is sent.',
   ],
+  guide: [
+    { title: 'Check a patient in', detail: 'Open the diary, switch to “Patient flow” and press “Check in” on a booked patient. They move to the next column.', to: 'diary', as: 'u_fd' },
+    { title: 'Finish an eye exam', detail: 'Open the exam marked “In progress”. It cannot be finalised until a diagnosis is chosen — pick one, save, then finalise to issue the prescription and set the recall.', to: 'exams', as: 'u_opt' },
+    { title: 'Move a lab job', detail: 'On the lab board, pass a quality check or try “Send to lab” on the quoted job — it is refused because the prescription has expired.', to: 'orders', as: 'u_disp' },
+    { title: 'Submit a medical aid claim', detail: 'Filter to Draft, open a claim and submit it. Checks for the member number and diagnosis code run first.', to: 'claims', as: 'u_mgr' },
+    { title: 'Chase a recall', detail: 'Preview the reminder message for an overdue patient (nothing is sent) or book them straight in.', to: 'recalls', as: 'u_fd' },
+    { title: 'See what each role can do', detail: 'Tick and untick modules for each staff member, then switch user in the top bar to see the menu change.', to: 'admin', as: 'u_owner' },
+  ],
   highlights: [
     'Front desk → pre-test → consulting room → dispensing patient flow',
     'Eye exam finalisation issues a prescription and sets the recall date',

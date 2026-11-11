@@ -8,13 +8,14 @@ import SettingsPage from './pages/SettingsPage';
 import SearchPage from './pages/SearchPage';
 import NotFound from './pages/NotFound';
 import RequireModule from './components/RequireModule';
+import GuidePanel from './components/GuidePanel';
 import { ModuleDetailView, ModuleView } from './components/records';
 import { useIndustry } from './context';
 
 function Dashboard() {
   const config = useIndustry();
   const D = config.dashboard;
-  return <RequireModule module="dashboard"><D /></RequireModule>;
+  return <RequireModule module="dashboard"><GuidePanel /><D /></RequireModule>;
 }
 
 function ModuleRoute({ detail }: { detail?: boolean }) {
