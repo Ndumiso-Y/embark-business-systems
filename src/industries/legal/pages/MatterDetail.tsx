@@ -2,19 +2,19 @@ import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useActions, useBase, useData, useIndustry, useUser } from '../../../core/context';
 import { findRecord, num, records, str } from '../../../core/engine';
-import { formatDate } from '../../../core/lib/dates';
+import { addDays, formatDate } from '../../../core/lib/dates';
 import { toCents } from '../../../core/lib/money';
 import { Confirm, Empty, Flags, KeyValues, Meters, Notice, Panel, StatusTag, Tag } from '../../../core/components/ui';
 import { RecordDetail } from '../../../core/components/records';
 import { RecordFormModal } from '../../../core/components/fields';
 import { IcoPlus, IcoReceipt, IcoTimer } from '../../../core/components/Icons';
-import { DIARY_TYPES, FEE_BASIS, earner, earnerForUser, label } from '../data';
+import { DIARY_TYPES, FEE_BASIS, FICA_STATUS, earner, earnerForUser, label } from '../data';
 import {
   WORKING_MATTER_STATES, activationProblems, buildFeeNote, byDeadline, closeProblems, conflictChecks, engagementProblem, formatCents, invoiceOutstanding, invoiceTotal,
-  ledgerRows, matterMoney, pendingOutflowCents, timeValue, todayStr, trustBalance,
+  ficaState, ledgerRows, matterMoney, pendingOutflowCents, timeValue, todayStr, trustBalance,
   diaryWhen,
 } from '../helpers';
-import { ClientCard } from './shared';
+import { Checklist, ClientCard } from './shared';
 
 export default function MatterDetail() {
   const { id } = useParams();
@@ -51,24 +51,51 @@ function Main({ id }: { id: string }) {
   const diary = records(data, 'diary').filter((d) => str(d, 'matter') === id && d.status === 'upcoming').sort(byDeadline);
   const ledger = ledgerRows(data, id);
   const me = earnerForUser(user.id) ?? earner(str(m, 'feeEarner'));
+  const client = findRecord(data, 'clients', str(m, 'client'));
+  const clientFica = ficaState(client, today);
+  /** Confirming FICA on the matter also puts the client's documents on file, so the two never contradict each other. */
+  const confirmFica = () => {
+    if (client && clientFica === 'missing') act.update('clients', client.id, { ficaStatus: 'verified', ficaExpiry: str(client, 'ficaExpiry') || addDays(today, 365) }, `FICA documents recorded as on file (simulated) for ${m.ref}`);
+    act.update('matters', id, { ficaVerified: true }, 'FICA confirmed for this matter (simulated)');
+    act.toast(`${m.ref}: FICA confirmed (simulated — nothing is verified)`);
+  };
 
   const billNow = () => {
     if (!fee) return;
-    const inv = act.create('invoices', fee.values, 'issued', `Fee note issued from ${fee.entryIds.length} unbilled time entries`);
+    const inv = act.create('invoices', fee.values, 'issued', `Fee note issued from ${fee.entryIds.length} unbilled time entr${fee.entryIds.length === 1 ? 'y' : 'ies'}`);
     let failed = 0;
     for (const tid of fee.entryIds) {
       act.update('time', tid, { invoice: inv.id });
       if (!act.transition('time', tid, 'billed').ok) failed += 1;
     }
-    act.toast(failed ? `Fee note ${inv.ref} created; ${failed} entries could not be marked billed` : `Fee note ${inv.ref} issued — ${fee.entryIds.length} entries marked billed`);
+    act.toast(failed ? `Fee note ${inv.ref} created; ${failed} entries could not be marked billed` : `Fee note ${inv.ref} issued — ${fee.entryIds.length} time entr${fee.entryIds.length === 1 ? 'y' : 'ies'} marked billed`);
     setBilling(false);
     if (hasModule('invoices')) navigate(`${base}/invoices/${inv.id}`);
   };
 
   return (
     <>
-      {m.status === 'conflict' && engagementProblem(data, id) && <Notice tone="amber"><b>Engagement blocked:</b> {engagementProblem(data, id)}{hasModule('conflicts') && <> <Link to={`${base}/conflicts`}>Open conflict checks →</Link></>}</Notice>}
-      {m.status === 'engagement' && activationProblems(m).length > 0 && <Notice tone="amber"><b>Cannot open for work yet:</b><ul className="problem-list">{activationProblems(m).map((p) => <li key={p}>{p}</li>)}</ul></Notice>}
+      {m.status === 'intake' && <Notice tone="accent"><b>Next step:</b> press “Send for conflict check”, then search the client and the other parties on the Conflict checks page. Work can only start once a partner has cleared the check.</Notice>}
+      {m.status === 'conflict' && engagementProblem(data, id) && <Notice tone="amber"><b>Engagement blocked:</b> {engagementProblem(data, id)}{hasModule('conflicts') && <> <Link to={`${base}/conflicts?matter=${id}`} data-testid="open-conflicts">Open conflict checks for this matter →</Link></>}</Notice>}
+      {m.status === 'conflict' && !engagementProblem(data, id) && <Notice tone="accent"><b>Conflict check cleared.</b> Press “Conflict cleared — prepare engagement” above to move on.</Notice>}
+      {m.status === 'engagement' && (
+        <Panel title="Engagement checklist" meta="Both must be ticked before “Open for work” is allowed"
+          right={<Tag tone={activationProblems(m).length ? 'amber' : 'green'}>{activationProblems(m).length ? `${activationProblems(m).length} outstanding` : 'Ready to open'}</Tag>}>
+          <Checklist items={[
+            { label: 'Engagement letter signed by the client', ok: m.values.engagementSigned === true, detail: `${label(FEE_BASIS, str(m, 'feeBasis'))}${est > 0 ? ` · estimate ${formatCents(est)} excl. VAT` : ''}`,
+              action: m.values.engagementSigned !== true && can('matters.manage')
+                ? <button className="btn sm" data-testid="mark-engagement" onClick={() => { act.update('matters', id, { engagementSigned: true }, 'Engagement letter recorded as signed'); act.toast(`${m.ref}: engagement letter recorded as signed`); }}>Record letter signed</button>
+                : undefined },
+            { label: 'FICA confirmed for this matter (simulated)', ok: m.values.ficaVerified === true,
+              detail: `Client record: ${label(FICA_STATUS, str(client, 'ficaStatus'))}${clientFica === 'expired' ? ' — review date has passed' : ''} · no verification is performed`,
+              action: m.values.ficaVerified !== true && can('matters.manage')
+                ? <button className="btn sm" data-testid="mark-fica" onClick={confirmFica}>Confirm FICA documents</button>
+                : undefined },
+          ]} />
+          {!can('matters.manage') && activationProblems(m).length > 0 && <p className="muted-note" style={{ marginTop: 10 }}>Only a role that manages matters (partner or associate) can tick these off.</p>}
+          {!activationProblems(m).length && <p className="muted-note" style={{ marginTop: 10 }}>Ready — press “Open for work” in the Workflow panel above. Time can then be recorded and billed.</p>}
+        </Panel>
+      )}
 
       <Panel title="Matter position" meta={`${label(FEE_BASIS, str(m, 'feeBasis'))} · amounts excl. VAT unless stated`}>
         <div className="mini-stat-row" style={{ marginBottom: 14 }}>
@@ -117,7 +144,7 @@ function Main({ id }: { id: string }) {
         <div className="mini-stat-row" style={{ marginBottom: 12 }}>
           <div>Approved balance<b>{formatCents(bal)}</b></div>
           <div>Pending payments<b>{formatCents(pendingOut)}</b></div>
-          <div>Available<b>{formatCents(bal - pendingOut)}</b></div>
+          <div>Available<b>{formatCents(Math.max(0, bal - pendingOut))}</b></div>
         </div>
         {ledger.length ? (
           <ul className="list">
@@ -166,7 +193,7 @@ function Main({ id }: { id: string }) {
       )}
       <Confirm open={billing} title="Bill unbilled time?" confirmLabel="Issue fee note"
         body={fee ? <>
-          A fee note will be issued for <b>{fee.entryIds.length}</b> unbilled billable time entries
+          A fee note will be issued for <b>{fee.entryIds.length}</b> unbilled billable time entr{fee.entryIds.length === 1 ? 'y' : 'ies'}
           ({formatCents(money.wip)} excl. VAT, plus 15% VAT). Each entry is marked billed and linked to the fee note. Non-billable time is left out.
         </> : 'Nothing to bill.'}
         onCancel={() => setBilling(false)} onConfirm={billNow} />
@@ -177,7 +204,7 @@ function Main({ id }: { id: string }) {
 function Aside({ id }: { id: string }) {
   const data = useData();
   const base = useBase();
-  const { hasModule } = useUser();
+  const { hasModule, can } = useUser();
   const config = useIndustry();
   const today = todayStr();
   const m = findRecord(data, 'matters', id)!;
@@ -200,7 +227,7 @@ function Aside({ id }: { id: string }) {
           { label: 'Court / forum', value: str(m, 'court') },
         ]} />
       </Panel>
-      <Panel title="Conflict checks" right={hasModule('conflicts') ? <Link className="btn sm" to={`${base}/conflicts`}>Checks</Link> : undefined}>
+      <Panel title="Conflict checks" right={hasModule('conflicts') ? <Link className="btn sm" to={`${base}/conflicts${['intake', 'conflict'].includes(m.status ?? '') ? `?matter=${id}` : ''}`}>Checks</Link> : undefined}>
         {checks.length ? (
           <ul className="list">
             {checks.map((c) => (
@@ -215,7 +242,13 @@ function Aside({ id }: { id: string }) {
       {['active', 'closing'].includes(m.status ?? '') && (
         <Panel title="Closure checklist" meta="Rules enforced by “Close matter”">
           {closing.length ? (
-            <Notice tone="amber"><ul className="problem-list">{closing.map((p) => <li key={p}>{p}</li>)}</ul></Notice>
+            <>
+              <Notice tone="amber"><ul className="problem-list">{closing.map((p) => <li key={p}>{p}</li>)}</ul></Notice>
+              <div className="btns" style={{ marginTop: 10 }}>
+                {hasModule('trust') && (trustBalance(data, id) !== 0 || closing.some((p) => /trust transaction/.test(p))) && <Link className="btn sm" to={`${base}/trust?matter=${id}`} data-testid="closure-trust">Open trust ledger</Link>}
+                {closing.some((p) => /unbilled/.test(p)) && <span className="muted-note">Unbilled time: use “Bill unbilled time” in the Time panel{can('billing') ? '' : ' (bookkeeper or partner)'}.</span>}
+              </div>
+            </>
           ) : <Notice tone="accent">Trust balance is R0.00 and there is no unbilled time — the matter can be closed.</Notice>}
           {outstanding > 0 && <p className="muted-note" style={{ marginTop: 10 }}>Note: {formatCents(outstanding)} in fees is still outstanding from the client.</p>}
         </Panel>

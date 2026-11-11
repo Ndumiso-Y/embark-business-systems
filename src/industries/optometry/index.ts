@@ -1,11 +1,11 @@
 // Optometry demo — PRIORITY ONE. Fictional practice: Northgate Optometry.
 import type { CollectionDef, IndustryConfig, WorkflowDef } from '../../core/types';
-import { findRecord, num, str } from '../../core/engine';
+import { findRecord, lines, num, records, str } from '../../core/engine';
 import { addDays, daysBetween, dueState, formatDate } from '../../core/lib/dates';
 import { IcoBox, IcoCalendar, IcoChart, IcoEye, IcoGlasses, IcoPhone, IcoReceipt, IcoUsers, IcoDoc } from '../../core/components/Icons';
 import { APPOINTMENT_TYPES, ICD10, LABS, LENS_OPTIONS, OPTOMETRISTS, PRACTITIONERS, RECALL_TYPES, SCHEMES, label } from './data';
 import { buildOptometrySeed } from './seed';
-import { claimProblems, claimTotal, examProblems, isClinical, patientName, RX_TYPES, STOCK_CATEGORIES, todayStr } from './helpers';
+import { claimOutstanding, claimProblems, claimTotal, examProblems, isClinical, orderProblems, patientName, RX_TYPES, STOCK_CATEGORIES, tariffForExam, todayStr } from './helpers';
 export * from './helpers';
 import Dashboard from './pages/Dashboard';
 import Diary from './pages/Diary';
@@ -15,6 +15,7 @@ import AppointmentDetail from './pages/AppointmentDetail';
 import PrescriptionDetail from './pages/PrescriptionDetail';
 import OrderDetail from './pages/OrderDetail';
 import ClaimDetail from './pages/ClaimDetail';
+import Orders from './pages/Orders';
 import Recalls from './pages/Recalls';
 import Reports from './pages/Reports';
 
@@ -60,19 +61,34 @@ const examWorkflow: WorkflowDef = {
     {
       from: ['draft', 'amending'], to: 'final', label: 'Finalise exam & issue Rx', permission: 'clinical.record', intent: 'primary',
       guard: ({ record }) => examProblems(record)[0] ?? null,
-      after: ({ record, api, today }) => {
+      after: ({ record, data, api, today }) => {
         const v = record.values;
         const months = Number(v.recallMonths) || 24;
         const patient = String(v.patient);
         api.update('patients', patient, { recallDue: addDays(today, Math.round(months * 30.4)), recallType: v.recallType || 'annual', lastExam: v.date as string }, `Recall set for ${months} months (exam ${record.ref})`);
+        const done: string[] = [];
         if (v.issueRx !== false) {
+          // The new prescription replaces the patient's earlier current ones (also after an amendment).
+          for (const old of records(data, 'prescriptions').filter((p) => str(p, 'patient') === patient && p.status === 'issued')) api.transition('prescriptions', old.id, 'superseded');
           api.create('prescriptions', {
             patient, exam: record.id, date: v.date, practitioner: v.optometrist, rxType: Number(v.r_add) || Number(v.l_add) ? 'multifocal' : 'distance',
             r_sph: v.r_sph, r_cyl: v.r_cyl, r_axis: v.r_axis, r_add: v.r_add, l_sph: v.l_sph, l_cyl: v.l_cyl, l_axis: v.l_axis, l_add: v.l_add,
             pd: v.pd, expiry: addDays(String(v.date), 730), notes: '',
           }, 'issued', `Issued from exam ${record.ref}`);
-          api.toast('Prescription issued and recall date updated');
+          done.push('Prescription issued');
         }
+        done.push('recall date updated');
+        // The exam fee goes onto a draft account for billing (once per exam).
+        if (!records(data, 'claims').some((c) => str(c, 'exam') === record.id)) {
+          const p = findRecord(data, 'patients', patient);
+          const t = tariffForExam(record, data);
+          const claim = api.create('claims', {
+            patient, exam: record.id, date: v.date, scheme: str(p, 'scheme'), memberNo: str(p, 'memberNo'), icd10: v.diagnosis, schemePaid: 0, patientPaid: 0, submittedOn: '', notes: '',
+            lines: [{ id: `ln_${record.id}`, code: t.code, description: t.description, qty: 1, unitPrice: t.price }],
+          }, 'draft', `Draft account from exam ${record.ref}`);
+          done.push(`draft claim ${claim.ref} created`);
+        }
+        api.toast(done.join(', ').replace(/^r/, 'R'));
       },
     },
     { from: 'final', to: 'amending', label: 'Open amendment', permission: 'clinical.record', requiresNote: true },
@@ -94,27 +110,40 @@ const orderWorkflow: WorkflowDef = {
   transitions: [
     {
       from: 'quote', to: 'ordered', label: 'Send to lab', permission: 'dispense', intent: 'primary',
-      guard: ({ record, data }) => {
-        const rx = findRecord(data, 'prescriptions', str(record, 'prescription'));
-        if (!rx) return 'Link a prescription before ordering.';
-        if (str(rx, 'expiry') < todayStr()) return `Prescription ${rx.ref} expired on ${formatDate(str(rx, 'expiry'))}. Re-examine first.`;
-        if (str(record, 'kind') !== 'cl' && !num(record, 'pd')) return 'Enter the pupillary distance (PD).';
-        const frame = findRecord(data, 'stock', str(record, 'frame'));
-        if (str(record, 'kind') !== 'cl' && !frame) return 'Select a frame from stock.';
-        if (frame && num(frame, 'qty') < 1) return `${str(frame, 'name')} is out of stock.`;
-        if (num(record, 'deposit') <= 0 && str(record, 'funding') === 'private') return 'Private orders need a deposit before going to the lab.';
-        return null;
-      },
+      guard: ({ record, data }) => orderProblems(record, data)[0]?.message ?? null,
       after: ({ record, data, api }) => {
         const frame = findRecord(data, 'stock', str(record, 'frame'));
         if (frame) api.update('stock', frame.id, { qty: num(frame, 'qty') - 1 }, `1 reserved for order ${record.ref}`);
       },
     },
     { from: ['ordered'], to: 'received', label: 'Receive from lab', permission: 'dispense' },
-    { from: 'received', to: 'ready', label: 'Pass quality check', permission: 'dispense', intent: 'primary' },
+    { from: 'received', to: 'ready', label: 'Pass quality check', permission: 'dispense', intent: 'primary',
+      after: ({ record, api, today }) => api.update('orders', record.id, { readySince: today }) },
     { from: 'received', to: 'remake', label: 'Fail quality check', permission: 'dispense', requiresNote: true, intent: 'danger' },
     { from: 'remake', to: 'ordered', label: 'Resend to lab', permission: 'dispense' },
-    { from: 'ready', to: 'collected', label: 'Mark collected', intent: 'primary' },
+    {
+      from: 'ready', to: 'collected', label: 'Mark collected', intent: 'primary',
+      // Scheme-funded eyewear goes onto the patient's draft claim (or a new one) when it is handed over.
+      after: ({ record, data, api, today }) => {
+        if (str(record, 'funding') !== 'scheme' || records(data, 'claims').some((c) => str(c, 'order') === record.id)) return;
+        const frame = findRecord(data, 'stock', str(record, 'frame'));
+        const add = lines(record).map((l, i) => ({ ...l, id: `ln_${record.id}_${i}`, code: l.code || (frame && l.description === str(frame, 'name') ? 'DEMO-FR1' : 'DEMO-LN1') }));
+        if (!add.length) return;
+        const draft = records(data, 'claims').find((c) => str(c, 'patient') === str(record, 'patient') && c.status === 'draft' && !str(c, 'order'));
+        if (draft) {
+          api.update('claims', draft.id, { order: record.id, lines: [...lines(draft), ...add] }, `Eyewear from order ${record.ref} added`);
+          api.toast(`Eyewear added to draft claim ${draft.ref}`);
+          return;
+        }
+        const p = findRecord(data, 'patients', str(record, 'patient'));
+        const exam = findRecord(data, 'exams', str(findRecord(data, 'prescriptions', str(record, 'prescription')), 'exam'));
+        const claim = api.create('claims', {
+          patient: str(record, 'patient'), order: record.id, date: today, scheme: str(p, 'scheme'), memberNo: str(p, 'memberNo'), icd10: str(exam, 'diagnosis'),
+          schemePaid: 0, patientPaid: 0, submittedOn: '', notes: '', lines: add,
+        }, 'draft', `Draft claim from order ${record.ref}`);
+        api.toast(`Draft claim ${claim.ref} created for the eyewear`);
+      },
+    },
     { from: 'quote', to: 'cancelled', label: 'Cancel quote', requiresNote: true, intent: 'danger' },
   ],
 };
@@ -135,15 +164,18 @@ const claimWorkflow: WorkflowDef = {
     {
       from: 'draft', to: 'submitted', label: 'Submit to scheme (simulated)', permission: 'billing', intent: 'primary',
       guard: ({ record, data }) => claimProblems(record, data)[0] ?? null,
+      after: ({ record, api, today }) => api.update('claims', record.id, { submittedOn: today }),
     },
     { from: 'submitted', to: 'paid', label: 'Record full remittance', permission: 'billing',
-      guard: ({ record }) => (num(record, 'schemePaid') * 100 >= claimTotal(record) - 1 ? null : 'Enter the scheme payment equal to the claim total first (Edit → Scheme paid).') },
+      guard: ({ record }) => (num(record, 'schemePaid') * 100 >= claimTotal(record) - 1 ? null : 'Enter what the scheme paid in “Scheme remittance” on this page first — it must cover the claim total.') },
     { from: 'submitted', to: 'partpaid', label: 'Record part payment', permission: 'billing', requiresNote: true,
-      guard: ({ record }) => (num(record, 'schemePaid') > 0 && num(record, 'schemePaid') * 100 < claimTotal(record) ? null : 'Enter a scheme payment that is less than the total first.') },
+      guard: ({ record }) => (num(record, 'schemePaid') > 0 && num(record, 'schemePaid') * 100 < claimTotal(record) ? null : 'Enter what the scheme paid in “Scheme remittance” on this page first — a part payment is less than the claim total.') },
     { from: 'submitted', to: 'rejected', label: 'Record rejection', permission: 'billing', requiresNote: true, intent: 'danger' },
     { from: 'rejected', to: 'draft', label: 'Correct & reopen', permission: 'billing' },
     { from: ['draft', 'rejected'], to: 'patient', label: 'Bill patient privately', permission: 'billing' },
-    { from: ['partpaid', 'patient'], to: 'settled', label: 'Patient balance settled', permission: 'billing', intent: 'primary' },
+    { from: ['partpaid', 'patient'], to: 'settled', label: 'Patient balance settled', permission: 'billing', intent: 'primary',
+      // The patient paid whatever the scheme did not, so the account balance reaches zero.
+      after: ({ record, api }) => { const due = claimOutstanding(record); if (due > 0) api.update('claims', record.id, { patientPaid: num(record, 'patientPaid') + due / 100 }); } },
   ],
 };
 
@@ -322,6 +354,7 @@ const collections: CollectionDef[] = [
       { key: 'scheme', label: 'Medical aid', type: 'select', options: SCHEMES, required: true, table: true },
       { key: 'memberNo', label: 'Membership no. (fictional)', type: 'text' },
       { key: 'icd10', label: 'ICD-10 (sample)', type: 'select', options: ICD10 },
+      { key: 'exam', label: 'From eye exam', type: 'ref', ref: 'exams' },
       { key: 'order', label: 'Related optical order', type: 'ref', ref: 'orders' },
       { key: 'schemePaid', label: 'Scheme paid', type: 'money', min: 0, table: true },
       { key: 'patientPaid', label: 'Patient paid', type: 'money', min: 0 },
@@ -364,7 +397,7 @@ const config: IndustryConfig = {
     { key: 'recalls', label: 'Recalls', icon: IcoPhone, group: 'Front desk', page: Recalls, description: 'Patients due for their next exam or aftercare. Log reminders and book them in.' },
     { key: 'exams', label: 'Eye examinations', icon: IcoEye, group: 'Clinical', collection: 'exams', detail: ExamDetail, description: 'Structured examination records: acuity, refraction, eye health, diagnosis and plan. Finalising issues the prescription.' },
     { key: 'prescriptions', label: 'Prescriptions', icon: IcoDoc, group: 'Clinical', collection: 'prescriptions', detail: PrescriptionDetail, description: 'Issued spectacle and contact lens prescriptions with expiry tracking.' },
-    { key: 'orders', label: 'Optical orders', icon: IcoGlasses, group: 'Optical', collection: 'orders', view: 'board', detail: OrderDetail, description: 'Spectacle and contact lens jobs from quote to lab, quality check and collection.' },
+    { key: 'orders', label: 'Optical orders', icon: IcoGlasses, group: 'Optical', collection: 'orders', view: 'board', page: Orders, detail: OrderDetail, description: 'Spectacle and contact lens jobs from quote to lab, quality check and collection.' },
     { key: 'stock', label: 'Frames & stock', icon: IcoBox, group: 'Optical', collection: 'stock', description: 'Frames, contact lenses and accessories with reorder alerts.' },
     { key: 'claims', label: 'Billing & claims', icon: IcoReceipt, group: 'Practice', collection: 'claims', detail: ClaimDetail, description: 'Medical aid claims and patient accounts: submit, record remittances and rejections, settle balances. Simulated — no switch connection.' },
     { key: 'reports', label: 'Practice reports', icon: IcoChart, group: 'Practice', page: Reports, description: 'Exams, conversion to eyewear, billing by funder, recall effectiveness and stock value.' },
@@ -380,9 +413,9 @@ const config: IndustryConfig = {
   ],
   guide: [
     { title: 'Check a patient in', detail: 'Open the diary, switch to “Patient flow” and press “Check in” on a booked patient. They move to the next column.', to: 'diary', as: 'u_fd' },
-    { title: 'Finish an eye exam', detail: 'Open the exam marked “In progress”. It cannot be finalised until a diagnosis is chosen — pick one, save, then finalise to issue the prescription and set the recall.', to: 'exams', as: 'u_opt' },
-    { title: 'Move a lab job', detail: 'On the lab board, pass a quality check or try “Send to lab” on the quoted job — it is refused because the prescription has expired.', to: 'orders', as: 'u_disp' },
-    { title: 'Submit a medical aid claim', detail: 'Filter to Draft, open a claim and submit it. Checks for the member number and diagnosis code run first.', to: 'claims', as: 'u_mgr' },
+    { title: 'Finish an eye exam', detail: 'This exam is still in progress and cannot be finalised until a diagnosis is chosen — pick one, save, then finalise. That issues the prescription, sets the recall and drafts the exam fee for billing.', to: 'exams/exams_61', as: 'u_opt' },
+    { title: 'Move a lab job', detail: 'On the lab board, pass a quality check or try “Send to lab” on the quoted job — it is refused because the prescription has expired. Open the job to see what would fix it.', to: 'orders', as: 'u_disp' },
+    { title: 'Submit a medical aid claim', detail: 'Filter to Draft, open a claim and submit it (member number and diagnosis code are checked first). Then type what the scheme paid under “Scheme remittance” to mark it paid or part paid.', to: 'claims', as: 'u_mgr' },
     { title: 'Chase a recall', detail: 'Preview the reminder message for an overdue patient (nothing is sent) or book them straight in.', to: 'recalls', as: 'u_fd' },
     { title: 'See what each role can do', detail: 'Tick and untick modules for each staff member, then switch user in the top bar to see the menu change.', to: 'admin', as: 'u_owner' },
   ],

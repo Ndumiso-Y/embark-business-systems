@@ -77,7 +77,7 @@ export function buildAutomotiveSeed(today: string) {
 
   const users = [
     user('u_owner', 'Gareth Kruger', 'Workshop owner', 'owner', [], [], true),
-    user('u_adv', STAFF.advisor[0], STAFF.advisor[1], 'advisor', ['dashboard', 'jobs', 'planner', 'estimates', 'vehicles', 'customers', 'reminders', 'invoices'], ['jobs.manage', 'estimates', 'customers']),
+    user('u_adv', STAFF.advisor[0], STAFF.advisor[1], 'advisor', ['dashboard', 'jobs', 'planner', 'estimates', 'vehicles', 'customers', 'reminders', 'invoices'], ['jobs.manage', 'estimates', 'customers', 'invoicing']),
     user('u_fore', STAFF.foreman[0], STAFF.foreman[1], 'foreman', ['dashboard', 'jobs', 'planner', 'estimates', 'vehicles', 'customers', 'parts', 'reports'], ['jobs.manage', 'jobs.work', 'qc', 'estimates']),
     user('u_tech', 'Sibusiso Ndaba', 'Technician', 'technician', ['dashboard', 'jobs', 'planner', 'vehicles', 'parts'], ['jobs.work']),
     user('u_clerk', STAFF.clerk[0], STAFF.clerk[1], 'clerk', ['dashboard', 'parts', 'invoices', 'customers', 'vehicles', 'estimates', 'reminders', 'reports'], ['parts', 'invoicing', 'customers']),
@@ -259,7 +259,10 @@ export function buildAutomotiveSeed(today: string) {
     checkedin: ['Check in vehicle'], diagnosing: ['Check in vehicle', 'Start diagnosis'], approval: ['Check in vehicle', 'Start diagnosis', 'Send estimate to customer'],
     inprogress: ['Check in vehicle', 'Start work'], qc: ['Check in vehicle', 'Start work', 'Send to quality check'], ready: ['Check in vehicle', 'Start work', 'Send to quality check', 'Pass quality check'],
   };
-  for (const a of active) {
+  // The history above varies with the weekday (no Sunday jobs), so sequential ids would drift from day to
+  // day. Today's records get fixed ids (jobs_open_1 … in the order listed) so the guided walkthrough and
+  // the journey tests always open the same job card. Refs (JC-…) stay sequential.
+  for (const [i, a] of active.entries()) {
     const t = T(a.t);
     const [ci, , , , , , , diesel] = VEHICLES[a.vi];
     const v = vehicles[a.vi];
@@ -277,6 +280,7 @@ export function buildAutomotiveSeed(today: string) {
       { daysAgo: a.daysBooked ?? 5, ...adv, action: 'Job card booked' },
       ...log.map((action) => ({ daysAgo: Math.max(0, -Math.min(0, wd)), ...(action.includes('quality') ? fore : action.includes('estimate') || action.includes('Check in') ? adv : { by: TECH_NAME[a.tech] ?? 'Technician', role: 'Technician' }), action })),
     ] });
+    job.id = `jobs_open_${i + 1}`;
     if (a.est) {
       const ls = buildLines(t, diesel);
       const sent = a.est === 'draft' ? '' : day(a.estSent ?? Math.min(0, wd));
@@ -287,10 +291,12 @@ export function buildAutomotiveSeed(today: string) {
         ...(a.est !== 'draft' ? [{ daysAgo: Math.max(0, -(a.estSent ?? 0)), ...adv, action: 'Send to customer (simulated)' }] : []),
         ...(a.est === 'approved' ? [{ daysAgo: Math.max(0, -(a.estSent ?? 0)), ...adv, action: 'Record customer approval', note: a.note }] : []),
       ] });
+      est.id = `estimates_open_${i + 1}`;
       job.values.estimate = est.id;
       if (a.invoice) {
-        rec('invoices', 'INV', { job: job.id, customer: customers[ci].id, vehicle: v.id, issuedOn: day(a.ready ?? 0), lines: ls.map((l) => line(l.description, l.qty, l.unitPrice, l.code)), paid: 0, paymentMethod: '', lastPaymentOn: '', notes: '' },
+        const inv = rec('invoices', 'INV', { job: job.id, customer: customers[ci].id, vehicle: v.id, issuedOn: day(a.ready ?? 0), lines: ls.map((l) => line(l.description, l.qty, l.unitPrice, l.code)), paid: 0, paymentMethod: '', lastPaymentOn: '', notes: '' },
           { status: 'issued', createdDaysAgo: -(a.ready ?? 0), history: [{ daysAgo: -(a.ready ?? 0), ...fore, action: 'Invoice issued on quality check pass' }] });
+        inv.id = `invoices_open_${i + 1}`;
       }
     }
   }

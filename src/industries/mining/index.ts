@@ -22,6 +22,10 @@ import EquipmentDetail from './pages/EquipmentDetail';
 import ContractorDetail from './pages/ContractorDetail';
 import EnvDetail from './pages/EnvDetail';
 import Reports from './pages/Reports';
+import ShiftDetail from './pages/ShiftDetail';
+import IncidentDetail from './pages/IncidentDetail';
+import WorkOrderDetail from './pages/WorkOrderDetail';
+import { ContractorsPage, EnvironmentPage, EquipmentPage, WorkOrdersPage } from './pages/Registers';
 
 /* ------------------------------------------------------------------ */
 const shiftWorkflow: WorkflowDef = {
@@ -168,13 +172,13 @@ const collections: CollectionDef[] = [
       return f;
     },
     fields: [
-      { key: 'date', label: 'Shift date', type: 'date', required: true, table: true },
+      { key: 'date', label: 'Shift date', type: 'date', required: true, table: true, validate: (v) => (String(v) > todayStr() ? 'A shift cannot be logged for a future date.' : null) },
       { key: 'shift', label: 'Shift', type: 'select', options: SHIFTS, required: true },
       { key: 'section', label: 'Section', type: 'select', options: SECTIONS, required: true },
       { key: 'crew', label: 'Crew', type: 'text', required: true, placeholder: 'e.g. Crew A — TL name' },
       { key: 'supervisor', label: 'Shift supervisor', type: 'select', options: SUPERVISORS },
       { key: 'tonnesHoisted', label: 'Tonnes hoisted', type: 'number', min: 0, max: 2000, table: true },
-      { key: 'targetTonnes', label: 'Target tonnes', type: 'number', min: 0, max: 2000, required: true, table: true },
+      { key: 'targetTonnes', label: 'Target tonnes', type: 'number', min: 0, max: 2000, required: true, table: true, hint: 'From the (fictional) mine plan. Check it if you change the section or shift.' },
       { key: 'delayMinutes', label: 'Delay minutes', type: 'number', min: 0, max: 480, table: true },
       { key: 'delayReason', label: 'Main delay reason', type: 'select', options: DELAY_REASONS, table: true, hint: 'Required before verification when delays exceed 30 minutes.' },
       { key: 'notes', label: 'Shift notes', type: 'textarea' },
@@ -216,6 +220,8 @@ const collections: CollectionDef[] = [
     title: (r) => str(r, 'description'),
     subtitle: (r) => `${label(PERMIT_TYPES, str(r, 'type'))} · ${label(LOCATIONS, str(r, 'location'))} · until ${formatDate(str(r, 'validTo'))} ${str(r, 'expiresAt')}`,
     sort: (a, b) => str(b, 'validFrom').localeCompare(str(a, 'validFrom')),
+    // Isolation and the gas test are recorded on the permit itself, at the workplace, not when it is requested.
+    createFields: ['type', 'location', 'description', 'holder', 'contractor', 'validFrom', 'validTo', 'expiresAt', 'precautions'],
     flags: (r, data, today) => {
       const f: Flag[] = [];
       if (r.status === 'active' && permitExpired(r, today)) f.push({ tone: 'red', label: 'Active past expiry' });
@@ -230,10 +236,10 @@ const collections: CollectionDef[] = [
       { key: 'location', label: 'Location', type: 'select', options: LOCATIONS, required: true, table: true },
       { key: 'description', label: 'Work to be done', type: 'text', required: true, wide: true },
       { key: 'holder', label: 'Permit holder', type: 'text', required: true, table: true },
-      { key: 'contractor', label: 'Contractor (if any)', type: 'ref', ref: 'contractors' },
+      { key: 'contractor', label: 'Contractor (if any)', type: 'ref', ref: 'contractors', hint: 'A contractor must be cleared for site (induction and medical) before approval.' },
       { key: 'validFrom', label: 'Valid from', type: 'date', required: true },
       { key: 'validTo', label: 'Valid until', type: 'date', required: true, table: true, validate: (v, all) => (all.validFrom && String(v) < String(all.validFrom) ? 'Must be on or after the start date.' : null) },
-      { key: 'expiresAt', label: 'Expires at', type: 'time', required: true },
+      { key: 'expiresAt', label: 'Expires at', type: 'time', required: true, hint: 'Time on the last day of validity, e.g. 16:00.' },
       { key: 'isolationConfirmed', label: 'Isolation & lock-out confirmed', type: 'boolean' },
       { key: 'isolationPoints', label: 'Isolation points / lock numbers', type: 'textarea' },
       { key: 'gasO2', label: 'Gas test — oxygen (%)', type: 'number', min: 0, max: 30, step: 0.1, hint: `Confined space only. Demo acceptance band ${O2_MIN}–${O2_MAX} %.` },
@@ -332,10 +338,17 @@ const collections: CollectionDef[] = [
     sort: (a, b) => (str(b, 'date') + str(b, 'time')).localeCompare(str(a, 'date') + str(a, 'time')),
     flags: (r) => (envExceedance(r) ? [{ tone: 'red', label: 'Outside demo threshold' }] : []),
     fields: [
-      { key: 'date', label: 'Date', type: 'date', required: true, table: true },
+      { key: 'date', label: 'Date', type: 'date', required: true, table: true, validate: (v) => (String(v) > todayStr() ? 'A reading cannot be dated in the future.' : null) },
       { key: 'time', label: 'Time', type: 'time' },
       { key: 'point', label: 'Monitoring point', type: 'select', options: ENV_POINTS, required: true, table: true },
-      { key: 'parameter', label: 'Parameter', type: 'select', options: ENV_PARAMS.map((p) => ({ value: p.value, label: p.unit ? `${p.label} (${p.unit})` : p.label })), required: true, table: true },
+      {
+        key: 'parameter', label: 'Parameter', type: 'select', options: ENV_PARAMS.map((p) => ({ value: p.value, label: p.unit ? `${p.label} (${p.unit})` : p.label })), required: true, table: true,
+        validate: (v, all) => {
+          const p = ENV_PARAMS.find((x) => x.value === v);
+          if (!p || !all.point || p.points.includes(String(all.point))) return null;
+          return `${p.label} is not monitored at ${label(ENV_POINTS, all.point)} in this demo. It is measured at: ${p.points.map((x) => label(ENV_POINTS, x)).join(', ')}.`;
+        },
+      },
       {
         key: 'value', label: 'Reading', type: 'number', step: 0.01, required: true, table: true,
         validate: (v, all) => {
@@ -383,14 +396,14 @@ const config: IndustryConfig = {
     { key: 'contractors', label: 'Contractors', description: 'Manage contractor records, induction and medical dates' },
   ],
   modules: [
-    { key: 'production', label: 'Shift production log', icon: IcoPickaxe, group: 'Operations', collection: 'shifts', page: ProductionLog, description: 'Tonnes hoisted per shift and section against plan, with delays. Supervisors submit; a different person verifies.' },
+    { key: 'production', label: 'Shift production log', icon: IcoPickaxe, group: 'Operations', collection: 'shifts', page: ProductionLog, detail: ShiftDetail, description: 'Tonnes hoisted per shift and section against plan, with delays. Supervisors submit; a different person verifies.' },
     { key: 'reports', label: 'Operations reports', icon: IcoChart, group: 'Operations', page: Reports, description: 'Production trend, delay reasons, incidents by category, planned vs breakdown maintenance and compliance expiries.' },
-    { key: 'incidents', label: 'Incidents & near misses', icon: IcoHelmet, group: 'Safety', collection: 'incidents', description: 'Report, investigate, agree corrective actions and close safety incidents. Tracks lost-time injuries.' },
+    { key: 'incidents', label: 'Incidents & near misses', icon: IcoHelmet, group: 'Safety', collection: 'incidents', detail: IncidentDetail, description: 'Report, investigate, agree corrective actions and close safety incidents. Tracks lost-time injuries.' },
     { key: 'permits', label: 'Permits to work', icon: IcoPermit, group: 'Safety', collection: 'permits', view: 'board', detail: PermitDetail, description: 'Hot work, confined space, working at height and electrical isolation permits. Activation needs isolation and, for confined spaces, a passing gas test.' },
-    { key: 'equipment', label: 'Equipment register', icon: IcoTruck, group: 'Assets', collection: 'equipment', detail: EquipmentDetail, description: 'LHDs, drill rigs, locos, fans and pumps with hour meters and service-due tracking.' },
-    { key: 'workorders', label: 'Maintenance work orders', icon: IcoWrench, group: 'Assets', collection: 'workorders', view: 'board', description: 'Planned services and breakdowns from raised to completed. Completing a service resets the machine’s next service.' },
-    { key: 'contractors', label: 'Contractors & induction', icon: IcoBriefcase, group: 'Compliance', collection: 'contractors', detail: ContractorDetail, description: 'Contractor induction, medical fitness and competency expiries. Expired induction or medical means not cleared for site.' },
-    { key: 'environment', label: 'Environmental monitoring', icon: IcoLeaf, group: 'Compliance', collection: 'envreadings', detail: EnvDetail, description: 'Dust, noise and water pH readings against demo thresholds (not regulatory limits). Exceedances need a review note.' },
+    { key: 'equipment', label: 'Equipment register', icon: IcoTruck, group: 'Assets', collection: 'equipment', page: EquipmentPage, detail: EquipmentDetail, description: 'LHDs, drill rigs, locos, fans and pumps with hour meters and service-due tracking.' },
+    { key: 'workorders', label: 'Maintenance work orders', icon: IcoWrench, group: 'Assets', collection: 'workorders', view: 'board', page: WorkOrdersPage, detail: WorkOrderDetail, description: 'Planned services and breakdowns from raised to completed. Completing a service resets the machine’s next service.' },
+    { key: 'contractors', label: 'Contractors & induction', icon: IcoBriefcase, group: 'Compliance', collection: 'contractors', page: ContractorsPage, detail: ContractorDetail, description: 'Contractor induction, medical fitness and competency expiries. Expired induction or medical means not cleared for site.' },
+    { key: 'environment', label: 'Environmental monitoring', icon: IcoLeaf, group: 'Compliance', collection: 'envreadings', page: EnvironmentPage, detail: EnvDetail, description: 'Dust, noise and water pH readings against demo thresholds (not regulatory limits). Exceedances need a review note.' },
   ],
   collections,
   seed: buildMiningSeed,
@@ -402,6 +415,14 @@ const config: IndustryConfig = {
     'No telemetry, SCADA, hoist, fleet-management or gas-monitoring integration — every number is typed in or invented seed data.',
     'Production figures are not reconciled to any survey, assay or plant measurement.',
     'All people, companies, fleet numbers, sections and access-card numbers are fictional.',
+  ],
+  guide: [
+    { title: 'Submit a shift', detail: 'Today’s Level 7 East day shift is open. Type the tonnes in “Shift figures”, save, then press “Submit shift”.', to: 'production/shifts_535', as: 'u_pc' },
+    { title: 'Verify a shift as someone else', detail: 'Verify a log under “Awaiting verification”. Level 7 West night is refused — 55 delay minutes, no reason. Open it and record one.', to: 'production', as: 'u_mm' },
+    { title: 'Activate a confined-space permit', detail: 'Blocked: the oxygen reading of 18.9 % failed. Record a re-test of 20.9 %, then press “Activate permit”.', to: 'permits/permits_4', as: 'u_so' },
+    { title: 'Investigate an incident', detail: 'Record the root cause and corrective actions, agree them, mark them complete — only then will the incident close.', to: 'incidents/incidents_12', as: 'u_so' },
+    { title: 'Complete an overdue service', detail: 'Start the work, enter the hour-meter reading and the work done, and complete. The loader’s next service moves on 250 hours.', to: 'workorders/workorders_13', as: 'u_mp' },
+    { title: 'Review a dust exceedance', detail: 'Above the demo threshold, so “Mark reviewed” is refused without a note. Add the follow-up note and review it.', to: 'environment/envreadings_40', as: 'u_eo' },
   ],
   highlights: [
     'Shift production log with month-to-date tonnes vs plan and verification rules',

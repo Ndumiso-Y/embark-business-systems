@@ -1,13 +1,13 @@
 import { Link } from 'react-router-dom';
 import { useBase, useData, useIndustry, useUser } from '../../../core/context';
 import { lines, num, records, str } from '../../../core/engine';
-import { addDays, formatDate, monthShort, relativeWhen } from '../../../core/lib/dates';
+import { formatDate, monthShort, relativeWhen } from '../../../core/lib/dates';
 import { formatRand } from '../../../core/lib/money';
 import { BarChart, Empty, Meters, PageHeader, Panel, Pipeline, Stat, Tag } from '../../../core/components/ui';
 import RoleBar from '../../../core/components/RoleBar';
 import { BAYS, DAY_HOURS } from '../data';
 import {
-  IN_WORKSHOP, ageDays, ageLabel, customerName, jobEstimate, hoursBy, invoiceBalance, invoiceOverdue, plannedOn, serviceDue, splitTotals, todayStr, utilisation, vehicleCustomer, vehicleLabel,
+  IN_WORKSHOP, ageDays, ageLabel, customerName, jobEstimate, hoursBy, invoiceBalance, invoiceOverdue, lastMonths, plannedOn, serviceDue, splitTotals, todayStr, utilisation, vehicleCustomer, vehicleLabel,
 } from '../helpers';
 
 export default function Dashboard() {
@@ -37,7 +37,7 @@ export default function Dashboard() {
   const bayHours = hoursBy(data, today, 'bay');
   const totalHours = Object.values(bayHours).reduce((a, b) => a + b, 0);
 
-  const months = Array.from({ length: 4 }, (_, i) => addDays(today, -30.4 * (3 - i)).slice(0, 7));
+  const months = lastMonths(today, 4);
   const chart = months.map((m) => {
     const s = invoices.filter((i) => i.status !== 'void' && str(i, 'issuedOn').startsWith(m)).map((i) => splitTotals(lines(i)));
     return { label: monthShort(m), value: s.reduce((n, x) => n + x.labour, 0) / 100, alt: s.reduce((n, x) => n + x.parts, 0) / 100 };

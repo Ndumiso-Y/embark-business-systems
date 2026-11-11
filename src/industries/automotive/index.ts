@@ -46,14 +46,14 @@ export const jobWorkflow: WorkflowDef = {
     },
     {
       from: 'checkedin', to: 'diagnosing', label: 'Start diagnosis', permission: 'jobs.work',
-      guard: ({ record }) => (!str(record, 'technician') ? 'Assign a technician first.' : !str(record, 'bay') ? 'Allocate a bay first (Planner or Edit).' : null),
+      guard: ({ record }) => (!str(record, 'technician') ? 'Assign a technician first — use “Bay & technician” on this job card.' : !str(record, 'bay') ? 'Allocate a bay first — use “Bay & technician” on this job card or the planner.' : null),
     },
     {
       from: 'diagnosing', to: 'approval', label: 'Send estimate to customer', permission: 'estimates',
       guard: ({ record, data }) => {
         const est = jobEstimate(data, record);
-        if (!est) return 'Create an estimate for this job card first.';
-        if (est.status === 'draft') return `Send estimate ${est.ref} to the customer first (Estimates).`;
+        if (!est) return 'Prepare an estimate for this job card first (Estimate panel below).';
+        if (est.status === 'draft') return `Send estimate ${est.ref} to the customer first — use “Send to customer” in the Estimate panel below. The job card then moves here automatically.`;
         if (est.status === 'approved') return `Estimate ${est.ref} is already approved — start work instead.`;
         if (est.status === 'declined') return `Estimate ${est.ref} was declined. Revise it or cancel the job card.`;
         return null;
@@ -130,6 +130,8 @@ export const estimateWorkflow: WorkflowDef = {
         api.update('estimates', record.id, { sentOn: today });
         const job = findRecord(data, 'jobs', str(record, 'job'));
         if (job) api.update('jobs', job.id, { estimate: record.id }, `Estimate ${record.ref} sent to customer (${formatRand(linesTotals(lines(record)).total)})`);
+        // The job card follows the estimate: once it is with the customer the vehicle is "Awaiting approval".
+        if (job?.status === 'diagnosing') api.transition('jobs', job.id, 'approval');
       },
     },
     {
@@ -384,7 +386,7 @@ const config: IndustryConfig = {
     { key: 'planner', label: 'Bay & technician planner', icon: IcoCalendar, group: 'Workshop', page: Planner, description: 'Today’s job cards by bay or technician, with utilisation against an 8-hour day.' },
     { key: 'parts', label: 'Parts inventory', icon: IcoBox, group: 'Workshop', collection: 'parts', description: 'Parts with cost, sell, stock on hand and reorder levels. Approved estimates allocate stock.' },
     { key: 'invoices', label: 'Invoices', icon: IcoReceipt, group: 'Admin', collection: 'invoices', detail: InvoiceDetail, description: 'Invoices raised on quality check pass. Record part and full payments; overdue after 30 days.' },
-    { key: 'reports', label: 'Workshop reports', icon: IcoChart, group: 'Admin', page: Reports, description: 'Revenue (labour vs parts), turnaround, technician productivity, comebacks and parts margin.' },
+    { key: 'reports', label: 'Workshop reports', icon: IcoChart, group: 'Admin', page: Reports, description: 'Revenue (labour vs parts), turnaround, labour hours by technician, comebacks and parts margin.' },
   ],
   collections,
   seed: buildAutomotiveSeed,
@@ -395,6 +397,14 @@ const config: IndustryConfig = {
     'No payments are processed — payment amounts are recorded by hand for the demo.',
     'Service reminders and estimate messages are previewed and logged, never sent.',
     'Not a tax-compliant invoicing or accounting system; VAT at 15% is a demo calculation.',
+  ],
+  guide: [
+    { title: 'Check a vehicle in', detail: 'Type the odometer reading in the “Check-in” panel and check the vehicle in. Try a reading below the last recorded one first — it is refused.', to: 'jobs/jobs_open_10', as: 'u_adv' },
+    { title: 'Try to start work without approval', detail: 'Press “Start work” on this job card. It is refused: the estimate is still with the customer, and no work starts without an approved estimate.', to: 'jobs/jobs_open_6', as: 'u_tech' },
+    { title: 'Record the customer’s approval', detail: 'In the Estimate panel press “Record customer approval” and say how they approved, e.g. “Approved by phone — Ms Govender”. Parts are allocated from stock and work can start.', to: 'jobs/jobs_open_6', as: 'u_adv' },
+    { title: 'Pass a quality check', detail: 'Tick the two outstanding checklist items, then “Pass quality check”. The invoice is raised automatically from the approved estimate.', to: 'jobs/jobs_open_3', as: 'u_fore' },
+    { title: 'Take payment and hand over', detail: '“Hand over to customer” is refused until the invoice is paid. Use “Record payment” in the Invoice panel, come back and hand over — the vehicle’s odometer and service history are updated.', to: 'jobs/jobs_open_1', as: 'u_adv' },
+    { title: 'Chase a service reminder', detail: 'Vehicles due by date or kilometres. Preview a reminder (nothing is sent) or press “Book” to put the vehicle on the workshop board.', to: 'reminders', as: 'u_adv' },
   ],
   highlights: [
     'Workshop board: booked → diagnosis → customer approval → work → QC → collection',

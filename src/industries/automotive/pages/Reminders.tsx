@@ -36,7 +36,7 @@ export default function Reminders() {
     const d = serviceDue(v, today);
     const first = (str(c, 'contactPerson') || str(c, 'name')).split(' ')[0];
     const why = d.by === 'km' ? `it is due by kilometres (about ${km(d.estKm)} on the clock vs ${km(num(v, 'nextServiceKm'))})` : `it was due on ${formatDate(str(v, 'nextServiceDate'))}`;
-    return `Hi ${first}, a friendly reminder from Torque Lane Auto Services: your ${str(v, 'make')} ${str(v, 'model')} (${str(v, 'reg')}) is ${d.state === 'overdue' ? 'overdue' : 'due'} for its service — ${why}. Reply with a day that suits you and we'll book it in.`;
+    return `Hi ${first}, a friendly reminder from ${config.businessName}: your ${str(v, 'make')} ${str(v, 'model')} (${str(v, 'reg')}) is ${d.state === 'overdue' ? 'overdue' : 'due'} for its service — ${why}. Reply with a day that suits you and we'll book it in.`;
   };
 
   return (
@@ -97,8 +97,8 @@ export default function Reminders() {
           onSave={(vals) => {
             const clash = planClash(data, { workDate: String(vals.workDate), startTime: String(vals.startTime ?? ''), hoursBooked: Number(vals.hoursBooked) || 0, bay: String(vals.bay ?? ''), technician: String(vals.technician ?? '') });
             if (clash) { act.toast(clash, 'err'); return; }
-            act.create('jobs', vals, 'booked', 'Booked from service reminders');
-            act.toast('Job card booked from reminder'); setBooking(null);
+            const j = act.create('jobs', vals, 'booked', 'Booked from service reminders');
+            act.toast(`Job card ${j.ref} booked from reminder — it is on the workshop board and the planner`); setBooking(null);
           }} />
       )}
     </>

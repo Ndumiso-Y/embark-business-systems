@@ -179,17 +179,21 @@ function Aside({ id }: { id: string }) {
   const pcProblem = practicalCompletionProblem(p, data);
   const fcProblem = finalCompletionProblem(p, data);
   const tasks = tasksFor(data, id);
+  // Each blocking snag is one click away from the check that names it.
+  const snagLinks = (list: typeof snags) => list.map((s, i) => (
+    <span key={s.id}>{i > 0 && '; '}{hasModule('snags') ? <Link to={`${base}/snags/${s.id}`}>{s.ref} {str(s, 'description')}</Link> : `${s.ref} ${str(s, 'description')}`}</span>
+  ));
   return (
     <>
       <Panel title="Completion checks" meta="The same rules block practical and final completion">
         <ul className="list" data-testid="completion-checks">
-          <Check ok={uncategorised.length === 0} label="Every snag categorised" detail={uncategorised.length ? uncategorised.map((s) => s.ref).join(', ') : `${snags.length} snags on the list`} />
-          <Check ok={critical.length === 0} label="No open critical snags" detail={critical.length ? critical.map((s) => `${s.ref} ${str(s, 'description')}`).join('; ') : 'None open'} />
+          <Check ok={uncategorised.length === 0} label="Every snag categorised" detail={uncategorised.length ? snagLinks(uncategorised) : `${snags.length} snags on the list`} />
+          <Check ok={critical.length === 0} label="No open critical snags" detail={critical.length ? snagLinks(critical) : 'None open'} />
           <Check ok={['practical', 'final'].includes(p.status ?? '') ? open.length === 0 : null} label="Snag list closed (final completion)" detail={`${open.length} open or awaiting verification`} />
           <Check ok={['practical', 'final'].includes(p.status ?? '') ? p.values.retentionReleaseCert === true : null} label="Retention release certificate (demo)" detail={p.values.retentionReleaseCert === true ? 'Recorded' : 'Not recorded'} />
         </ul>
         <div style={{ marginTop: 10 }}>
-          {p.status === 'onsite' && <Notice tone={pcProblem ? 'amber' : 'accent'}>{pcProblem ?? 'Ready for practical completion.'}</Notice>}
+          {p.status === 'onsite' && <Notice tone={pcProblem ? 'amber' : 'accent'}>{pcProblem ? `${pcProblem} Open the snag above to fix it.` : 'Ready for practical completion — use “Certify practical completion” in the workflow panel.'}</Notice>}
           {p.status === 'practical' && <Notice tone={fcProblem ? 'amber' : 'accent'}>{fcProblem ?? 'Ready for final completion.'}</Notice>}
         </div>
         {p.status === 'practical' && can('projects.manage') && p.values.retentionReleaseCert !== true && (

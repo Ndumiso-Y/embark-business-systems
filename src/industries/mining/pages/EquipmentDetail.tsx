@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useActions, useBase, useData, useUser } from '../../../core/context';
 import { findRecord, num, records, str } from '../../../core/engine';
 import { formatDate } from '../../../core/lib/dates';
@@ -61,7 +61,9 @@ function Service({ id }: { id: string }) {
 function Aside({ id }: { id: string }) {
   const data = useData();
   const act = useActions();
-  const { can } = useUser();
+  const { can, hasModule } = useUser();
+  const base = useBase();
+  const navigate = useNavigate();
   const e = findRecord(data, 'equipment', id)!;
   const [reading, setReading] = useState('');
   const [err, setErr] = useState('');
@@ -90,7 +92,12 @@ function Aside({ id }: { id: string }) {
         <RecordFormModal def={act.def('workorders')} open title={`Raise work order — ${str(e, 'fleetNo')}`}
           initial={{ equipment: e.id, type: serviceState(e) === 'ok' ? 'breakdown' : 'planned', priority: 'routine', raisedOn: todayStr(), title: serviceState(e) === 'ok' ? '' : `${num(e, 'serviceInterval')} h service` }}
           onClose={() => setRaising(false)}
-          onSave={(v) => { const r = act.create('workorders', v, 'raised', 'Work order raised from equipment register'); act.toast(`Work order ${r.ref} raised`); setRaising(false); }} />
+          onSave={(v) => {
+            const r = act.create('workorders', v, 'raised', 'Work order raised from equipment register');
+            act.toast(`Work order ${r.ref} raised — plan and assign it next`);
+            setRaising(false);
+            if (hasModule('workorders')) navigate(`${base}/workorders/${r.id}`);
+          }} />
       )}
     </>
   );

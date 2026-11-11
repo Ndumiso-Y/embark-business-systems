@@ -4,13 +4,14 @@ import type { DemoRecord } from '../../../core/types';
 import { useActions, useBase, useData, useIndustry, useUser } from '../../../core/context';
 import { num, records, str } from '../../../core/engine';
 import { addDays, formatDate } from '../../../core/lib/dates';
-import { Empty, Meters, PageHeader, Panel, Segmented, Stat } from '../../../core/components/ui';
+import { Empty, Meters, Notice, PageHeader, Panel, Segmented, Stat } from '../../../core/components/ui';
 import { RecordFormModal } from '../../../core/components/fields';
 import { RecordTable, WorkflowActions } from '../../../core/components/records';
 import { IcoPlus } from '../../../core/components/Icons';
-import { DELAY_REASONS, SECTIONS, SHIFT_TARGETS, label } from '../data';
+import { DELAY_REASONS, SECTIONS, SHIFT_TARGETS, SUPERVISORS, label } from '../data';
 import { productionOn, productionToDate, sectionsToDate, todayStr } from '../helpers';
-import { pctTone, tonnes } from './format';
+import { pctTone, shortDate, tonnes } from './format';
+import { holders } from '../helpers';
 
 export default function ProductionLog() {
   const config = useIndustry();
@@ -18,7 +19,7 @@ export default function ProductionLog() {
   const base = useBase();
   const act = useActions();
   const navigate = useNavigate();
-  const { can } = useUser();
+  const { user, can } = useUser();
   const today = todayStr();
   const def = act.def('shifts');
   const [scope, setScope] = useState<'week' | 'month' | 'all'>('week');
@@ -31,6 +32,10 @@ export default function ProductionLog() {
   const awaiting = shifts.filter((s) => s.status === 'submitted').sort(def.sort);
   const days = Array.from({ length: 7 }, (_, i) => addDays(today, -i));
   const cell = (date: string, section: string, shift: string) => shifts.find((s) => str(s, 'date') === date && str(s, 'section') === section && str(s, 'shift') === shift);
+
+  // "Log a shift" starts on the first section/shift of today that has no log yet, so the default is never a duplicate.
+  const free = (['day', 'night'] as const).flatMap((sh) => SECTIONS.map((sec) => ({ shift: sh, section: sec.value }))).find((c) => !cell(today, c.section, c.shift)) ?? { shift: 'day' as const, section: 'l7e' };
+  const supervisor = SUPERVISORS.find((x) => x.label === user.name)?.value ?? '';
 
   const rows = useMemo(() => {
     const from = scope === 'week' ? addDays(today, -6) : scope === 'month' ? `${today.slice(0, 7)}-01` : '';
@@ -57,12 +62,12 @@ export default function ProductionLog() {
           <div className="table-wrap">
             <table className="table" data-testid="shift-board">
               <thead>
-                <tr><th>Date</th>{SECTIONS.map((s) => <th key={s.value} className="num" colSpan={2}>{s.label}<small>Day · Night</small></th>)}</tr>
+                <tr><th>Date</th>{SECTIONS.map((s) => <th key={s.value} colSpan={2} style={{ textAlign: 'center', whiteSpace: 'normal' }}>{s.label}<br />Day · Night</th>)}</tr>
               </thead>
               <tbody>
                 {days.map((d) => (
                   <tr key={d}>
-                    <td><strong>{formatDate(d)}</strong>{d === today && <small>Today</small>}</td>
+                    <td style={{ whiteSpace: 'nowrap' }}><strong>{shortDate(d)}</strong>{d === today && <small>Today</small>}</td>
                     {SECTIONS.flatMap((s) => (['day', 'night'] as const).map((sh) => {
                       const r = cell(d, s.value, sh);
                       if (!r) return <td key={s.value + sh} className="num"><small>—</small></td>;
@@ -70,7 +75,8 @@ export default function ProductionLog() {
                       return (
                         <td key={s.value + sh} className="num">
                           <Link to={`${base}/production/${r.id}`}>{num(r, 'tonnesHoisted')}</Link>
-                          <small><span className={`dot ${r.status === 'open' ? 'dark' : pctTone(pct)}`} />{pct}%{r.status !== 'verified' ? ` · ${r.status}` : ''}</small>
+                          <small style={{ whiteSpace: 'nowrap' }}><span className={`dot ${r.status === 'open' ? 'dark' : pctTone(pct)}`} />{pct}%</small>
+                          {r.status !== 'verified' && <small>{r.status}</small>}
                         </td>
                       );
                     }))}
@@ -98,6 +104,7 @@ export default function ProductionLog() {
                 ))}
               </ul>
             ) : <Empty title="Nothing awaiting verification" />}
+            {awaiting.length > 0 && !can('production.verify') && <div style={{ marginTop: 10 }}><Notice tone="grey">Verification is done by {holders(data, 'production.verify')}. Switch user in the top bar to try it.</Notice></div>}
           </Panel>
         </div>
       </div>
@@ -106,9 +113,11 @@ export default function ProductionLog() {
       </Panel>
       {creating && (
         <RecordFormModal def={def} open title="Log a shift"
-          initial={{ date: today, shift: 'day', section: 'l7e', targetTonnes: SHIFT_TARGETS.l7e.day, delayMinutes: 0 }}
+          initial={{ date: today, shift: free.shift, section: free.section, targetTonnes: SHIFT_TARGETS[free.section][free.shift], delayMinutes: 0, supervisor }}
           onClose={() => setCreating(false)}
           onSave={(v) => {
+            const dup = cell(String(v.date), String(v.section), String(v.shift));
+            if (dup) { act.toast(`${dup.ref} already covers that section and shift on ${formatDate(String(v.date))} — open it instead.`, 'err'); return; }
             const r = act.create('shifts', v, 'open', 'Shift log opened');
             act.toast(`Shift log ${r.ref} opened`);
             setCreating(false);

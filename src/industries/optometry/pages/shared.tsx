@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import type { DemoRecord, IndustryData } from '../../../core/types';
+import type { IndustryData } from '../../../core/types';
 import { findRecord, str } from '../../../core/engine';
 import { useBase, useUser } from '../../../core/context';
 import { formatDate } from '../../../core/lib/dates';
@@ -54,11 +54,9 @@ export function PatientCard({ data, patientId }: { data: IndustryData; patientId
       <div className="grow">
         <Link to={`${base}/patients/${p.id}`}><b>{str(p, 'firstName')} {str(p, 'lastName')}</b></Link>
         <small>{p.ref} · born {formatDate(str(p, 'dob'))} · {label(SCHEMES, str(p, 'scheme'))}</small>
-        <small>{str(p, 'phone')} · {str(p, 'email')}</small>
+        <small>{[str(p, 'phone'), str(p, 'email')].filter(Boolean).join(' · ')}</small>
         {can('clinical.view') && str(p, 'medicalNotes') && <small className="med">Medical: {str(p, 'medicalNotes')}</small>}
       </div>
     </div>
   );
 }
-
-export const byDateTime = (a: DemoRecord, b: DemoRecord) => (str(a, 'date') + str(a, 'time')).localeCompare(str(b, 'date') + str(b, 'time'));

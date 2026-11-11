@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useActions, useBase, useData, useIndustry, useUser } from '../../../core/context';
-import { findRecord, str } from '../../../core/engine';
+import { findRecord, records, str } from '../../../core/engine';
 import { addDays, formatDate } from '../../../core/lib/dates';
 import { Panel } from '../../../core/components/ui';
 import { RecordDetail } from '../../../core/components/records';
@@ -32,6 +32,7 @@ function RxPanel({ id }: { id: string }) {
   const [ordering, setOrdering] = useState(false);
   const rx = findRecord(data, 'prescriptions', id)!;
   const expired = str(rx, 'expiry') < todayStr();
+  const orders = records(data, 'orders').filter((o) => str(o, 'prescription') === rx.id && o.status !== 'cancelled');
   return (
     <Panel title="Prescription" meta={`Valid until ${formatDate(str(rx, 'expiry'))}`}
       right={<>
@@ -43,6 +44,9 @@ function RxPanel({ id }: { id: string }) {
         <p className="muted-note" style={{ marginBottom: 10 }}>{patientName(data, rx.values.patient)} · issued {formatDate(str(rx, 'date'))} by {label(OPTOMETRISTS, str(rx, 'practitioner'))}</p>
         <RxCard values={rx.values} caption={expired ? 'Expired — re-examination needed before ordering' : undefined} />
       </div>
+      {rx.status === 'issued' && !expired && (orders.length > 0
+        ? <p className="muted-note" style={{ marginTop: 10 }} data-testid="rx-orders">Optical order{orders.length === 1 ? '' : 's'} from this prescription: {orders.map((o, i) => <span key={o.id}>{i > 0 && ', '}{hasModule('orders') ? <Link to={`${base}/orders/${o.id}`}>{o.ref}</Link> : o.ref}</span>)}.</p>
+        : !(can('dispense') && hasModule('orders')) && <p className="muted-note" style={{ marginTop: 10 }} data-testid="rx-next">Next step: dispensing starts the optical order from this prescription. Switch to the optical dispenser in the top bar and “Start optical order” appears here.</p>)}
       {ordering && (
         <RecordFormModal def={act.def('orders')} open title="New optical order" onClose={() => setOrdering(false)}
           initial={{ patient: rx.values.patient, prescription: rx.id, kind: rx.values.rxType === 'cl' ? 'cl' : 'spectacles', pd: rx.values.pd, lens: rx.values.rxType === 'multifocal' ? 'mf-std' : 'sv-std', lab: 'clearpoint', promised: addDays(todayStr(), 7), funding: 'scheme', deposit: 0,

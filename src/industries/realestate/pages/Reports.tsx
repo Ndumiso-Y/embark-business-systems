@@ -4,7 +4,7 @@ import { num, records, str } from '../../../core/engine';
 import { addDays, formatDate, monthShort } from '../../../core/lib/dates';
 import { toCents } from '../../../core/lib/money';
 import { BarChart, Empty, Meters, Notice, PageHeader, Panel, Stat } from '../../../core/components/ui';
-import { RecordTable } from '../../../core/components/records';
+import { RecordTable, WorkflowActions } from '../../../core/components/records';
 import { DEFAULT_AGENT_SPLIT } from '../data';
 import { commissionOn, commissionSplit, daysOnMarket, listingOf, rand, randOf, todayStr } from '../helpers';
 
@@ -34,7 +34,8 @@ export default function Reports() {
   const sold = listings.filter((l) => l.status === 'sold');
   const expected = sold.reduce((n, l) => n + commissionOn(l, num(l, 'soldPrice') || num(l, 'askingPrice')), 0);
   const earned = commissions.reduce((n, c) => n + commissionSplit(c).gross, 0);
-  const payable = commissions.filter((c) => c.status === 'payable').reduce((n, c) => n + commissionSplit(c).gross, 0);
+  const payableRows = commissions.filter((c) => c.status === 'payable').sort(comDef.sort);
+  const payable = payableRows.reduce((n, c) => n + commissionSplit(c).gross, 0);
   const perAgent = agents.map((a) => {
     const mine = commissions.filter((c) => str(c, 'agent') === a.id);
     const split = mine.reduce((acc, c) => { const s = commissionSplit(c); return { gross: acc.gross + s.gross, agent: acc.agent + s.agent, company: acc.company + s.company }; }, { gross: 0, agent: 0, company: 0 });
@@ -87,6 +88,27 @@ export default function Reports() {
       </div>
       <div className="section-gap" />
       {!seeMoney && <Notice tone="grey">Commission amounts are hidden for your simulated role (needs commission.view).</Notice>}
+      {seeMoney && (
+        <Panel title="Commission payable" meta="Created automatically when a transfer is registered · “Mark paid” is a status only — no payment is made">
+          {payableRows.length ? (
+            <ul className="list" data-testid="commission-payable">
+              {payableRows.map((c) => {
+                const sp = commissionSplit(c);
+                return (
+                  <li key={c.id} style={{ flexWrap: 'wrap' }}>
+                    <div className="grow" style={{ minWidth: 200 }}>
+                      <Link to={`${base}/commission/${c.id}`}><b>{comDef.title(c, data)}</b></Link>
+                      <small>{c.ref} · {str(agents.find((a) => a.id === str(c, 'agent')), 'name') || 'Unassigned'} · registered {formatDate(str(c, 'registeredOn'))}</small>
+                      <small>{rand(sp.gross)} excl. VAT · agent {rand(sp.agent)} ({sp.agentPct}%) · company {rand(sp.company)}</small>
+                    </div>
+                    {can('commission.pay') ? <WorkflowActions def={comDef} record={c} compact /> : <span className="muted-note">Paid out by the bookkeeper</span>}
+                  </li>
+                );
+              })}
+            </ul>
+          ) : <Empty title="No commission waiting to be paid" body="Register a transfer on the Transfers board and its commission appears here." />}
+        </Panel>
+      )}
       <div className="grid-2">
         <Panel title="Pipeline value by stage" meta="Asking price per stage; selling price once sold">
           <Meters format={(n) => rand(n)} items={pipeline} />

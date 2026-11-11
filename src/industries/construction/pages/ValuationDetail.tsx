@@ -7,14 +7,15 @@ import { toCents } from '../../../core/lib/money';
 import { Field, Notice, Panel, StatusTag } from '../../../core/components/ui';
 import { RecordDetail } from '../../../core/components/records';
 import { RETENTION_CAP_PCT, VAT_RATE } from '../data';
-import { approvedVariations, projectOf, rand, valuationFigures, valuationsFor } from '../helpers';
+import { approvedVariations, holders, projectOf, rand, valuationFigures, valuationsFor } from '../helpers';
+import { roundCents } from '../../../core/lib/money';
 
 export default function ValuationDetail() {
   const { id } = useParams();
   const data = useData();
   const v = findRecord(data, 'valuations', id);
   return (
-    <RecordDetail aside={v ? <Aside id={v.id} /> : undefined}>
+    <RecordDetail aside={v ? <Aside key={`${v.id}-${v.status}`} id={v.id} /> : undefined}>
       {v && <Calculation id={v.id} />}
     </RecordDetail>
   );
@@ -48,6 +49,19 @@ function Calculation({ id }: { id: string }) {
       {v.status === 'draft' && Math.abs(num(v, 'variationsToDate') - approved) > 0.005 && (
         <div style={{ marginTop: 10 }}><Notice tone="amber">Approved variations on the project now total {rand(toCents(approved))}; this valuation includes {rand(toCents(num(v, 'variationsToDate')))}. Edit the valuation to update it.</Notice></div>
       )}
+      {['certified', 'paid'].includes(v.status ?? '') && str(v, 'certifiedAmount') !== '' && (() => {
+        const cert = toCents(num(v, 'certifiedAmount'));
+        const sub = toCents(num(v, 'submittedAmount'));
+        const vat = roundCents((cert * VAT_RATE) / 100);
+        return (
+          <div className="totals" style={{ marginTop: 14 }} data-testid="certificate-totals">
+            <Row label={`Certified on ${str(v, 'certificateRef') || 'certificate'} (excl. VAT)`} value={rand(cert)} strong />
+            {sub > cert && <Row label="Certified less than claimed by" value={rand(sub - cert)} />}
+            <Row label={`VAT ${VAT_RATE}% on the certified amount`} value={rand(vat)} />
+            <div className="grand"><span>{v.status === 'paid' ? 'Paid incl. VAT' : 'Payment due incl. VAT'}</span><b>{rand(cert + vat)}</b></div>
+          </div>
+        );
+      })()}
       {str(v, 'submittedAmount') !== '' && Math.abs(num(v, 'submittedAmount') * 100 - f.amountDue) > 1 && v.status !== 'draft' && (
         <p className="muted-note" style={{ marginTop: 10 }}>Submitted as {rand(toCents(num(v, 'submittedAmount')))} — the live figure differs because earlier certificates or project values changed since.</p>
       )}
@@ -85,6 +99,7 @@ function Aside({ id }: { id: string }) {
   return (
     <>
       {v.status === 'submitted' && can('valuations') && (
+        <div data-testid="certificate-panel">
         <Panel title="Record payment certificate" meta="Typed from the (fictional) certificate — cannot exceed the amount submitted">
           <Field label="Certified amount, excl. VAT (R)" error={err || undefined} hint={`Submitted: ${rand(toCents(num(v, 'submittedAmount')))}`}>
             <input className="input num" type="number" step="0.01" aria-label="Certified amount" value={amount} onChange={(e) => setAmount(e.target.value)} />
@@ -96,7 +111,9 @@ function Aside({ id }: { id: string }) {
           </div>
           <button className="btn sm primary" style={{ marginTop: 10 }} onClick={certify} data-testid="record-certificate">Record certificate</button>
         </Panel>
+        </div>
       )}
+      {v.status !== 'paid' && !can('valuations') && <Notice tone="grey">Valuations are prepared, certified and marked paid by {holders(data, 'valuations')}. Switch user in the top bar to try it.</Notice>}
       <Panel title="Other valuations on this project">
         {others.length ? (
           <ul className="list">

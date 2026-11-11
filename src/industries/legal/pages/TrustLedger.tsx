@@ -36,7 +36,8 @@ export default function TrustLedger() {
   const summary = matterIds.map((id) => ({ id, matter: findRecord(data, 'matters', id), balance: trustBalanceOf(txns, id), pending: pendingOutflowCents(data, id) }))
     .filter((x) => x.matter)
     .sort((a, b) => b.balance - a.balance);
-  const selected = params.get('matter') || summary[0]?.id || '';
+  // Default to the largest balance that still has money available to pay out.
+  const selected = params.get('matter') || (summary.find((x) => x.balance - x.pending > 0) ?? summary[0])?.id || '';
   const matter = findRecord(data, 'matters', selected);
   const rows = matter ? ledgerRows(data, selected) : [];
   const bal = matter ? trustBalance(data, selected) : 0;
@@ -50,12 +51,33 @@ export default function TrustLedger() {
   const [err, setErr] = useState('');
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
   const invoices = records(data, 'invoices').filter((i) => str(i, 'matter') === selected && invoiceOutstanding(i) > 0);
+  const feeNote = invoices.find((i) => i.id === form.invoice);
+  const business = `${config.businessName} business account`;
+  /** Switching type or fee note fills in the obvious values; everything stays editable. */
+  const setType = (type: string) => setForm((f) => ({
+    ...f, type, invoice: '',
+    payee: type === 'transfer' ? business : f.payee === business ? '' : f.payee,
+  }));
+  const pickInvoice = (invId: string) => {
+    const inv = invoices.find((i) => i.id === invId);
+    setForm((f) => ({
+      ...f, invoice: invId,
+      amount: inv ? (Math.min(invoiceOutstanding(inv), Math.max(0, bal - pend)) / 100 || invoiceOutstanding(inv) / 100).toFixed(2) : f.amount,
+      description: inv && !f.description.trim() ? `Fees per fee note ${inv.ref}` : f.description,
+    }));
+  };
+  /** Refund what is left to the client — the usual last entry before a matter can close. */
+  const refundBalance = () => setForm((f) => ({
+    ...f, type: 'payment', invoice: '', amount: ((bal - pend) / 100).toFixed(2),
+    payee: matter ? clientName(data, matter.values.client) : '', description: 'Refund of trust balance to client',
+  }));
   const capture = () => {
     const amount = Number(form.amount);
     const problem = captureProblem(data, selected, form.type, amount)
       ?? (!form.payee.trim() ? 'Enter who the money was received from or paid to.' : null)
       ?? (!form.description.trim() ? 'Enter a description.' : null)
-      ?? (form.type === 'transfer' && !form.invoice ? 'Link the transfer to the fee note it pays.' : null);
+      ?? (form.type === 'transfer' && !form.invoice ? 'Link the transfer to the fee note it pays.' : null)
+      ?? (form.type === 'transfer' && feeNote && toCents(amount) > invoiceOutstanding(feeNote) ? `That is more than the ${formatCents(invoiceOutstanding(feeNote))} outstanding on fee note ${feeNote.ref}.` : null);
     if (problem) { setErr(problem); return; }
     const r = act.create('trust', { matter: selected, type: form.type, amount: Math.round(amount * 100) / 100, date: form.date || today, payee: form.payee.trim(), invoice: form.invoice, bankRef: form.bankRef.trim(), description: form.description.trim() }, 'captured', 'Trust transaction captured');
     act.toast(`${r.ref} captured — awaiting partner approval (simulated)`);
@@ -71,7 +93,7 @@ export default function TrustLedger() {
         <Stat label="Held in trust (simulated)" value={formatCents(totalHeld)} sub={`${summary.filter((s) => s.balance > 0).length} matters with a balance`} />
         <Stat label="Awaiting approval" value={awaiting.length} tone={awaiting.length ? 'red' : undefined} sub="Captured, not yet approved" />
         <Stat label={matter ? `${matter.ref} balance` : 'Matter balance'} value={formatCents(bal)} tone="accent" sub="Approved transactions only" />
-        <Stat label="Available to pay" value={formatCents(bal - pend)} sub={`After ${formatCents(pend)} pending payments`} />
+        <Stat label="Available to pay" value={formatCents(Math.max(0, bal - pend))} tone={pend > bal ? 'red' : undefined} sub={pend > bal ? `Pending payments of ${formatCents(pend)} exceed the balance` : `After ${formatCents(pend)} pending payments`} />
       </div>
       <div className="section-gap" />
       <div className="grid-2">
@@ -108,18 +130,18 @@ export default function TrustLedger() {
           {can('trust.record') && matter ? (
             <form className="stack" onSubmit={(e) => { e.preventDefault(); capture(); }} noValidate>
               <Field label="Transaction">
-                <select className="select" aria-label="Transaction type" value={form.type} onChange={(e) => set('type', e.target.value)}>
+                <select className="select" aria-label="Transaction type" value={form.type} onChange={(e) => setType(e.target.value)}>
                   {TRUST_TYPES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </Field>
-              <Field label="Amount (R)" hint={isOutflow(form.type) ? `Available: ${formatCents(bal - pend)}` : undefined}>
+              <Field label="Amount (R)" hint={isOutflow(form.type) ? `Available: ${formatCents(Math.max(0, bal - pend))}` : undefined}>
                 <input className="input num" type="number" min={0} step={0.01} aria-label="Amount" value={form.amount} onChange={(e) => set('amount', e.target.value)} data-testid="trust-amount" />
               </Field>
               <Field label="Date"><input className="input" type="date" aria-label="Date" value={form.date} onChange={(e) => set('date', e.target.value)} /></Field>
               <Field label={form.type === 'deposit' ? 'Received from' : 'Paid to'}><input className="input" aria-label="Payee" value={form.payee} onChange={(e) => set('payee', e.target.value)} /></Field>
               {form.type === 'transfer' && (
-                <Field label="Fee note paid">
-                  <select className="select" aria-label="Fee note" value={form.invoice} onChange={(e) => set('invoice', e.target.value)}>
+                <Field label="Fee note paid" hint={!invoices.length ? 'This matter has no unpaid fee note. Bill its unbilled time on the matter first.' : 'The amount is filled in from the fee note — change it for a part payment.'}>
+                  <select className="select" aria-label="Fee note" value={form.invoice} onChange={(e) => pickInvoice(e.target.value)}>
                     <option value="">Select fee note…</option>
                     {invoices.map((i) => <option key={i.id} value={i.id}>{i.ref} · outstanding {formatCents(invoiceOutstanding(i))}</option>)}
                   </select>
@@ -127,7 +149,11 @@ export default function TrustLedger() {
               )}
               <Field label="Reference (fictional)"><input className="input" aria-label="Reference" placeholder="DEMO-EFT-…" value={form.bankRef} onChange={(e) => set('bankRef', e.target.value)} /></Field>
               <Field label="Description" error={err || undefined}><textarea className="textarea" aria-label="Description" value={form.description} onChange={(e) => set('description', e.target.value)} /></Field>
-              <div className="btns"><button className="btn primary" type="submit" data-testid="capture-trust">Capture for approval</button></div>
+              <div className="btns">
+                <button className="btn primary" type="submit" data-testid="capture-trust">Capture for approval</button>
+                {bal - pend > 0 && <button className="btn" type="button" onClick={refundBalance} data-testid="refund-balance">Refund the {formatCents(bal - pend)} balance…</button>}
+              </div>
+              <p className="muted-note">{can('trust.approve') ? 'Captured entries wait in the ledger for “Approve (simulated)” — only an approved entry changes the balance.' : 'A partner approves captured entries; only then does the balance change.'}</p>
             </form>
           ) : <Notice tone="grey">{matter ? 'Your simulated role cannot capture trust transactions.' : 'Select a matter.'}</Notice>}
         </Panel>

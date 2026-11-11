@@ -214,6 +214,8 @@ export function buildConstructionSeed(today: string) {
     power: 'Load curtailment 10:00–12:30; generator on standby only for the office.', labour: 'Late transport for general workers.',
   };
   const visitorsList = ['Principal agent — fortnightly site meeting (fictional)', 'Municipal building inspector (fictional)', 'Client representative walk-through', 'External safety audit (fictional consultant)', 'Structural engineer — rebar inspection (fictional)'];
+  // The most recent working day before today (yesterday, or Saturday when today is a Monday).
+  const lastWorkDay = parseIso(day(-1)).getDay() === 0 ? 2 : 1;
   for (let d = 24; d >= 0; d--) {
     const date = day(-d);
     const dow = parseIso(date).getDay();
@@ -248,8 +250,8 @@ export function buildConstructionSeed(today: string) {
         signedBy: '',
       };
       let status = d >= 2 ? 'signed' : 'draft';
-      // Yesterday's warehouse entry records a delay with no cause — signing is blocked.
-      if (key === 'warehouse' && d === 1) { status = 'draft'; Object.assign(values, { weather: 'fine', delayHours: 3, delayCause: '', delayNotes: 'Waited for crane — see note from foreman.', workDone: 'Office block ceilings; racking zone fire pipework.' }); }
+      // The last working day's warehouse entry records a delay with no cause — signing is blocked (on any day of the week).
+      if (key === 'warehouse' && d === lastWorkDay) { status = 'draft'; Object.assign(values, { weather: 'fine', delayHours: 3, delayCause: '', delayNotes: 'Waited for crane — see note from foreman.', workDone: 'Office block ceilings; racking zone fire pipework.' }); }
       const agent = p.agent || PEOPLE.sa;
       if (status === 'signed') values.signedBy = agent;
       rec('diary', 'SD', values, {

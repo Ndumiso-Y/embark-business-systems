@@ -17,7 +17,8 @@ export default function Dashboard() {
   const config = useIndustry();
   const data = useData();
   const base = useBase();
-  const { user, hasModule } = useUser();
+  const { user, hasModule, can } = useUser();
+  const seeMoney = can('commission.view');
   const today = todayStr();
   const month = today.slice(0, 7);
   const def = (k: string) => config.collections.find((c) => c.key === k)!;
@@ -74,6 +75,8 @@ export default function Dashboard() {
         title: `${str(m, 'priority') === 'urgent' ? 'Urgent: ' : 'Owner approval needed: '}${str(m, 'title')}`, sub: `${m.ref} · ${num(m, 'quote') ? `quote ${randOf(num(m, 'quote'))}` : 'awaiting quote'}` })),
     ...records(data, 'leads').filter((l) => l.status === 'new' && daysBetween(l.createdAt.slice(0, 10), today) >= 2).slice(0, 3).map((l) => ({ key: l.id, to: `leads/${l.id}`, mod: 'leads', tone: 'amber' as Tone,
       title: `New buyer not contacted — ${str(l, 'name')}`, sub: `Budget ${randOf(num(l, 'budget'))} · ${str(l, 'suburbs') || 'any suburb'}` })),
+    ...records(data, 'commissions').filter((c) => c.status === 'payable').map((c) => ({ key: c.id, to: `commission/${c.id}`, mod: 'commission', tone: 'accent' as Tone,
+      title: `Commission payable — ${listingName(data, c.values.listing)}`, sub: `${c.ref} · ${agentName(data, c.values.agent)} · registered ${formatDate(str(c, 'registeredOn'))}` })),
   ].filter((a) => hasModule(a.mod));
 
   const listingDef = def('listings');
@@ -92,7 +95,7 @@ export default function Dashboard() {
       <div className="stat-grid">
         <Stat label="On the market" value={onMarket.length} tone="accent" sub={`${rand(onMarket.reduce((n, l) => n + toCents(num(l, 'askingPrice')), 0))} asking · ${onMarket.filter((l) => l.status === 'underoffer').length} under offer`} />
         <Stat label="Offers awaiting response" value={awaiting.length} tone={awaiting.some((o) => str(o, 'validUntil') <= addDays(today, 1)) ? 'red' : undefined} sub={`${rand(awaiting.reduce((n, o) => n + toCents(num(o, 'amount')), 0))} on the table`} />
-        <Stat label="Registering this month" value={rand(monthValue)} sub={`${plural(thisMonth.length, 'transfer')} · ${rand(monthCommission)} commission excl. VAT`} />
+        <Stat label="Registering this month" value={rand(monthValue)} sub={`${plural(thisMonth.length, 'transfer')}${seeMoney ? ` · ${rand(monthCommission)} commission excl. VAT` : ' expected at the deeds office (simulated)'}`} />
         <Stat label="Rental arrears" value={rand(arrearsTotal)} tone={arrears.length ? 'red' : undefined} sub={`${plural(arrears.length, 'lease')} · ${plural(ending.length, 'lease')} ending within 60 days`} />
       </div>
       <div className="section-gap" />
@@ -114,12 +117,13 @@ export default function Dashboard() {
           ) : <Empty title="No viewings today" />}
         </Panel>
         <div className="stack">
-          <Panel title="Needs attention" meta="FFCs, overdue registrations, bond deadlines, offers, go-live blocks, feedback, arrears, maintenance">
+          <Panel title="Needs attention" meta={`${attention.length} item${attention.length === 1 ? '' : 's'} for your role · FFCs, registrations, bond deadlines, offers, go-live blocks, feedback, arrears, maintenance`}>
             {attention.length ? (
               <ul className="list" data-testid="attention-list">
-                {attention.slice(0, 10).map((a) => (
+                {attention.slice(0, 12).map((a) => (
                   <li key={a.key}><span className={`dot ${a.tone}`} /><div className="grow"><Link to={`${base}/${a.to}`}><b>{a.title}</b></Link><small>{a.sub}</small></div></li>
                 ))}
+              {attention.length > 12 && <li><span className="muted-note">+ {attention.length - 12} more — open the module registers to see them all.</span></li>}
               </ul>
             ) : <Empty title="Nothing needs attention" />}
           </Panel>
@@ -131,7 +135,7 @@ export default function Dashboard() {
         </div>
       </div>
       <div className="grid-2">
-        <Panel title="Expected to register this month" meta={`${rand(monthValue)} in sales · ${rand(monthCommission)} commission becomes payable on registration`}>
+        <Panel title="Expected to register this month" meta={`${rand(monthValue)} in sales · ${seeMoney ? `${rand(monthCommission)} commission` : 'commission'} becomes payable on registration`}>
           {thisMonth.length ? (
             <ul className="list">
               {thisMonth.map((t) => (
@@ -139,7 +143,7 @@ export default function Dashboard() {
                   <span className="time-chip">{formatDate(str(t, 'expectedRegistration')).slice(0, 6)}</span>
                   <div className="grow">
                     {hasModule('transfers') ? <Link to={`${base}/transfers/${t.id}`}><b>{listingName(data, t.values.listing)}</b></Link> : <b>{listingName(data, t.values.listing)}</b>}
-                    <small>{randOf(num(t, 'purchasePrice'))} · commission {rand(commissionOn(listingOf(data, t), num(t, 'purchasePrice')))} · {agentName(data, listingOf(data, t)?.values.agent)}</small>
+                    <small>{randOf(num(t, 'purchasePrice'))}{seeMoney ? ` · commission ${rand(commissionOn(listingOf(data, t), num(t, 'purchasePrice')))}` : ''} · {agentName(data, listingOf(data, t)?.values.agent)}</small>
                   </div>
                   <Tag tone={t.status === 'lodged' ? 'amber' : 'dark'}>{def('transfers').workflow!.states.find((s) => s.key === t.status)?.label}</Tag>
                 </li>

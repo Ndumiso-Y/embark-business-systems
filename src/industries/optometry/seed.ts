@@ -2,6 +2,7 @@
 // is invented. Dates are relative to `today` so the demo always looks current.
 import { seeder, user } from '../../core/seed';
 import type { DemoRecord, Line, Values } from '../../core/types';
+import { addDays } from '../../core/lib/dates';
 import { LENS_OPTIONS, TARIFFS } from './data';
 
 /** Small deterministic PRNG so seeds are identical on every reset. */
@@ -235,6 +236,9 @@ export function buildOptometrySeed(today: string) {
         diagnosis: add ? 'H52.4' : 'H52.1', plan: 'Update spectacles.', referral: 'none', recallMonths: type === 'diabetic' ? '12' : '24', recallType: type === 'diabetic' ? 'diabetic' : 'annual',
       }, { status: 'final', createdDaysAgo: 0, history: [{ daysAgo: 0, by: prac === 'lk' ? 'Dr Lerato Khumalo' : 'Sipho Dlamini', role: 'Optometrist', action: 'Finalise exam & issue Rx' }] });
       pt.values.lastExam = today;
+      // Same effect as finalising in the app: the recall moves on from today's exam.
+      pt.values.recallDue = day(type === 'diabetic' ? 365 : 730);
+      pt.values.recallType = type === 'diabetic' ? 'diabetic' : 'annual';
       const exNew = collections.exams[collections.exams.length - 1];
       const prevRx = latestRx.get(pt.id);
       if (prevRx) prevRx.status = 'superseded';
@@ -264,9 +268,16 @@ export function buildOptometrySeed(today: string) {
   rec('appointments', 'AP', { patient: patients[5].id, type: 'exam', date: day(-6), time: '09:00', practitioner: 'sd', notes: '' }, { status: 'noshow', createdDaysAgo: 14 });
   rec('appointments', 'AP', { patient: patients[16].id, type: 'clfit', date: day(-3), time: '15:00', practitioner: 'lk', notes: '' }, { status: 'cancelled', createdDaysAgo: 12, history: [{ daysAgo: 12, by: 'Ayesha Patel', role: 'Front desk', action: 'Appointment created' }, { daysAgo: 4, by: 'Ayesha Patel', role: 'Front desk', action: 'Cancel', note: 'Patient travelling; will rebook.' }] });
 
+  // A recall that fell due before the patient's latest exam has been dealt with: move it on from that exam.
+  const recallDays: Record<string, number> = { cl: 182, diabetic: 365, child: 365, iop: 182, annual: 730 };
+  for (const p of patients) {
+    const last = String(p.values.lastExam ?? '');
+    if (last && String(p.values.recallDue) < last) p.values.recallDue = addDays(last, recallDays[String(p.values.recallType)] ?? 730);
+  }
+
   // Recall contact history on a couple of overdue patients.
-  patients[0].values.lastContacted = day(-12);
   patients[1].values.lastContacted = day(-30);
+  patients[12].values.lastContacted = day(-12);
 
   return { users, collections, currentUserId: 'u_owner' };
 }

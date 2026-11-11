@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { useActions, useBase, useData, useUser } from '../../../core/context';
+import { useActions, useBase, useData, useIndustry, useUser } from '../../../core/context';
 import { findRecord, lines, linesTotals, str } from '../../../core/engine';
 import { formatDate } from '../../../core/lib/dates';
 import { formatRand } from '../../../core/lib/money';
@@ -43,6 +43,7 @@ function Body({ id }: { id: string }) {
 }
 
 function Aside({ id }: { id: string }) {
+  const config = useIndustry();
   const data = useData();
   const base = useBase();
   const act = useActions();
@@ -53,7 +54,7 @@ function Aside({ id }: { id: string }) {
   const c = vehicleCustomer(data, e.values.vehicle);
   const v = findRecord(data, 'vehicles', str(e, 'vehicle'));
   const first = str(c, 'contactPerson').split(' ')[0] || str(c, 'name').split(' ')[0];
-  const msg = `Hi ${first}, this is Torque Lane Auto Services about ${str(v, 'reg')} (${str(v, 'make')} ${str(v, 'model')}). Estimate ${e.ref}: ${lines(e).map((l) => l.description).slice(0, 3).join('; ')}${lines(e).length > 3 ? '…' : ''}. Total ${formatRand(linesTotals(lines(e)).total)} incl. VAT. Please reply YES to approve or call us with any questions.`;
+  const msg = `Hi ${first}, this is ${config.businessName} about ${str(v, 'reg')} (${str(v, 'make')} ${str(v, 'model')}). Estimate ${e.ref}: ${lines(e).map((l) => l.description).slice(0, 3).join('; ')}${lines(e).length > 3 ? '…' : ''}. Total ${formatRand(linesTotals(lines(e)).total)} incl. VAT. Please reply YES to approve or call us with any questions.`;
   return (
     <>
       <Panel title="Vehicle & customer"><VehicleCard data={data} vehicleId={e.values.vehicle} /></Panel>

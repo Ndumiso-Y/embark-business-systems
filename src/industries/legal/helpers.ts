@@ -107,7 +107,7 @@ export const trustAvailable = (data: IndustryData, matterId: string) => trustBal
 export function outflowProblem(balanceCents: number, amountRand: number): string | null {
   const amount = toCents(amountRand);
   if (!(amount > 0)) return 'Enter an amount greater than zero.';
-  if (amount > balanceCents) return `This would overdraw the matter's trust balance (${formatCents(balanceCents)} available). Trust money for one client may never be used for another.`;
+  if (amount > balanceCents) return `This would overdraw the matter's trust balance (${formatCents(Math.max(0, balanceCents))} available). Trust money for one client may never be used for another.`;
   return null;
 }
 
@@ -185,27 +185,27 @@ export function engagementProblem(data: IndustryData, matterId: string): string 
   if (s === 'conflict') return 'A conflict was confirmed for this matter. Decline it instead.';
   if (s === 'pending') {
     const c = conflictChecks(data, matterId).find((x) => x.status === 'pending');
-    return `Conflict check ${c?.ref ?? ''} has not been cleared by someone holding the conflicts.clear permission.`;
+    return `Conflict check ${c?.ref ?? ''} is recorded but has not been cleared by a partner yet (Conflict checks → Clear for engagement).`;
   }
-  return 'No conflict check has been recorded for this matter. Run one on the Conflict checks page.';
+  return 'No conflict check has been recorded for this matter. Search the parties and record the outcome on the Conflict checks page.';
 }
 
 /* ---------------- Matter lifecycle rules ---------------- */
 export function activationProblems(r: DemoRecord): string[] {
   const out: string[] = [];
-  if (r.values.engagementSigned !== true) out.push('The engagement letter has not been signed (Edit → Engagement letter signed).');
-  if (r.values.ficaVerified !== true) out.push('FICA documents have not been confirmed for this matter (Edit → FICA verified).');
+  if (r.values.engagementSigned !== true) out.push('The engagement letter has not been signed — tick it off in the Engagement checklist on the matter.');
+  if (r.values.ficaVerified !== true) out.push('FICA documents have not been confirmed for this matter — tick it off in the Engagement checklist on the matter.');
   return out;
 }
 
 export function closeProblems(r: DemoRecord, data: IndustryData): string[] {
   const out: string[] = [];
   const bal = trustBalance(data, r.id);
-  if (bal !== 0) out.push(`Trust balance must be R0.00 before closing — ${formatCents(bal)} is still held. Pay out or refund it first.`);
+  if (bal !== 0) out.push(`Trust balance must be R0.00 before closing — ${formatCents(bal)} is still held. Pay it out or refund it on the trust ledger first.`);
   const pend = records(data, 'trust').filter((t) => str(t, 'matter') === r.id && t.status === 'captured');
   if (pend.length) out.push(`${pend.length} trust transaction(s) await approval or rejection.`);
   const wip = unbilledEntries(data, r.id);
-  if (wip.length) out.push(`${wip.length} unbilled time entr${wip.length === 1 ? 'y' : 'ies'} (${formatCents(wip.reduce((n, t) => n + timeValue(t), 0))}) must be billed or written off.`);
+  if (wip.length) out.push(`${wip.length} unbilled time entr${wip.length === 1 ? 'y' : 'ies'} (${formatCents(wip.reduce((n, t) => n + timeValue(t), 0))}) must be billed (“Bill unbilled time” on the matter) or written off.`);
   return out;
 }
 

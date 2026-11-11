@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { useActions, useData, useUser } from '../../../core/context';
+import { useActions, useData, useIndustry, useUser } from '../../../core/context';
 import { findRecord, lines, linesTotals, num, str } from '../../../core/engine';
 import { formatDate } from '../../../core/lib/dates';
 import { toCents } from '../../../core/lib/money';
@@ -21,12 +21,13 @@ export default function InvoiceDetail() {
 }
 
 function FeeNote({ id }: { id: string }) {
+  const config = useIndustry();
   const data = useData();
   const inv = findRecord(data, 'invoices', id)!;
   const matter = findRecord(data, 'matters', str(inv, 'matter'));
   const t = linesTotals(lines(inv), VAT_RATE);
   return (
-    <Panel title="Fee note" meta="Mahlaba & Rossouw Attorneys (fictional) · VAT 15% (demo)">
+    <Panel title="Fee note" meta={`${config.businessName} (fictional) · VAT 15% (demo)`}>
       <KeyValues items={[
         { label: 'Client', value: clientName(data, matter?.values.client) },
         { label: 'Matter', value: <MatterLink data={data} id={str(inv, 'matter')} /> },

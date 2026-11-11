@@ -4,7 +4,7 @@ import { addDays, monthShort } from '../../../core/lib/dates';
 import { formatRand } from '../../../core/lib/money';
 import { BarChart, Empty, Meters, PageHeader, Panel, Stat } from '../../../core/components/ui';
 import { BAYS, BRANDS, label } from '../data';
-import { calibrationState, claimOpen, isTyreLine, jobMinutes, minText, todayStr } from '../helpers';
+import { calibrationState, claimOpen, isTyreLine, jobMinutes, lastMonths, minText, todayStr } from '../helpers';
 
 export default function Reports() {
   const config = useIndustry();
@@ -56,7 +56,7 @@ export default function Reports() {
 
   // Fleet vs retail revenue by month.
   const isFleet = (custId: string) => str(findRecord(data, 'customers', custId), 'kind') === 'fleet';
-  const months = Array.from({ length: 4 }, (_, i) => addDays(today, -30.4 * (3 - i)).slice(0, 7));
+  const months = lastMonths(today, 4);
   const revenue = months.map((m) => {
     const inM = records(data, 'invoices').filter((i) => i.status !== 'void' && str(i, 'issuedOn').startsWith(m));
     const net = (f: boolean) => inM.filter((i) => isFleet(str(i, 'customer')) === f).reduce((n, i) => n + linesTotals(lines(i)).net, 0) / 100;

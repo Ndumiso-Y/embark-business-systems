@@ -2,7 +2,7 @@
 // Kept free of page imports so index.ts and pages/*.tsx can both use them
 // without circular imports.
 import type { DemoRecord, DemoUser, IndustryData } from '../../core/types';
-import { findRecord, num, records, str } from '../../core/engine';
+import { can, findRecord, num, records, str } from '../../core/engine';
 import { daysBetween, dueState, formatDate } from '../../core/lib/dates';
 import { ENV_PARAMS, O2_MAX, O2_MIN, SECTIONS, withUnit } from './data';
 
@@ -89,10 +89,11 @@ export function incidentActionsProblem(record: DemoRecord): string | null {
 export function incidentCloseProblem(record: DemoRecord, today: string): string | null {
   if (!str(record, 'correctiveActions').trim()) return 'Describe the corrective actions before closing.';
   if (record.values.lti === true && !(num(record, 'lostDays') > 0)) return 'Lost-time injuries need the number of lost days recorded before closing.';
-  const due = str(record, 'actionDue');
+  // An incident is only closed once its corrective actions are signed off as complete — including overdue ones.
   if (!record.values.actionsComplete) {
-    if (!due) return 'Set an action due date or mark the corrective actions complete.';
-    if (due > today) return `Corrective actions are due ${formatDate(due)} and not marked complete — the incident cannot be closed yet.`;
+    const due = str(record, 'actionDue');
+    const when = !due ? '' : due > today ? ` (due ${formatDate(due)})` : due < today ? ` (overdue since ${formatDate(due)})` : ' (due today)';
+    return `Corrective actions are not marked complete${when} — mark them complete before closing the incident.`;
   }
   return null;
 }
@@ -198,4 +199,12 @@ export function envReviewProblem(record: DemoRecord, note: string | undefined): 
   const ex = envExceedance(record);
   if (ex && !note?.trim()) return `Exceedance (${ex}). Add a review note describing the follow-up — use “Review with note”.`;
   return null;
+}
+
+/* ---------------- Simulated roles ---------------- */
+/** "Name (title)" of the simulated users who hold a permission — used to tell a blocked role who can do the step. */
+export function holders(data: IndustryData, permission: string, exceptUserId?: string): string {
+  const list = data.users.filter((u) => u.id !== exceptUserId && can(u, permission)).map((u) => `${u.name} (${u.title})`);
+  if (!list.length) return 'nobody yet — grant it under Users & permissions';
+  return list.length > 3 ? `${list.slice(0, 2).join(', ')} or ${list.length - 2} others` : list.join(' or ');
 }

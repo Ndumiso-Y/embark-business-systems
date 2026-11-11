@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import config, {
-  computeValuation, diarySummary, openCriticalSnags, overdueMilestones, plantCostThisMonth, plantRunningCost, previousCertified, programmeProgress,
+  computeValuation, diaryEntryFor, diarySignProblem, diarySummary, holders, openCriticalSnags, overdueMilestones, plantCostThisMonth, plantRunningCost, previousCertified, programmeProgress,
   revisedContractSum, setTodayForTests, subcontractorCompliance, taskSlip, valuationFigures,
 } from '../src/industries/construction';
 import { applyTransition, num, records, str, validateConfig } from '../src/core/engine';
@@ -26,6 +26,48 @@ afterAll(() => setTodayForTests(null));
 describe('construction configuration', () => {
   it('is internally consistent', () => {
     expect(validateConfig(config)).toEqual([]);
+  });
+
+  it('has a guide whose steps point at seeded records in the state the step describes', () => {
+    expect(config.guide).toHaveLength(6);
+    const at = (to: string) => { const [m, id] = to.split('/'); const col = config.modules.find((x) => x.key === m)!.collection!; return records(data, col).find((r) => r.id === id)!; };
+    expect(at('variations/variations_3')).toMatchObject({ status: 'submitted', values: { value: 39_800, instructionRef: 'SI-011' } });
+    expect(at('valuations/valuations_6')).toMatchObject({ status: 'draft', values: { valuationNo: 6 } });
+    expect(str(at('valuations/valuations_6'), 'project')).toBe(project('Umgeni Ridge').id);
+    expect(at('projects/projects_2')).toMatchObject({ status: 'onsite' });
+    expect(openCriticalSnags(data, 'projects_2').map((s) => s.ref)).toEqual(['SNG-0016']);
+    expect(at('procurement/requisitions_3')).toMatchObject({ status: 'approved', values: { supplier: 'protea', expectedDelivery: '' } });
+    expect(at('plant/plant_4')).toMatchObject({ values: { fleetNo: 'HP-EX-311', ownership: 'hired', state: 'idle', dailyRate: 3900 } });
+    for (const g of config.guide!) {
+      const u = user(g.as!);
+      expect(u.isSuperAdmin || u.modules.includes(g.to.split('/')[0]), `${g.title} as ${g.as}`).toBe(true);
+    }
+  });
+
+  it('seeds exactly one unsignable diary draft on the last working day, whatever the weekday', () => {
+    // Wed 11 Nov … Tue 17 Nov 2026 covers every day of the week, including a Sunday and a Monday.
+    for (let i = 0; i < 7; i++) {
+      const today = `2026-11-${11 + i}`;
+      const d = buildIndustryData(config, today);
+      const stuck = records(d, 'diary').filter((e) => e.status === 'draft' && diarySignProblem(e));
+      expect(stuck.map((e) => str(e, 'project')), today).toEqual(['projects_2']);
+      expect(str(stuck[0], 'date') < today && new Date(`${str(stuck[0], 'date')}T12:00:00`).getDay() !== 0, today).toBe(true);
+      // The records the guide points at do not move with the weekday.
+      expect(records(d, 'valuations').find((v) => v.id === 'valuations_6')).toMatchObject({ status: 'draft' });
+      expect(new Set(records(d, 'diary').map((e) => `${str(e, 'project')}|${str(e, 'date')}`)).size).toBe(records(d, 'diary').length);
+    }
+  });
+
+  it('one diary entry per site per day', () => {
+    const entry = records(data, 'diary')[0];
+    expect(diaryEntryFor(data, str(entry, 'project'), str(entry, 'date'))?.id).toBe(entry.id);
+    expect(diaryEntryFor(data, str(entry, 'project'), str(entry, 'date'), entry.id)).toBeUndefined();
+    expect(diaryEntryFor(data, str(entry, 'project'), '2026-11-08')).toBeUndefined(); // a Sunday
+  });
+
+  it('holders() names who can do a step, for roles that cannot', () => {
+    expect(holders(data, 'valuations')).toBe('Andile Khumalo (Managing director) or Lindiwe Mahlangu (Quantity surveyor)');
+    expect(holders(data, 'procurement', 'u_md')).toBe('Fatima Davids (Procurement & stores)');
   });
 
   it('seeds a realistic, deterministic contractor', () => {
@@ -131,6 +173,13 @@ describe('payment valuation maths', () => {
     expect(applyTransition(wf('valuations'), withValues(submitted, { certifiedAmount: claim }), 'certified', user('u_qs'), data, undefined, 'QS')).toMatchObject({ ok: true });
     expect(applyTransition(wf('valuations'), withValues(submitted, { certifiedAmount: claim - 5000 }), 'certified', user('u_qs'), data, undefined, 'QS')).toMatchObject({ ok: true });
     expect(applyTransition(wf('valuations'), withValues(submitted, { certifiedAmount: claim }), 'certified', user('u_sa'), data, undefined, 'Site agent')).toMatchObject({ ok: false });
+  });
+
+  it('a valuation number cannot be used twice on a project', () => {
+    const draft = records(data, 'valuations').find((v) => v.id === 'valuations_6')!;
+    const res = applyTransition(wf('valuations'), withValues(draft, { valuationNo: 3 }), 'submitted', user('u_qs'), data, undefined, 'Quantity surveyor');
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.reason).toMatch(/Valuation 3 already exists on this project \(VAL-0003\)\. The next number is 7/);
   });
 
   it('submitting stores the computed amount due', () => {

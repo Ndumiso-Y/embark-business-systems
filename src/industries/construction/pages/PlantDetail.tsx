@@ -6,7 +6,7 @@ import { toCents } from '../../../core/lib/money';
 import { DueTag, KeyValues, Notice, Panel, Tag } from '../../../core/components/ui';
 import { RecordDetail } from '../../../core/components/records';
 import { PLANT_STATES, label } from '../data';
-import { isHired, onHire, plantAlerts, plantCostThisMonth, plantHireDays, plantRunningCost, projectName, rand, todayStr } from '../helpers';
+import { holders, isHired, onHire, plantAlerts, plantCostThisMonth, plantHireDays, plantRunningCost, projectName, rand, todayStr } from '../helpers';
 
 export default function PlantDetail() {
   const { id } = useParams();
@@ -37,7 +37,7 @@ function Aside({ id }: { id: string }) {
             { label: 'Daily rate', value: rand(toCents(num(p, 'dailyRate'))) },
             { label: 'On hire from', value: formatDate(str(p, 'hireStart')) },
             { label: 'Days on hire', value: plantHireDays(p, str(p, 'hireStart'), today) },
-            { label: 'Running hire cost', value: <b>{rand(toCents(plantRunningCost(p, today)))}</b> },
+            { label: str(p, 'offHiredOn') ? 'Final hire cost' : 'Running hire cost', value: <b data-testid="hire-cost">{rand(toCents(plantRunningCost(p, today)))}</b> },
             { label: 'This month', value: rand(toCents(plantCostThisMonth(p, today))) },
             { label: 'Planned off-hire', value: str(p, 'offHireDue') ? <>{formatDate(str(p, 'offHireDue'))} {live && <DueTag state={dueState(str(p, 'offHireDue'), today, 7)} label={str(p, 'offHireDue') < today ? `${daysBetween(str(p, 'offHireDue'), today)} d overdue` : undefined} />}</> : '—' },
             { label: 'Off-hired on', value: formatDate(str(p, 'offHiredOn')) },
@@ -53,6 +53,8 @@ function Aside({ id }: { id: string }) {
             {str(p, 'state') !== 'offhired' && <button className="btn sm" onClick={() => set({ nextServiceDue: addDays(today, 90) }, `Service recorded — next due ${formatDate(addDays(today, 90))}`)}>Record service</button>}
           </div>
         )}
+        {hired && str(p, 'state') === 'offhired' && <div style={{ marginTop: 12 }}><Notice tone="accent">Off-hired {formatDate(str(p, 'offHiredOn'))} — the hire charge stopped at {rand(toCents(plantRunningCost(p, today)))}.</Notice></div>}
+        {!can('plant') && str(p, 'state') !== 'offhired' && <p className="muted-note" style={{ marginTop: 10 }}>Plant is moved, serviced and off-hired by {holders(data, 'plant')}.</p>}
         <p className="muted-note" style={{ marginTop: 10 }}>Hire cost = daily rate × calendar days on hire (demo rule; no weekend or breakdown credits).</p>
       </Panel>
     </>

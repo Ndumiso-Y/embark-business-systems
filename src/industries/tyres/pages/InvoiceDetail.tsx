@@ -69,7 +69,7 @@ function Aside({ id }: { id: string }) {
         <Panel title="Record payment" meta={`Outstanding ${formatRand(balance)} · no payment is processed`}>
           {can('invoicing') ? (
             <div className="stack" style={{ gap: 10 }}>
-              <Field label="Amount received (R)" error={err || undefined} hint={inv.status === 'onaccount' ? 'Part remittances are allowed on fleet accounts.' : 'Retail invoices are settled in full at the counter.'}>
+              <Field label="Amount received (R)" error={err || undefined} hint={inv.status === 'onaccount' ? 'Part remittances are allowed on fleet accounts.' : fleet ? 'Fleet invoices normally go on account — or take payment in full here.' : 'Retail invoices are settled in full at the counter.'}>
                 <input className="input num" type="number" min={0} step="0.01" aria-label="Payment amount" data-testid="payment-amount" value={amount} onChange={(e) => setAmount(e.target.value)} />
               </Field>
               <Field label="Method">

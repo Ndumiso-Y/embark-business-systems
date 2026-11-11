@@ -3,9 +3,9 @@ import config, {
   activationProblems, buildFeeNote, captureProblem, closeProblems, conflictStatus, deadlineWindow, hoursProblem, invoiceTotal, ledgerRows, outflowProblem,
   searchConflicts, setTodayForTests, trustBalance, trustBalanceOf, unbilledEntries, weekStart, workingDays,
 } from '../src/industries/legal';
-import { applyTransition, can, records, str, validateConfig, validateValues } from '../src/core/engine';
+import { applyTransition, can, findTransition, hasModule, records, str, validateConfig, validateValues } from '../src/core/engine';
 import { buildIndustryData } from '../src/core/seed';
-import type { DemoRecord, IndustryData } from '../src/core/types';
+import type { DemoRecord, EffectApi, IndustryData } from '../src/core/types';
 
 const TODAY = '2026-11-11';
 let data: IndustryData;
@@ -249,5 +249,64 @@ describe('privileged notes (simulated restriction)', () => {
     const visibleToBookkeeper = def('matters').fields.filter((x) => can(user('u_book'), x.permission)).map((x) => x.key);
     expect(visibleToBookkeeper).not.toContain('privilegedNotes');
     expect(visibleToBookkeeper).toContain('name');
+  });
+});
+
+describe('guided walkthrough and follow-on effects', () => {
+  const stubApi = (calls: string[], ok = true): EffectApi => ({
+    create: (c) => { calls.push(`create ${c}`); return records(data, c)[0]; },
+    update: (c, id) => { calls.push(`update ${c} ${id}`); },
+    transition: (c, id, to) => { calls.push(`transition ${c} ${id} ${to}`); return ok ? { ok: true, value: records(data, c).find((r) => r.id === id)! } : { ok: false, reason: 'no permission' }; },
+    toast: () => undefined,
+  });
+
+  it('every guide step opens a module its fictional user holds, on a record in the state the step describes', () => {
+    expect(config.guide?.length).toBe(6);
+    for (const g of config.guide ?? []) expect(hasModule(user(g.as!), g.to.split('/')[0]), g.title).toBe(true);
+    const engagement = records(data, 'matters').find((m) => m.id === config.guide![1].to.split('/')[1])!;
+    expect(engagement.status).toBe('engagement');
+    expect(activationProblems(engagement)).toHaveLength(1);
+    expect(records(data, 'matters').find((m) => m.id === config.guide![2].to.split('/')[1])!.status).toBe('active');
+    // The conflict step needs a matter held at the conflict stage with no search recorded yet.
+    expect(records(data, 'matters').some((m) => m.status === 'conflict' && conflictStatus(data, m.id) === 'none')).toBe(true);
+  });
+
+  it('clearing a conflict check moves the matter on to engagement', () => {
+    const check = records(data, 'conflicts').find((c) => c.status === 'pending')!;
+    const calls: string[] = [];
+    findTransition(wf('conflicts'), 'pending', 'cleared')!.after!({ record: check, data, api: stubApi(calls), today: TODAY, user: user('u_mp') });
+    expect(calls).toEqual([`transition matters ${str(check, 'matter')} engagement`]);
+  });
+
+  it('an approved trust transfer marks its fee note paid (or part paid)', () => {
+    const inv = records(data, 'invoices').find((i) => i.status === 'issued')!;
+    const totalRand = invoiceTotal(inv) / 100;
+    const after = findTransition(wf('trust'), 'captured', 'approved')!.after!;
+    const run = (amount: number) => {
+      const calls: string[] = [];
+      after({ record: { ...txn('t_pay', str(inv, 'matter'), 'transfer', amount, 'approved'), values: { matter: str(inv, 'matter'), type: 'transfer', amount, invoice: inv.id } }, data, api: stubApi(calls), today: TODAY, user: user('u_mp') });
+      return calls;
+    };
+    expect(run(totalRand)).toEqual([`update invoices ${inv.id}`, `transition invoices ${inv.id} paid`]);
+    expect(run(1)).toEqual([`update invoices ${inv.id}`, `transition invoices ${inv.id} partpaid`]);
+    // A deposit has no fee note to settle.
+    const calls: string[] = [];
+    after({ record: txn('t_dep', str(inv, 'matter'), 'deposit', 500), data, api: stubApi(calls), today: TODAY, user: user('u_mp') });
+    expect(calls).toEqual([]);
+  });
+
+  it('never reports a negative amount as available, and blocked steps point at on-screen controls', () => {
+    expect(outflowProblem(-9461650, 10)).toMatch(/R0\.00 available/);
+    const fresh = records(data, 'matters').find((m) => m.status === 'intake')!;
+    for (const p of activationProblems(fresh)) expect(p).toMatch(/Engagement checklist/);
+    const postpone = findTransition(wf('diary'), 'upcoming', 'postponed')!;
+    const presc = records(data, 'diary').find((d) => str(d, 'type') === 'prescription')!;
+    expect(postpone.guard!({ record: presc, data, user: user('u_mp'), note: 'x' })).toMatch(/cannot be postponed/);
+    expect(def('diary').createFields).not.toContain('newDate');
+  });
+
+  it('seed data does not hard-code the firm name (client branding replaces it at runtime)', () => {
+    const firm = config.businessName.split(' Attorneys')[0];
+    for (const t of records(data, 'trust')) expect(str(t, 'payee')).not.toContain(firm);
   });
 });

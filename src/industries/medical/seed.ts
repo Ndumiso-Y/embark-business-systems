@@ -223,6 +223,9 @@ export function buildMedicalSeed(today: string) {
       patient: p.id, visit: visit.id, date, doctor: clin, subjective: s, objective: o, assessment: a, plan: pl, icd10: icd,
       sickNoteDays: type === 'acute' && rnd() < 0.35 ? 1 + Math.floor(rnd() * 3) : 0, followUp: type === 'acute' && rnd() < 0.3 ? day(-d + 7) : '',
     }, { status: 'signed', createdDaysAgo: d, history: [{ daysAgo: d, ...by(clin), action: 'Consultation started' }, { daysAgo: d, ...by(clin), action: 'Sign consultation' }] });
+    // A chronic review in the history is also the register's last review for that condition.
+    const reg = cond ? chronicByKey.get(`${p.id}:${cond.value}`) : undefined;
+    if (cond && reg && String(reg.values.lastReview) < date) Object.assign(reg.values, { lastReview: date, nextReview: day(-d + Math.round(cond.reviewMonths * 30.4)) });
     const t = tariff(vt.tariff);
     const claimLines = [line(t.description, 1, t.price, t.code)];
     if (cond?.value === 't2dm') { const g = tariff('DEMO-LB1'); claimLines.push(line(g.description, 1, g.price, g.code)); }
@@ -239,7 +242,7 @@ export function buildMedicalSeed(today: string) {
       rec('results', 'LR', {
         patient: p.id, consult: consult.id, test, lab, requestedOn: date, requestedBy: clin, receivedOn: day(-recv), reviewedOn: day(-rev), informedOn: day(-Math.max(0, rev - 1)),
         abnormal, summary: RESULT_TEXT[test][abnormal ? 1 : 0], action: abnormal ? 'Discussed with patient; plan adjusted (demo note).' : 'Normal — no action needed.',
-      }, { status: 'informed', createdDaysAgo: d, history: [{ daysAgo: d, ...by(clin), action: 'Test requested' }, { daysAgo: recv, by: 'Lab feed (simulated)', role: 'System', action: 'Record result received' }, { daysAgo: rev, ...by(clin), action: 'Mark reviewed' }, { daysAgo: Math.max(0, rev - 1), ...by('rec'), action: 'Patient informed', note: abnormal ? 'Phoned patient, follow-up booked.' : 'SMS preview logged — not sent.' }] });
+      }, { status: 'informed', createdDaysAgo: d, history: [{ daysAgo: d, ...by(clin), action: 'Test requested' }, { daysAgo: recv, ...by('nd'), action: 'Record result received', note: 'Captured by hand from the lab report (no lab feed in the demo).' }, { daysAgo: rev, ...by(clin), action: 'Mark reviewed' }, { daysAgo: Math.max(0, rev - 1), ...by('rec'), action: 'Patient informed', note: abnormal ? 'Phoned patient, follow-up booked.' : 'SMS preview logged — not sent.' }] });
     }
   }
 
@@ -252,7 +255,7 @@ export function buildMedicalSeed(today: string) {
       abnormal, summary: status === 'requested' ? '' : RESULT_TEXT[test][abnormal ? 1 : 0], action: '',
     }, { status, createdDaysAgo: reqAgo, history: [
       { daysAgo: reqAgo, ...by(clin), action: 'Test requested' },
-      ...(recvAgo !== undefined ? [{ daysAgo: recvAgo, by: 'Lab feed (simulated)', role: 'System', action: 'Record result received' }] : []),
+      ...(recvAgo !== undefined ? [{ daysAgo: recvAgo, ...by('nd'), action: 'Record result received', note: 'Captured by hand from the lab report (no lab feed in the demo).' }] : []),
       ...(status === 'reviewed' ? [{ daysAgo: Math.max(0, (recvAgo ?? 1) - 1), ...by(clin), action: 'Mark reviewed' }] : []),
     ] });
   };

@@ -7,7 +7,7 @@ import { daysBetween, formatDate } from '../../core/lib/dates';
 import { toCents } from '../../core/lib/money';
 import { IcoCalendar, IcoChart, IcoDoc, IcoReceipt, IcoScale, IcoShield, IcoTimer, IcoUsers, IcoWallet } from '../../core/components/Icons';
 import {
-  CLIENT_KINDS, CONFLICT_OUTCOMES, COURT_DOC_TYPES, DIARY_TYPES, DOC_TYPES, FEE_BASIS, FEE_EARNER_OPTIONS, FICA_STATUS, MATTER_TYPES, TRUST_TYPES, earner, label,
+  CLIENT_KINDS, CONFLICT_OUTCOMES, COURT_DOC_TYPES, DIARY_TYPES, DOC_TYPES, FEE_BASIS, FEE_EARNERS, FEE_EARNER_OPTIONS, FICA_STATUS, MATTER_TYPES, TRUST_TYPES, earner, label,
 } from './data';
 import { buildLegalSeed } from './seed';
 import {
@@ -16,7 +16,9 @@ import {
 } from './helpers';
 export * from './helpers';
 import Dashboard from './pages/Dashboard';
+import Matters from './pages/Matters';
 import MatterDetail from './pages/MatterDetail';
+import DiaryDetail from './pages/DiaryDetail';
 import ConflictChecks from './pages/ConflictChecks';
 import ClientDetail from './pages/ClientDetail';
 import TrustLedger from './pages/TrustLedger';
@@ -67,6 +69,13 @@ const conflictWorkflow: WorkflowDef = {
         if (outcome === 'conflict') return 'A confirmed conflict cannot be cleared. Confirm the conflict and decline the matter.';
         if (outcome === 'potential' && !str(record, 'note').trim() && !note?.trim()) return 'A potential conflict can only be cleared with a note explaining why the firm may act (e.g. informed consent obtained).';
         return null;
+      },
+      // Clearing the check releases the matter: it moves on to engagement without a second click.
+      after: ({ record, data, api }) => {
+        const m = findRecord(data, 'matters', str(record, 'matter'));
+        if (m?.status !== 'conflict') return;
+        const res = api.transition('matters', m.id, 'engagement');
+        api.toast(res.ok ? `${m.ref} moved to Engagement — get the engagement letter signed and confirm FICA` : `${m.ref} can now be moved to Engagement by someone who manages matters`, 'info');
       } },
     { from: 'pending', to: 'conflict', label: 'Confirm conflict', permission: 'conflicts.clear', requiresNote: true, intent: 'danger' },
   ],
@@ -106,7 +115,9 @@ const trustWorkflow: WorkflowDef = {
         if (!inv) return;
         const paid = Math.round((num(inv, 'paid') + num(record, 'amount')) * 100) / 100;
         api.update('invoices', inv.id, { paid }, `Payment from trust ${record.ref} (simulated)`);
-        api.toast(`Fee note ${inv.ref} payment updated — record it as paid on the fee note.`, 'info');
+        const full = toCents(paid) >= invoiceTotal(inv);
+        const res = full ? api.transition('invoices', inv.id, 'paid') : inv.status === 'issued' ? api.transition('invoices', inv.id, 'partpaid') : { ok: true as const };
+        api.toast(res.ok ? `Fee note ${inv.ref} ${full ? 'is now paid in full' : 'part paid'} from trust (simulated)` : `Fee note ${inv.ref} payment updated — the bookkeeper records it as paid on the fee note`, 'info');
       } },
     { from: 'captured', to: 'rejected', label: 'Reject', permission: 'trust.approve', requiresNote: true, intent: 'danger' },
   ],
@@ -124,7 +135,7 @@ const diaryWorkflow: WorkflowDef = {
     { from: 'upcoming', to: 'postponed', label: 'Postpone', permission: 'diary', requiresNote: true,
       guard: ({ record }) => {
         if (str(record, 'type') === 'prescription') return 'A prescription date cannot be postponed. Serve process to interrupt prescription, then mark it done.';
-        if (!str(record, 'newDate')) return 'Enter the new date first (Edit → New date).';
+        if (!str(record, 'newDate')) return 'Choose the new date first — use “Postpone” on the diary entry.';
         if (str(record, 'newDate') <= str(record, 'date')) return 'The new date must be after the current date.';
         return null;
       },
@@ -144,9 +155,9 @@ const invoiceWorkflow: WorkflowDef = {
   ],
   transitions: [
     { from: 'issued', to: 'partpaid', label: 'Record part payment', permission: 'billing',
-      guard: ({ record }) => (num(record, 'paid') > 0 && toCents(num(record, 'paid')) < invoiceTotal(record) ? null : 'Enter a payment received that is less than the total first.') },
+      guard: ({ record }) => (num(record, 'paid') > 0 && toCents(num(record, 'paid')) < invoiceTotal(record) ? null : 'Record the amount received in the Payments panel on this fee note — the status updates by itself.') },
     { from: ['issued', 'partpaid'], to: 'paid', label: 'Record payment in full', permission: 'billing', intent: 'primary',
-      guard: ({ record }) => (toCents(num(record, 'paid')) >= invoiceTotal(record) ? null : `Payments received (${formatCents(toCents(num(record, 'paid')))}) are less than the total (${formatCents(invoiceTotal(record))}).`) },
+      guard: ({ record }) => (toCents(num(record, 'paid')) >= invoiceTotal(record) ? null : `Payments received (${formatCents(toCents(num(record, 'paid')))}) are less than the total (${formatCents(invoiceTotal(record))}). Record the payment in the Payments panel, or pay it by a trust transfer.`) },
   ],
 };
 
@@ -166,9 +177,9 @@ const documentWorkflow: WorkflowDef = {
     { from: 'signed', to: 'filed', label: 'Mark filed (simulated)', permission: 'diary',
       guard: ({ record }) => {
         if (!COURT_DOC_TYPES.includes(str(record, 'docType'))) return 'Only pleadings, notices and affidavits are filed at court.';
-        if (!str(record, 'filedOn')) return 'Enter the filing date first (Edit → Filed on).';
         return null;
-      } },
+      },
+      after: ({ record, api, today }) => { if (!str(record, 'filedOn')) api.update('documents', record.id, { filedOn: today }, 'Filing date recorded (simulated)'); } },
   ],
 };
 
@@ -271,7 +282,7 @@ const collections: CollectionDef[] = [
       { key: 'feeEarner', label: 'Fee earner', type: 'select', options: FEE_EARNER_OPTIONS, required: true, table: true },
       { key: 'date', label: 'Date', type: 'date', required: true, table: true },
       { key: 'hours', label: 'Hours', type: 'number', required: true, min: 0.1, max: 12, step: 0.1, table: true, hint: '0.1 h = 6 minutes. Max 12 h per entry.', validate: (v) => hoursProblem(v) },
-      { key: 'rate', label: 'Hourly rate (excl. VAT)', type: 'money', required: true, min: 0, table: true },
+      { key: 'rate', label: 'Hourly rate (excl. VAT)', type: 'money', required: true, min: 0, table: true, hint: `Demo rates: ${FEE_EARNERS.map((f) => `${f.short} R${f.rate}`).join(' · ')}.` },
       { key: 'billable', label: 'Billable', type: 'boolean' },
       { key: 'narrative', label: 'Narrative (appears on the fee note)', type: 'textarea', required: true },
       { key: 'invoice', label: 'Fee note', type: 'ref', ref: 'invoices' },
@@ -299,6 +310,7 @@ const collections: CollectionDef[] = [
     title: (r) => str(r, 'title'),
     subtitle: (r, d) => `${label(DIARY_TYPES, str(r, 'type'))} · ${formatDate(str(r, 'date'))}${str(r, 'time') ? ` ${str(r, 'time')}` : ''} · ${matterName(d, r.values.matter)}`,
     sort: (a, b) => str(a, 'date').localeCompare(str(b, 'date')),
+    createFields: ['title', 'matter', 'type', 'date', 'time', 'venue', 'feeEarner', 'notes'],
     flags: (r, _d, today) => {
       if (r.status !== 'upcoming') return [];
       const diff = daysBetween(today, str(r, 'date'));
@@ -375,7 +387,7 @@ const config: IndustryConfig = {
   ],
   permissions: [
     { key: 'matters.manage', label: 'Manage matters', description: 'Open, progress, reopen and close matters; edit matter details' },
-    { key: 'intake', label: 'Client intake', description: 'Add clients, update FICA status and record conflict searches' },
+    { key: 'intake', label: 'Client intake', description: 'Add clients, open new matters at intake, update FICA status and record conflict searches' },
     { key: 'conflicts.clear', label: 'Clear conflicts', description: 'Clear a conflict check or confirm a conflict' },
     { key: 'privileged.view', label: 'View privileged notes', description: 'See privileged matter notes (simulated restriction)' },
     { key: 'time.record', label: 'Record time', description: 'Record time entries and draft documents' },
@@ -386,14 +398,14 @@ const config: IndustryConfig = {
     { key: 'documents.approve', label: 'Partner review', description: 'Approve and sign documents, or return them for changes' },
   ],
   modules: [
-    { key: 'matters', label: 'Matters', icon: IcoScale, group: 'Matters', collection: 'matters', detail: MatterDetail, description: 'Every matter from intake, conflict check and engagement to closure. Closing needs a nil trust balance and no unbilled time.' },
+    { key: 'matters', label: 'Matters', icon: IcoScale, group: 'Matters', collection: 'matters', page: Matters, detail: MatterDetail, description: 'Every matter from intake, conflict check and engagement to closure. Closing needs a nil trust balance and no unbilled time.' },
     { key: 'conflicts', label: 'Conflict checks', icon: IcoShield, group: 'Matters', collection: 'conflicts', page: ConflictChecks, description: 'Search names across clients, opposing and other parties; record the outcome; a partner clears it before engagement.' },
     { key: 'clients', label: 'Clients', icon: IcoUsers, group: 'Matters', collection: 'clients', detail: ClientDetail, description: 'Individuals and companies with FICA document status and review dates (simulated — no verification is performed).' },
     { key: 'documents', label: 'Documents register', icon: IcoDoc, group: 'Matters', collection: 'documents', description: 'Drafts, partner review, signature and (simulated) filing, with version numbers.' },
     { key: 'time', label: 'Time & fees', icon: IcoTimer, group: 'Time & money', collection: 'time', description: 'Time entries in six-minute units with narratives and rates. Unbilled billable time is work in progress (WIP).' },
     { key: 'trust', label: 'Trust ledger', icon: IcoWallet, group: 'Time & money', collection: 'trust', page: TrustLedger, detail: TrustDetail, description: 'Simulated per-matter trust ledger: deposits, payments and fee transfers, approved by a partner. Not a compliant trust accounting system.' },
     { key: 'invoices', label: 'Fee notes', icon: IcoReceipt, group: 'Time & money', collection: 'invoices', detail: InvoiceDetail, description: 'Fee notes built from unbilled time, VAT at 15%, payments and overdue tracking.' },
-    { key: 'diary', label: 'Court diary & deadlines', icon: IcoCalendar, group: 'Practice', collection: 'diary', page: Diary, description: 'Court dates, filing deadlines, prescription dates and client meetings with overdue and seven-day warnings.' },
+    { key: 'diary', label: 'Court diary & deadlines', icon: IcoCalendar, group: 'Practice', collection: 'diary', page: Diary, detail: DiaryDetail, description: 'Court dates, filing deadlines, prescription dates and client meetings with overdue and seven-day warnings.' },
     { key: 'reports', label: 'Practice reports', icon: IcoChart, group: 'Practice', page: Reports, description: 'WIP by fee earner, utilisation against a 6-hour target, realisation, matter mix and upcoming deadlines.' },
   ],
   collections,
@@ -406,6 +418,14 @@ const config: IndustryConfig = {
     'Conflict searches only cover the fictional records in this browser.',
     'The privileged-notes restriction is simulated in the browser and is not access control.',
     'Nothing here is legal advice; prescription dates and rules shown are illustrative.',
+  ],
+  guide: [
+    { title: 'Run and clear a conflict check', detail: 'Press “Search for this matter” next to the Ndlovu purchase: the seller turns out to be a client of the firm. Record it as a potential conflict with a note, then clear it under “Awaiting clearance” — the matter moves to Engagement.', to: 'conflicts', as: 'u_mp' },
+    { title: 'Open a matter for work', detail: '“Open for work” is refused until the engagement checklist is complete. Press “Confirm FICA documents”, then “Open for work”.', to: 'matters/matters_8', as: 'u_assoc' },
+    { title: 'Record time and bill it', detail: 'Press “Record time”, save an entry in six-minute units, then “Bill unbilled time” — one click turns the unbilled entries into a VAT fee note.', to: 'matters/matters_3', as: 'u_mp' },
+    { title: 'Try to overdraw trust', detail: 'Capture a payment larger than the amount available: it is refused, because a matter’s trust balance can never go negative. Then capture a smaller one — it waits for a partner’s approval.', to: 'trust', as: 'u_book' },
+    { title: 'Postpone a court date', detail: 'Press “Postpone” on a deadline, choose the new date and give the reason. Notice the prescription date at the top: it cannot be postponed.', to: 'diary', as: 'u_sec' },
+    { title: 'See what the bookkeeper cannot see', detail: 'The bookkeeper can bill this matter and capture trust money, but the privileged notes are hidden and the workflow steps are locked (a simulated restriction).', to: 'matters/matters_1', as: 'u_book' },
   ],
   highlights: [
     'Matter intake → conflict check → engagement → active → closing, with real guards',

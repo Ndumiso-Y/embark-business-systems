@@ -22,6 +22,7 @@ function Aside() {
   const visit = findRecord(data, 'visits', id);
   if (!visit) return null;
   const consult = records(data, 'consults').find((c) => str(c, 'visit') === visit.id);
+  const claim = records(data, 'claims').find((c) => str(c, 'visit') === visit.id);
   const canStart = needsDoctor(visit) && can('clinical.record') && ['triaged', 'withdoctor'].includes(visit.status ?? '') && !consult;
   const startConsult = () => {
     const doctor = ['tm', 'rc', 'am'].includes(str(visit, 'clinician')) ? str(visit, 'clinician') : 'tm';
@@ -41,7 +42,14 @@ function Aside() {
         <Panel title="Consultation" right={consult ? <StatusTag workflow={act.def('consults').workflow} status={consult.status} /> : undefined}>
           {consult ? (hasModule('consults') ? <Link className="btn sm" to={`${base}/consults/${consult.id}`}>Open {consult.ref}</Link> : <p className="muted-note">{consult.ref}</p>)
             : canStart ? <button className="btn primary sm" onClick={startConsult} data-testid="start-consult">Start consultation</button>
-              : <p className="muted-note">A doctor starts the consultation once the patient is triaged.</p>}
+              : <p className="muted-note">{can('clinical.record') ? (visit.status === 'booked' || visit.status === 'arrived' ? '“Start consultation” appears here once the patient is checked in and triaged.' : 'No consultation was recorded for this visit.') : 'A doctor starts the consultation once the patient is triaged. Switch to a doctor in the top bar to continue.'}</p>}
+        </Panel>
+      )}
+      {(claim || visit.status === 'billing') && (
+        <Panel title="Account" right={claim ? <StatusTag workflow={act.def('claims').workflow} status={claim.status} /> : undefined}>
+          {claim
+            ? <p className="muted-note" data-testid="visit-account">{hasModule('claims') ? <Link to={`${base}/claims/${claim.id}`}><b>{claim.ref}</b></Link> : <b>{claim.ref}</b>} was drafted when the {needsDoctor(visit) ? 'consultation was signed' : 'nurse completed the visit'}. {hasModule('claims') ? 'Open it to submit the claim to the scheme.' : 'The billing administrator submits it under Billing & claims; reception checks the patient out here.'}</p>
+            : <p className="muted-note">No account yet for this visit. Billing can create one under Billing &amp; claims.</p>}
         </Panel>
       )}
       {triage && <TriageModal visit={visit} data={data} onClose={() => setTriage(false)} />}

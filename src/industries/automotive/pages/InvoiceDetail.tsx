@@ -84,7 +84,7 @@ function Aside({ id }: { id: string }) {
               <button className="btn primary sm" data-testid="record-payment" onClick={record}>Record payment</button>
               <p className="muted-note">A payment cannot exceed the outstanding balance. Less than the balance is recorded as a part payment.</p>
             </div>
-          ) : <p className="muted-note">Your simulated role cannot record payments (needs Invoicing).</p>}
+          ) : <p className="muted-note">Your simulated role cannot record payments (needs “Invoicing”). Switch to the service advisor, the parts &amp; admin clerk or the owner in the top bar.</p>}
         </Panel>
       )}
     </>

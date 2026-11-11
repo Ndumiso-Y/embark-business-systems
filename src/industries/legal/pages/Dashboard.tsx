@@ -24,6 +24,8 @@ export default function Dashboard() {
   const matters = records(data, 'matters');
   const open = matters.filter((m) => OPEN_MATTER_STATES.includes(m.status ?? ''));
   const next7 = upcomingDeadlines(data, today, 7);
+  // Same window as the court diary: today to seven days ahead. Overdue items are counted separately.
+  const dueWeek = next7.filter((d) => str(d, 'date') >= today);
   const prescriptionSoon = upcomingDeadlines(data, today, 30).filter((d) => str(d, 'type') === 'prescription');
   const awaitingConflict = matters.filter((m) => m.status === 'conflict' && conflictStatus(data, m.id) !== 'cleared');
   const wip = wipCents(data);
@@ -72,7 +74,7 @@ export default function Dashboard() {
       <div className="dash-hero">
         <div>
           <div className="hero-kicker">This week at the practice</div>
-          <h2>{next7.length} deadline{next7.length === 1 ? '' : 's'} in the next 7 days · {open.length} open matters</h2>
+          <h2>{dueWeek.length} deadline{dueWeek.length === 1 ? '' : 's'} in the next 7 days · {open.length} open matters</h2>
           <p>{prescriptionSoon.length} prescription date{prescriptionSoon.length === 1 ? '' : 's'} within 30 days, {overdueDiary.length} overdue diary item{overdueDiary.length === 1 ? '' : 's'}, {awaitingConflict.length} matter{awaitingConflict.length === 1 ? '' : 's'} waiting for conflict clearance. Trust figures are simulated.</p>
         </div>
         {hasModule('conflicts') && <Link className="btn" to={`${base}/conflicts`}>{awaitingConflict.length} awaiting conflict clearance →</Link>}
@@ -81,11 +83,11 @@ export default function Dashboard() {
         <Stat label="Unbilled WIP" value={formatCents(wip)} sub="Billable time not yet billed, excl. VAT" />
         <Stat label="Trust held (simulated)" value={formatCents(trustHeld)} tone="accent" sub={`${trustMatters.filter((id) => trustBalanceOf(trust, id) > 0).length} matters · ${trustPending.length} awaiting approval`} />
         <Stat label="Fees billed vs collected" value={formatCents(collected)} sub={`of ${formatCents(billed)} billed in 90 days (incl. VAT)`} />
-        <Stat label="Deadlines next 7 days" value={next7.length} tone={prescriptionSoon.some((d) => daysBetween(today, str(d, 'date')) <= 7) || overdueDiary.length ? 'red' : undefined} sub={`${next7.filter((d) => str(d, 'type') === 'court').length} court · ${next7.filter((d) => str(d, 'type') === 'prescription').length} prescription`} />
+        <Stat label="Deadlines next 7 days" value={dueWeek.length} tone={prescriptionSoon.some((d) => daysBetween(today, str(d, 'date')) <= 7) || overdueDiary.length ? 'red' : undefined} sub={`${dueWeek.filter((d) => str(d, 'type') === 'court').length} court · ${dueWeek.filter((d) => str(d, 'type') === 'prescription').length} prescription${overdueDiary.length ? ` · plus ${overdueDiary.length} overdue` : ''}`} />
       </div>
       <div className="section-gap" />
       <div className="grid-2">
-        <Panel title="Deadlines — next 7 days" meta="Prescription dates first, then by date · includes overdue" right={hasModule('diary') ? <Link className="btn sm" to={`${base}/diary`}>Diary</Link> : undefined}>
+        <Panel title="Deadlines — overdue and next 7 days" meta={`Prescription dates first, then by date · ${overdueDiary.length} overdue + ${dueWeek.length} due`} right={hasModule('diary') ? <Link className="btn sm" to={`${base}/diary`}>Diary</Link> : undefined}>
           {next7.length ? (
             <ul className="list" data-testid="deadline-list">
               {next7.map((d) => (

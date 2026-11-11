@@ -4,10 +4,10 @@ import type { CollectionDef, Flag, IndustryConfig, Transition, WorkflowDef } fro
 import { can, findRecord, num, records, str } from '../../core/engine';
 import { daysBetween, formatDate } from '../../core/lib/dates';
 import { IcoCalendar, IcoChart, IcoFlask, IcoHeart, IcoPill, IcoReceipt, IcoStethoscope, IcoUsers } from '../../core/components/Icons';
-import { CHRONIC_CONDITIONS, CLINICIANS, CONTROL, DOCTORS, FREQUENCIES, ICD10, LABS, MEDICINES, SCHEMES, TESTS, VISIT_TYPES, label, opt } from './data';
+import { CHRONIC_CONDITIONS, CLINICIANS, CONTROL, DOCTORS, FREQUENCIES, ICD10, LABS, MEDICINES, SCHEMES, TARIFFS, TESTS, VISIT_TYPES, label, opt } from './data';
 import { buildMedicalSeed } from './seed';
 import {
-  claimProblems, claimTotal, consultProblems, needsDoctor, nowTime, patientName, resultFlags, reviewState, scriptProblems, tariffForConsult, todayStr, triageBlock, vitalAlerts,
+  claimProblems, claimTotal, consultProblems, needsDoctor, nowTime, outstandingCents, patientName, resultFlags, reviewState, scriptProblems, tariffForConsult, todayStr, triageBlock, vitalAlerts,
 } from './helpers';
 export * from './helpers';
 import Dashboard from './pages/Dashboard';
@@ -22,6 +22,9 @@ import ChronicCare from './pages/ChronicCare';
 import ChronicDetail from './pages/ChronicDetail';
 import ClaimDetail from './pages/ClaimDetail';
 import Reports from './pages/Reports';
+
+/** Sample ICD-10 code drafted onto the account of a nurse-only visit. */
+const NURSE_ICD10: Record<string, string> = { immunisation: 'Z25.1', dressing: 'Z48.0', bpcheck: 'I10' };
 
 /* ------------------------------------------------------------------ */
 const visitWorkflow: WorkflowDef = {
@@ -50,7 +53,20 @@ const visitWorkflow: WorkflowDef = {
     { from: 'triaged', to: 'withdoctor', label: 'Call in to doctor', permission: 'clinical.record', intent: 'primary',
       guard: ({ record }) => (needsDoctor(record) || vitalAlerts(record.values).length ? null : 'Nurse-only visit. Use “Nurse visit complete”, or flag vitals for doctor review.') },
     { from: 'triaged', to: 'billing', label: 'Nurse visit complete', permission: 'triage',
-      guard: ({ record }) => (needsDoctor(record) ? 'This visit type needs a doctor consultation before billing.' : null) },
+      guard: ({ record }) => (needsDoctor(record) ? 'This visit type needs a doctor consultation before billing.' : null),
+      // No consultation to sign, so the nurse's step drafts the account (once per visit).
+      after: ({ record, data, api, today }) => {
+        if (records(data, 'claims').some((c) => str(c, 'visit') === record.id)) return;
+        const p = findRecord(data, 'patients', str(record, 'patient'));
+        const vt = VISIT_TYPES.find((t) => t.value === str(record, 'type'));
+        const t = TARIFFS.find((x) => x.code === vt?.tariff) ?? TARIFFS[0];
+        const claim = api.create('claims', {
+          patient: str(record, 'patient'), consult: '', visit: record.id, date: str(record, 'date') || today, doctor: 'nd',
+          scheme: str(p, 'scheme'), memberNo: str(p, 'memberNo'), icd10: NURSE_ICD10[str(record, 'type')] ?? '', schemePaid: 0, patientPaid: 0, submittedOn: '', notes: '',
+          lines: [{ id: `ln_${record.id}`, code: t.code, description: t.description, qty: 1, unitPrice: t.price }],
+        }, 'draft', `Draft claim from nurse visit ${record.ref}`);
+        api.toast(`Draft claim ${claim.ref} created (${t.code})`);
+      } },
     { from: 'withdoctor', to: 'billing', label: 'Send to billing', permission: 'clinical.record', intent: 'primary',
       guard: ({ record, data }) => {
         const consult = records(data, 'consults').find((c) => str(c, 'visit') === record.id);
@@ -124,7 +140,7 @@ const resultWorkflow: WorkflowDef = {
   ],
   transitions: [
     { from: 'requested', to: 'received', label: 'Record result received', permission: 'clinical.view',
-      guard: ({ record }) => (str(record, 'summary').trim() ? null : 'Capture the result summary first (Edit → Result summary). In the demo there is no lab feed.'),
+      guard: ({ record }) => (str(record, 'summary').trim() ? null : 'Capture the result first — use “Capture result” on the result’s page. In the demo there is no lab feed.'),
       after: ({ record, api, today }) => { if (!str(record, 'receivedOn')) api.update('results', record.id, { receivedOn: today }); } },
     { from: 'received', to: 'reviewed', label: 'Mark reviewed', permission: 'results.review', intent: 'primary',
       after: ({ record, api, today }) => api.update('results', record.id, { reviewedOn: today }) },
@@ -163,15 +179,18 @@ const claimWorkflow: WorkflowDef = {
   ],
   transitions: [
     { from: 'draft', to: 'submitted', label: 'Submit to scheme (simulated)', permission: 'billing', intent: 'primary',
-      guard: ({ record, data }) => claimProblems(record, data)[0] ?? null },
+      guard: ({ record, data }) => claimProblems(record, data)[0] ?? null,
+      after: ({ record, api, today }) => api.update('claims', record.id, { submittedOn: today }) },
     { from: 'submitted', to: 'paid', label: 'Record full remittance', permission: 'billing',
-      guard: ({ record }) => (num(record, 'schemePaid') * 100 >= claimTotal(record) - 1 ? null : 'Enter the scheme payment equal to the claim total first (Edit → Scheme paid).') },
+      guard: ({ record }) => (num(record, 'schemePaid') * 100 >= claimTotal(record) - 1 ? null : 'Enter what the scheme paid in “Scheme remittance” on this page first — it must cover the account total.') },
     { from: 'submitted', to: 'partpaid', label: 'Record part payment', permission: 'billing', requiresNote: true,
-      guard: ({ record }) => (num(record, 'schemePaid') > 0 && num(record, 'schemePaid') * 100 < claimTotal(record) ? null : 'Enter a scheme payment that is less than the total first.') },
+      guard: ({ record }) => (num(record, 'schemePaid') > 0 && num(record, 'schemePaid') * 100 < claimTotal(record) ? null : 'Enter what the scheme paid in “Scheme remittance” on this page first — a part payment is less than the account total.') },
     { from: 'submitted', to: 'rejected', label: 'Record rejection', permission: 'billing', requiresNote: true, intent: 'danger' },
     { from: 'rejected', to: 'draft', label: 'Correct & reopen', permission: 'billing' },
     { from: ['draft', 'rejected'], to: 'patient', label: 'Bill patient privately', permission: 'billing' },
-    { from: ['partpaid', 'patient'], to: 'settled', label: 'Patient balance settled', permission: 'billing', intent: 'primary' },
+    { from: ['partpaid', 'patient'], to: 'settled', label: 'Patient balance settled', permission: 'billing', intent: 'primary',
+      // The patient paid whatever the scheme did not, so the account balance reaches zero.
+      after: ({ record, api }) => { const due = outstandingCents(record); if (due > 0) api.update('claims', record.id, { patientPaid: num(record, 'patientPaid') + due / 100 }); } },
   ],
 };
 
@@ -400,6 +419,14 @@ const config: IndustryConfig = {
     'No laboratory, pharmacy, medical aid or switching-house integrations: results, dispensing and remittances are entered by hand.',
     'Scheme names, membership numbers, labs and tariff codes (DEMO-…) are invented. ICD-10 codes are public samples. VAT treatment is simplified.',
     'Sick notes and scripts are on-screen previews marked as demonstrations. No SMS, email or other message is sent.',
+  ],
+  guide: [
+    { title: 'Check a patient in', detail: 'On the queue board, press “Check in” on a booked patient. They move to Arrived and the clock starts on their wait.', to: 'waiting', as: 'u_rec' },
+    { title: 'Triage with vitals', detail: 'Press “Triage (vitals)” on an arrived patient and capture the observations. A raised temperature or BP is flagged for the doctor (a demo display rule, not clinical advice).', to: 'waiting', as: 'u_nurse' },
+    { title: 'Sign a consultation', detail: 'This SOAP note cannot be signed until an ICD-10 code is chosen — pick one, save and sign. Signing locks the note and drafts the claim; then send the patient to billing.', to: 'consults/consults_61', as: 'u_locum' },
+    { title: 'See the allergy block', detail: 'This draft script is for amoxicillin, but the patient’s record says penicillin allergy, so it cannot be issued. Switch to a suggested alternative and sign it.', to: 'scripts/scripts_49', as: 'u_locum' },
+    { title: 'Review an abnormal result', detail: 'Open an abnormal result from “Needs attention”, record the doctor’s action and mark it reviewed. Then record that the patient was informed.', to: 'results', as: 'u_gp' },
+    { title: 'Submit a medical aid claim', detail: 'Filter to Draft, open a claim and submit it (member number, ICD-10 and tariff codes are checked first). Then type what the scheme paid under “Scheme remittance”.', to: 'claims', as: 'u_bill' },
   ],
   highlights: [
     'Waiting room board: arrived → triaged → with doctor → billing, with a vitals triage form',

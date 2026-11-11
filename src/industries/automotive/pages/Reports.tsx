@@ -4,15 +4,15 @@ import { findRecord, lines, num, records, str } from '../../../core/engine';
 import { addDays, daysBetween, formatDate, monthShort } from '../../../core/lib/dates';
 import { formatRand } from '../../../core/lib/money';
 import { BarChart, Empty, Meters, Notice, PageHeader, Panel, Stat } from '../../../core/components/ui';
-import { DAY_HOURS, PART_CATEGORIES, TECHNICIANS, label } from '../data';
-import { isLabour, partsCost, splitTotals, todayStr, turnaroundDays, vehicleLabel } from '../helpers';
+import { PART_CATEGORIES, TECHNICIANS, label } from '../data';
+import { isLabour, lastMonths, partsCost, splitTotals, todayStr, turnaroundDays, vehicleLabel } from '../helpers';
 
 export default function Reports() {
   const config = useIndustry();
   const data = useData();
   const base = useBase();
   const today = todayStr();
-  const months = Array.from({ length: 4 }, (_, i) => addDays(today, -30.4 * (3 - i)).slice(0, 7));
+  const months = lastMonths(today, 4);
   const from = addDays(today, -91);
   const invoices = records(data, 'invoices').filter((i) => i.status !== 'void' && str(i, 'issuedOn') >= from);
   const jobs = records(data, 'jobs');
@@ -31,13 +31,19 @@ export default function Reports() {
   const sameDay = turnarounds.filter((d) => d === 0).length;
   const promisedKept = done.filter((j) => str(j, 'promisedDate') && str(j, 'readyOn') <= str(j, 'promisedDate')).length;
 
-  // Technician productivity: labour hours sold on their jobs vs hours available (working days × 8 h).
-  const workingDays = Array.from({ length: 91 }, (_, i) => addDays(today, -i)).filter((d) => new Date(`${d}T00:00:00`).getDay() % 6 !== 0).length;
-  const productivity = TECHNICIANS.map((t) => {
-    const sold = invoices.filter((i) => str(findRecord(data, 'jobs', str(i, 'job')), 'technician') === t.value).reduce((n, i) => n + splitTotals(lines(i)).hours, 0);
-    const pct = Math.round((sold / (workingDays * DAY_HOURS)) * 100);
-    return { label: t.label, value: Math.round(sold * 10) / 10, max: workingDays * DAY_HOURS, tone: pct >= 50 ? 'green' as const : 'amber' as const, sub: `${pct}% of ${workingDays * DAY_HOURS} h available · ${done.filter((j) => str(j, 'technician') === t.value).length} jobs` };
-  });
+  // Labour hours sold per technician. The demo history is a light sample (about one job a day), so the
+  // bars compare technicians with each other instead of claiming a share of an 8-hour day.
+  const soldBy = TECHNICIANS.map((t) => ({
+    t,
+    sold: invoices.filter((i) => str(findRecord(data, 'jobs', str(i, 'job')), 'technician') === t.value).reduce((n, i) => n + splitTotals(lines(i)).hours, 0),
+    jobs: done.filter((j) => str(j, 'technician') === t.value).length,
+  }));
+  const soldTotal = soldBy.reduce((n, x) => n + x.sold, 0);
+  const soldMax = Math.max(1, ...soldBy.map((x) => x.sold));
+  const productivity = soldBy.map(({ t, sold, jobs }) => ({
+    label: t.label, value: Math.round(sold * 10) / 10, max: Math.ceil(soldMax), tone: sold >= soldMax * 0.75 ? 'green' as const : 'amber' as const,
+    sub: `${jobs} jobs · ${soldTotal ? Math.round((sold / soldTotal) * 100) : 0}% of labour hours sold · ${jobs ? (Math.round((sold / jobs) * 10) / 10) : 0} h per job`,
+  }));
 
   const comebacks = jobs.filter((j) => str(j, 'jobType') === 'comeback' && str(j, 'workDate') >= from);
   const comebackRate = done.length ? Math.round((comebacks.length / done.length) * 1000) / 10 : 0;
@@ -69,7 +75,7 @@ export default function Reports() {
         <Panel title="Revenue per month" meta="Invoiced, excl. VAT · labour (accent) vs parts (dark)">
           <BarChart label="Labour and parts revenue per month" data={revenue} alt="Parts" format={(n) => rand(n)} />
         </Panel>
-        <Panel title="Technician productivity" meta="Labour hours sold vs hours available">
+        <Panel title="Labour hours sold by technician" meta="Invoiced labour hours in the last three months, compared across the team (sample history)">
           <Meters format={(n) => `${n} h`} items={productivity} />
         </Panel>
       </div>

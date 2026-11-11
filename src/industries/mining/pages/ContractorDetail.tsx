@@ -1,10 +1,11 @@
-import { useParams } from 'react-router-dom';
-import { useActions, useData, useUser } from '../../../core/context';
+import { Link, useParams } from 'react-router-dom';
+import { useActions, useBase, useData, useUser } from '../../../core/context';
 import { findRecord, records, str } from '../../../core/engine';
 import { addDays, daysBetween, formatDate } from '../../../core/lib/dates';
 import { DueTag, Notice, Panel, Tag } from '../../../core/components/ui';
 import { RecordDetail } from '../../../core/components/records';
 import { contractorClearance, contractorExpiries, todayStr } from '../helpers';
+import { holders } from '../helpers';
 
 export default function ContractorDetail() {
   const { id } = useParams();
@@ -16,7 +17,8 @@ export default function ContractorDetail() {
 function Clearance({ id }: { id: string }) {
   const data = useData();
   const act = useActions();
-  const { can } = useUser();
+  const { can, hasModule } = useUser();
+  const base = useBase();
   const today = todayStr();
   const c = findRecord(data, 'contractors', id)!;
   const clearance = contractorClearance(c, today);
@@ -37,6 +39,7 @@ function Clearance({ id }: { id: string }) {
             </li>
           ))}
         </ul>
+        {!can('contractors') && <p className="muted-note" style={{ marginTop: 10 }}>Induction and medical renewals are recorded by {holders(data, 'contractors')}.</p>}
         {can('contractors') && (
           <div className="btns" style={{ marginTop: 12 }}>
             <button className="btn sm" onClick={() => renew('inductionExpiry', 'Site induction')}>Record induction today</button>
@@ -47,7 +50,7 @@ function Clearance({ id }: { id: string }) {
       </Panel>
       {permits.length > 0 && (
         <Panel title="Open permits" meta="Permits naming this contractor">
-          <ul className="list">{permits.map((p) => <li key={p.id}><div className="grow"><b>{p.ref}</b><small>{str(p, 'description')}</small></div></li>)}</ul>
+          <ul className="list" data-testid="contractor-permits">{permits.map((p) => <li key={p.id}><div className="grow">{hasModule('permits') ? <Link to={`${base}/permits/${p.id}`}><b>{p.ref}</b></Link> : <b>{p.ref}</b>}<small>{str(p, 'description')}</small></div></li>)}</ul>
         </Panel>
       )}
     </>

@@ -147,7 +147,7 @@ export function buildTyresSeed(today: string) {
     vi: number; d: number; status: string; tech: string; bay?: string; qty?: number; stockIdx?: number; reps?: string[];
     svc?: Partial<Record<'balancing' | 'alignment' | 'puncture' | 'nitrogen' | 'rotation', boolean>>;
     arrived: number; ready?: number; treads?: Record<string, number>; torque?: boolean | Record<string, number>; full?: boolean; qc?: boolean | string[];
-    po?: boolean; channel?: string; extra?: Values; history?: Array<{ daysAgo: number; by: string; role: string; action: string; note?: string }>;
+    po?: boolean; channel?: string; extra?: Values; pin?: string; history?: Array<{ daysAgo: number; by: string; role: string; action: string; note?: string }>;
   };
 
   const wheelValues = (j: Job, v: DemoRecord): Values => {
@@ -192,6 +192,7 @@ export function buildTyresSeed(today: string) {
       status: j.status, createdDaysAgo: j.d,
       history: j.history ?? [{ daysAgo: j.d, ...STAFF.advisor, action: 'Vehicle booked in at the counter' }],
     });
+    if (j.pin) r.id = j.pin;
     if (!['arrived', 'inspected'].includes(j.status)) r.values.lines = quoteLines(r, asData(collections));
     jobs.push({ j, r });
     return r;
@@ -273,7 +274,11 @@ export function buildTyresSeed(today: string) {
 
   /* ---------- Today on the bay queue ---------- */
   const s = (size: string, brand: string) => stock.findIndex((x) => x.values.size === size && x.values.brand === brand);
-  const T = (j: Omit<Job, 'd'>) => makeJob({ d: 0, full: true, ...j });
+  // The history above varies with the weekday (closed Sundays, quieter Saturdays), so sequential ids would
+  // drift from day to day. Today's jobs get fixed ids (jobs_today_1 … in the order below) so the guided
+  // walkthrough and the journey tests always open the same job. Refs (JOB-…) stay sequential.
+  let todaySeq = 0;
+  const T = (j: Omit<Job, 'd'>) => makeJob({ d: 0, full: true, pin: `jobs_today_${++todaySeq}`, ...j });
   const advH = (action: string, note?: string): H => ({ daysAgo: 0, ...STAFF.advisor, action, note });
   const tH = (k: string, action: string, note?: string): H => ({ daysAgo: 0, ...tech(k), action, note });
   const flow = (k: string, upTo: number, extra: H[] = []): H[] => [
@@ -308,10 +313,10 @@ export function buildTyresSeed(today: string) {
     history: [...flow('md', 2), advH('Record customer decline', 'Customer declined in person — will replace next month. Advised LF/RF are close to the limit.')] });
 
   // Today's finished jobs get invoices: retail paid, fleet on account, two ready jobs still open.
-  invoiceFor(today1, jobs.find((x) => x.r === today1)!.j, 'paid', true, 'card');
-  invoiceFor(today2, jobs.find((x) => x.r === today2)!.j, 'onaccount', false, '');
-  invoiceFor(today3, jobs.find((x) => x.r === today3)!.j, 'issued', false, '');
-  invoiceFor(today4, jobs.find((x) => x.r === today4)!.j, 'issued', false, '');
+  [invoiceFor(today1, jobs.find((x) => x.r === today1)!.j, 'paid', true, 'card'),
+    invoiceFor(today2, jobs.find((x) => x.r === today2)!.j, 'onaccount', false, ''),
+    invoiceFor(today3, jobs.find((x) => x.r === today3)!.j, 'issued', false, ''),
+    invoiceFor(today4, jobs.find((x) => x.r === today4)!.j, 'issued', false, '')].forEach((inv, i) => { inv.id = `invoices_today_${i + 1}`; });
   vehicles[0].values.odometer = Number(today1.values.odometer);
   vehicles[19].values.odometer = Number(today2.values.odometer);
 

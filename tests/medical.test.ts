@@ -1,8 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import config, { allergyConflict, claimProblems, consultProblems, resultFlags, setTodayForTests, vitalAlerts, vitalsProblems } from '../src/industries/medical';
-import { applyTransition, records, str, validateConfig } from '../src/core/engine';
+import config, { allergyConflict, claimProblems, consultProblems, outstandingCents, resultFlags, setTodayForTests, vitalAlerts, vitalsProblems } from '../src/industries/medical';
+import { CHRONIC_CONDITIONS } from '../src/industries/medical/data';
+import { applyTransition, findRecord, findTransition, records, str, validateConfig } from '../src/core/engine';
 import { buildIndustryData } from '../src/core/seed';
-import type { DemoRecord, IndustryData } from '../src/core/types';
+import type { DemoRecord, EffectApi, IndustryData, Values } from '../src/core/types';
 
 const TODAY = '2026-11-11';
 let data: IndustryData;
@@ -126,5 +127,54 @@ describe('clinical flags respect the simulated role', () => {
     const alerted = records(data, 'visits').find((v) => (visits.flags?.(v, data, TODAY, gp) ?? []).length > 0);
     expect(alerted).toBeDefined();
     expect(visits.flags!(alerted!, data, TODAY, rec)).toEqual([]);
+  });
+});
+
+describe('what one step sets in motion', () => {
+  const spy = () => {
+    const updated: Array<{ collection: string; id: string; values: Values }> = [];
+    const created: Array<{ collection: string; values: Values; status?: string }> = [];
+    const api: EffectApi = {
+      create: (collection, values, status) => { created.push({ collection, values, status }); return { id: 'new', ref: 'CLM-NEW', status, values, history: [], createdAt: '', updatedAt: '' }; },
+      update: (collection, id, values) => { updated.push({ collection, id, values }); },
+      transition: (collection, id) => ({ ok: true, value: findRecord(data, collection, id)! }),
+      toast: () => undefined,
+    };
+    return { api, updated, created };
+  };
+  it('signing a consultation drafts one claim with the visit type’s demo tariff', () => {
+    const draft = records(data, 'consults').find((c) => c.status === 'draft')!;
+    const s = spy();
+    findTransition(wf('consults'), 'draft', 'signed')!.after!({ record: { ...draft, values: { ...draft.values, icd10: 'J02.9' } }, data, api: s.api, today: TODAY, user: user('u_locum') });
+    expect(s.created).toHaveLength(1);
+    expect(s.created[0]).toMatchObject({ collection: 'claims', status: 'draft', values: { consult: draft.id, visit: str(draft, 'visit'), icd10: 'J02.9' } });
+    expect((s.created[0].values.lines as Array<{ code?: string }>)[0].code).toBe('DEMO-GP1');
+  });
+  it('submitting a claim stamps the date; settling records what the patient paid', () => {
+    const part = records(data, 'claims').find((c) => c.status === 'partpaid')!;
+    expect(outstandingCents(part)).toBeGreaterThan(0);
+    const s = spy();
+    findTransition(wf('claims'), 'partpaid', 'settled')!.after!({ record: part, data, api: s.api, today: TODAY, user: user('u_bill') });
+    expect(outstandingCents({ ...part, values: { ...part.values, ...s.updated[0].values } })).toBe(0);
+    const sub = spy();
+    findTransition(wf('claims'), 'draft', 'submitted')!.after!({ record: part, data, api: sub.api, today: TODAY, user: user('u_bill') });
+    expect(sub.updated[0].values).toEqual({ submittedOn: TODAY });
+  });
+  it('a result cannot be received before it is captured, and the reason says where', () => {
+    const requested = records(data, 'results').find((r) => r.status === 'requested')!;
+    const blocked = applyTransition(wf('results'), requested, 'received', user('u_nurse'), data, undefined, 'Practice nurse');
+    expect(blocked).toMatchObject({ ok: false });
+    if (!blocked.ok) expect(blocked.reason).toMatch(/Capture result/);
+    expect(applyTransition(wf('results'), { ...requested, values: { ...requested.values, summary: 'CRP 4 mg/L (demo value).' } }, 'received', user('u_nurse'), data, undefined, 'Practice nurse')).toMatchObject({ ok: true });
+  });
+  it('keeps the chronic register in step with chronic reviews in the history', () => {
+    for (const c of records(data, 'consults').filter((x) => x.status === 'signed')) {
+      const cond = CHRONIC_CONDITIONS.find((k) => k.icd10 === str(c, 'icd10'));
+      const visit = findRecord(data, 'visits', str(c, 'visit'));
+      if (!cond || str(visit, 'type') !== 'chronic') continue;
+      const entry = records(data, 'chronic').find((e) => str(e, 'patient') === str(c, 'patient') && str(e, 'condition') === cond.value)!;
+      expect(str(entry, 'lastReview') >= str(c, 'date'), `${entry.ref} vs ${c.ref}`).toBe(true);
+    }
+    expect(records(data, 'chronic').some((e) => e.status === 'active' && str(e, 'nextReview') < TODAY)).toBe(true);
   });
 });

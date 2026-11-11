@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import type { DemoRecord, IndustryData } from '../../../core/types';
 import { findRecord, str } from '../../../core/engine';
@@ -40,5 +41,21 @@ export function ClientCard({ data, clientId, today }: { data: IndustryData; clie
         <div style={{ marginTop: 6 }}><FicaTag client={c} today={today} /></div>
       </div>
     </div>
+  );
+}
+
+/** Pass / fail checklist. An item may carry the control that fixes it, right where it is reported. */
+export function Checklist({ items }: { items: Array<{ label: string; ok: boolean; detail?: ReactNode; action?: ReactNode }> }) {
+  return (
+    <ul className="list">
+      {items.map((i) => (
+        <li key={i.label} style={{ flexWrap: 'wrap' }}>
+          <span className={`dot ${i.ok ? 'green' : 'red'}`} />
+          <div className="grow" style={{ minWidth: 160 }}><b>{i.label}</b>{i.detail && <small>{i.detail}</small>}</div>
+          {i.action}
+          <Tag tone={i.ok ? 'green' : 'red'}>{i.ok ? 'OK' : 'Outstanding'}</Tag>
+        </li>
+      ))}
+    </ul>
   );
 }

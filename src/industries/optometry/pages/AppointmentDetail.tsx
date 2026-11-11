@@ -20,6 +20,7 @@ function Aside() {
   const appt = findRecord(data, 'appointments', id);
   if (!appt) return null;
   const exam = records(data, 'exams').find((e) => str(e, 'appointment') === appt.id);
+  const rx = exam ? records(data, 'prescriptions').filter((p) => str(p, 'exam') === exam.id && p.status === 'issued')[0] : undefined;
   const canStart = isClinical(appt) && can('clinical.record') && ['arrived', 'pretest', 'inexam'].includes(appt.status ?? '') && !exam;
   const startExam = () => {
     const optom = ['lk', 'sd'].includes(str(appt, 'practitioner')) ? str(appt, 'practitioner') : 'lk';
@@ -33,9 +34,12 @@ function Aside() {
       <div className="btns" style={{ marginTop: 14, flexWrap: 'wrap' }}>
         {canStart && <button className="btn primary" onClick={startExam} data-testid="start-exam">Start eye exam</button>}
         {exam && hasModule('exams') && <Link className="btn" to={`${base}/exams/${exam.id}`}>Open exam {exam.ref}</Link>}
+        {rx && hasModule('prescriptions') && <Link className="btn" to={`${base}/prescriptions/${rx.id}`} data-testid="open-rx">Prescription {rx.ref}</Link>}
         {hasModule('patients') && <Link className="btn" to={`${base}/patients/${str(appt, 'patient')}`}>Patient profile</Link>}
       </div>
-      {isClinical(appt) && !can('clinical.record') && <p className="muted-note" style={{ marginTop: 10 }}>Exams are recorded by optometrists. Switch to an optometrist in the top bar to start one.</p>}
+      {isClinical(appt) && !can('clinical.record') && !exam && <p className="muted-note" style={{ marginTop: 10 }}>Exams are recorded by optometrists. Once the patient is checked in, switch to an optometrist in the top bar to call them in and start the exam.</p>}
+      {isClinical(appt) && can('clinical.record') && !exam && appt.status === 'booked' && <p className="muted-note" style={{ marginTop: 10 }}>“Start eye exam” appears here once the patient is checked in.</p>}
+      {rx && appt.status === 'dispensing' && <p className="muted-note" style={{ marginTop: 10 }}>In dispensing: open the prescription to start the optical order, then complete the visit.</p>}
     </Panel>
   );
 }

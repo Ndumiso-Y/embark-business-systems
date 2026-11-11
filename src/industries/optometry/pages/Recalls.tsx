@@ -8,10 +8,10 @@ import { DueTag, Empty, Modal, Notice, PageHeader, Panel, Segmented, Stat, Tag }
 import { RecordFormModal } from '../../../core/components/fields';
 import { IcoSend } from '../../../core/components/Icons';
 import { RECALL_TYPES, label } from '../data';
-import { dueRecalls, todayStr } from '../helpers';
+import { clashes, dueRecalls, todayStr } from '../helpers';
 
 const TEMPLATES: Record<string, string> = {
-  annual: 'Hi {first}, it’s time for your routine eye examination at Northgate Optometry. Reply or call to book a time that suits you.',
+  annual: 'Hi {first}, it’s time for your routine eye examination at {practice}. Reply or call to book a time that suits you.',
   cl: 'Hi {first}, your contact lens aftercare check is due. Regular checks keep your eyes healthy — reply or call to book.',
   diabetic: 'Hi {first}, your diabetic eye review is due. Please reply or call us to book.',
   child: 'Hi, {first}’s children’s vision review is due. Reply or call us to book a time after school.',
@@ -44,6 +44,11 @@ export default function Recalls() {
         <Stat label="No reminder consent" value={due.filter((p) => !p.values.consentRecall).length} sub="Contact only when they visit" />
       </div>
       <div className="section-gap" />
+      {!can('bookings') && (
+        <div style={{ marginBottom: 14 }} data-testid="recalls-readonly">
+          <Notice tone="grey"><b>View only for your role.</b> Logging reminders and booking patients in needs the Bookings permission (front desk and optometrists in this demo). Switch user in the top bar to chase these recalls.</Notice>
+        </div>
+      )}
       <Panel title="Recall list" right={<Segmented label="Recall scope" value={scope} onChange={setScope} options={[{ value: 'due', label: 'Due & overdue' }, { value: 'all', label: 'All patients' }]} />} pad>
         {rows.length ? (
           <div className="table-wrap">
@@ -78,14 +83,17 @@ export default function Recalls() {
           act.update('patients', contacting!.id, { lastContacted: today }, 'Recall reminder logged (not sent)');
           act.toast('Reminder logged — no message was sent'); setContacting(null);
         }}>Log reminder (demo)</button></>}>
-        {contacting && <div className="sms-preview">{(TEMPLATES[str(contacting, 'recallType')] ?? TEMPLATES.annual).replace('{first}', str(contacting, 'firstName'))}</div>}
+        {contacting && <div className="sms-preview">{(TEMPLATES[str(contacting, 'recallType')] ?? TEMPLATES.annual).replace('{first}', str(contacting, 'firstName')).replace('{practice}', config.businessName)}</div>}
         <Notice tone="grey">Nothing is sent. Production use needs a messaging provider, opt-out handling and recorded consent.</Notice>
       </Modal>
       {booking && (
         <RecordFormModal def={act.def('appointments')} open title={`Book ${str(booking, 'firstName')} ${str(booking, 'lastName')}`}
           initial={{ patient: booking.id, type: str(booking, 'recallType') === 'cl' ? 'claftercare' : str(booking, 'recallType') === 'diabetic' ? 'diabetic' : str(booking, 'recallType') === 'child' ? 'child' : 'exam', date: addDays(today, 2), time: '10:00', practitioner: 'sd' }}
           onClose={() => setBooking(null)}
-          onSave={(v) => { act.create('appointments', v, 'booked', 'Booked from recall list'); act.toast('Appointment booked from recall'); setBooking(null); }} />
+          onSave={(v) => {
+            if (clashes(records(data, 'appointments'), v)) { act.toast('That practitioner is already booked at that time — choose another time or practitioner.', 'err'); return; }
+            act.create('appointments', v, 'booked', 'Booked from recall list'); act.toast('Appointment booked from recall'); setBooking(null);
+          }} />
       )}
     </>
   );

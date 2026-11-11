@@ -20,7 +20,7 @@ export default function ExamDetail() {
   const base = useBase();
   const act = useActions();
   const { id } = useParams();
-  const { can } = useUser();
+  const { can, hasModule } = useUser();
   const def = act.def('exams');
   const exam = findRecord(data, 'exams', id);
   const [draft, setDraft] = useState<Values | null>(null);
@@ -44,7 +44,9 @@ export default function ExamDetail() {
   const problems = examProblems({ ...exam, values: v });
   const rErr = validateEye(eyeFrom(v, 'r'));
   const lErr = validateEye(eyeFrom(v, 'l'));
-  const rx = records(data, 'prescriptions').find((p) => str(p, 'exam') === exam.id);
+  const rx = records(data, 'prescriptions').filter((p) => str(p, 'exam') === exam.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+  const appt = findRecord(data, 'appointments', str(exam, 'appointment'));
+  const claim = records(data, 'claims').find((c) => str(c, 'exam') === exam.id);
   const save = () => { if (draft) { act.update('exams', exam.id, draft, 'Exam notes saved'); act.toast(`${exam.ref} saved`); setDraft(null); } };
 
   const num = (k: string, lbl: string, step = 0.25, err?: string) => !editable ? (
@@ -115,7 +117,7 @@ export default function ExamDetail() {
             )}
             {draft && <Notice tone="grey">Save your changes before finalising.</Notice>}
             <div style={{ marginTop: 12 }}>{!draft && <WorkflowActions def={def} record={exam} />}</div>
-            <p className="muted-note" style={{ marginTop: 10 }}>Finalising locks the record, issues a prescription and sets the patient’s recall date. Checks are demo data-entry rules, not clinical guidance.</p>
+            <p className="muted-note" style={{ marginTop: 10 }}>Finalising locks the record, issues a prescription, sets the patient’s recall date and drafts the exam fee for billing. Checks are demo data-entry rules, not clinical guidance.</p>
           </Panel>
           {rx && (
             <Panel title={`Prescription ${rx.ref}`} right={<Link className="btn sm" to={`${base}/prescriptions/${rx.id}`}>Open</Link>}>
@@ -123,6 +125,14 @@ export default function ExamDetail() {
             </Panel>
           )}
           {!rx && exam.status === 'final' && <RxCard values={exam.values} showVA caption="No prescription issued" />}
+          {(appt || claim) && (
+            <Panel title="Linked records" meta={exam.status === 'final' ? 'What this exam set in motion' : undefined}>
+              <ul className="list" data-testid="exam-links">
+                {appt && <li><div className="grow">{hasModule('diary') ? <Link to={`${base}/diary/${appt.id}`}><b>Appointment {appt.ref}</b></Link> : <b>Appointment {appt.ref}</b>}<small>Send the patient on to dispensing or complete the visit from the appointment.</small></div><StatusTag workflow={act.def('appointments').workflow} status={appt.status} /></li>}
+                {claim && <li><div className="grow">{hasModule('claims') ? <Link to={`${base}/claims/${claim.id}`}><b>Account {claim.ref}</b></Link> : <b>Account {claim.ref}</b>}<small>The exam fee, drafted automatically for billing{hasModule('claims') ? '' : ' (the practice manager submits it)'}.</small></div><StatusTag workflow={act.def('claims').workflow} status={claim.status} /></li>}
+              </ul>
+            </Panel>
+          )}
           <Panel title="Patient"><PatientCard data={data} patientId={exam.values.patient} /></Panel>
           <Panel title="History"><History record={exam} /></Panel>
           <RoleBar compact />

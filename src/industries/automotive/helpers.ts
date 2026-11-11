@@ -28,6 +28,9 @@ export function addMonths(iso: string, months: number): string {
   return `${ny}-${String(nm + 1).padStart(2, '0')}-${String(Math.min(d, last)).padStart(2, '0')}`;
 }
 
+/** The last `n` calendar months ending with today's month, oldest first, as YYYY-MM keys. */
+export const lastMonths = (today: string, n: number) => Array.from({ length: n }, (_, i) => addMonths(`${today.slice(0, 7)}-01`, i - (n - 1)).slice(0, 7));
+
 /** Kilometres with comma grouping, e.g. "118,400 km". */
 export const kmText = (n: number) => `${n < 0 ? '-' : ''}${group(Math.round(n))} km`;
 
@@ -111,7 +114,7 @@ export function paymentProblem(r: DemoRecord, amountRand: number, mode: 'part' |
 export function checkInProblem(job: DemoRecord, data: IndustryData): string | null {
   const v = vehicleOf(data, job);
   if (!v) return 'Link the customer’s vehicle first.';
-  if (job.values.odometerIn === undefined || job.values.odometerIn === null || job.values.odometerIn === '') return 'Record the odometer reading (Edit → Odometer in) before checking the vehicle in.';
+  if (job.values.odometerIn === undefined || job.values.odometerIn === null || job.values.odometerIn === '') return 'Record the odometer reading in the “Check-in” panel on this job card before checking the vehicle in.';
   const last = num(v, 'odometer');
   if (num(job, 'odometerIn') < last) return `Odometer in (${kmText(num(job, 'odometerIn'))}) is below the last recorded reading of ${kmText(last)} for ${str(v, 'reg')}. Re-check the reading.`;
   return null;
@@ -127,9 +130,9 @@ export function jobEstimate(data: IndustryData, job: DemoRecord): DemoRecord | u
 
 export function startWorkProblem(job: DemoRecord, data: IndustryData): string | null {
   const est = jobEstimate(data, job);
-  if (!est) return 'No work may start without a customer-approved estimate. Create and send an estimate first.';
+  if (!est) return 'No work may start without a customer-approved estimate. Prepare and send an estimate first (Estimate panel on this job card).';
   if (est.status !== 'approved') return `Estimate ${est.ref} is “${est.status === 'sent' ? 'awaiting customer approval' : est.status}”. Work can only start once the customer has approved it.`;
-  if (!str(job, 'technician')) return 'Assign a technician before starting work.';
+  if (!str(job, 'technician')) return 'Assign a technician before starting work (“Bay & technician” on this job card).';
   return null;
 }
 
@@ -144,9 +147,9 @@ export const qcMissing = (job: DemoRecord) => QC_ITEMS.filter((i) => job.values[
 
 export function releaseProblem(job: DemoRecord, data: IndustryData): string | null {
   const inv = jobInvoice(data, job.id);
-  if (!inv) return 'Issue an invoice for this job card before releasing the vehicle.';
+  if (!inv) return 'Issue an invoice for this job card before releasing the vehicle (Invoices → New invoice).';
   const cust = vehicleCustomer(data, job.values.vehicle);
-  if (inv.status !== 'paid' && str(cust, 'kind') !== 'account') return `Invoice ${inv.ref} has ${formatRand(invoiceBalance(inv))} outstanding. Private customers settle before the vehicle is released.`;
+  if (inv.status !== 'paid' && str(cust, 'kind') !== 'account') return `Invoice ${inv.ref} has ${formatRand(invoiceBalance(inv))} outstanding. Private customers settle before the vehicle is released — record the payment on the invoice (Invoice panel on this job card).`;
   return null;
 }
 

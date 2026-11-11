@@ -4,7 +4,7 @@ import type { DemoRecord } from '../../../core/types';
 import { useActions, useBase, useData, useUser } from '../../../core/context';
 import { records, str } from '../../../core/engine';
 import { addDays, daysBetween, formatDate } from '../../../core/lib/dates';
-import { DueTag, Empty, Field, Meters, Modal, Panel, Stat } from '../../../core/components/ui';
+import { DueTag, Empty, Field, Meters, Modal, Notice, Panel, Stat } from '../../../core/components/ui';
 import { RegisterPage } from '../../../core/components/records';
 import { CHRONIC_CONDITIONS, CONTROL, label } from '../data';
 import { overdueChronic, patientName, reviewState, todayStr } from '../helpers';
@@ -69,6 +69,11 @@ export default function ChronicCare() {
             <Stat label="Poorly controlled" value={active.filter((c) => str(c, 'control') === 'poor').length} />
           </div>
           <div className="section-gap" />
+          {!can('chronic') && (
+            <div style={{ marginBottom: 14 }} data-testid="chronic-readonly">
+              <Notice tone="grey"><b>View only for your role.</b> Recording reviews and changing the register needs the Chronic register permission (the partner, the GP and the practice nurse in this demo).</Notice>
+            </div>
+          )}
           <div className="grid-2">
             <Panel title="Reviews due" meta="Overdue first, then due within 30 days">
               {due.length ? (

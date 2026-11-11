@@ -24,6 +24,9 @@ import Dashboard from './pages/Dashboard';
 import ListingDetail from './pages/ListingDetail';
 import LeadDetail from './pages/LeadDetail';
 import Viewings from './pages/Viewings';
+import ViewingDetail from './pages/ViewingDetail';
+import TransferDetail from './pages/TransferDetail';
+import MaintenanceDetail from './pages/MaintenanceDetail';
 import OfferDetail from './pages/OfferDetail';
 import LeaseDetail from './pages/LeaseDetail';
 import Reports from './pages/Reports';
@@ -58,7 +61,7 @@ const listingWorkflow: WorkflowDef = {
   transitions: [
     { from: 'valuation', to: 'mandate', label: 'Mandate signed', permission: 'listings.manage', intent: 'primary',
       guard: ({ record }) => {
-        if (!str(record, 'mandateSigned') || !str(record, 'mandateExpiry')) return 'Record the mandate signature and expiry dates first (Edit → Mandate signed on / Mandate expires).';
+        if (!str(record, 'mandateSigned') || !str(record, 'mandateExpiry')) return 'Record the mandate signature and expiry dates first — use “Record the mandate” on the listing.';
         if (str(record, 'mandateExpiry') <= str(record, 'mandateSigned')) return 'The mandate must expire after the date it was signed.';
         return null;
       } },
@@ -105,7 +108,7 @@ const listingWorkflow: WorkflowDef = {
         return exp && exp > todayStr() ? `The mandate runs until ${formatDate(exp)}. Withdraw the listing instead if the seller has cancelled.` : null;
       } },
     { from: 'expired', to: 'mandate', label: 'Renew mandate', permission: 'listings.manage',
-      guard: ({ record }) => (str(record, 'mandateExpiry') > todayStr() ? null : 'Enter the new mandate expiry date first (Edit → Mandate expires).') },
+      guard: ({ record }) => (str(record, 'mandateExpiry') > todayStr() ? null : 'Enter the new mandate expiry date first — use “Renew mandate” on the listing.') },
   ],
 };
 
@@ -124,7 +127,7 @@ const leadWorkflow: WorkflowDef = {
     { from: ['new', 'contacted'], to: 'viewing', label: 'Viewing booked', permission: 'leads',
       guard: ({ record, data }) => (records(data, 'viewings').some((v) => str(v, 'lead') === record.id && ['booked', 'completed'].includes(v.status ?? '')) ? null : 'Book a viewing for this buyer first (Matching listings → Book viewing).') },
     { from: ['new', 'contacted', 'viewing'], to: 'offer', label: 'Offer made', permission: 'leads',
-      guard: ({ record, data }) => (records(data, 'offers').some((o) => str(o, 'lead') === record.id) ? null : 'Capture the offer to purchase first (Offers → New offer).') },
+      guard: ({ record, data }) => (records(data, 'offers').some((o) => str(o, 'lead') === record.id) ? null : 'Capture the offer to purchase first — use “Capture offer” on this buyer.') },
     { from: ['new', 'contacted', 'viewing', 'offer'], to: 'bought', label: 'Bought', permission: 'leads',
       guard: ({ record, data }) => (records(data, 'offers').some((o) => str(o, 'lead') === record.id && o.status === 'unconditional') ? null : 'None of this buyer’s offers has had its conditions met yet.') },
     { from: ['new', 'contacted', 'viewing', 'offer'], to: 'lost', label: 'Mark lost', permission: 'leads', requiresNote: true, intent: 'danger' },
@@ -169,7 +172,7 @@ const offerWorkflow: WorkflowDef = {
       guard: ({ record, data }) => acceptProblems(record, data)[0] ?? null,
       after: onOfferAccepted },
     { from: 'submitted', to: 'countered', label: 'Seller counters', permission: 'offers.manage',
-      guard: ({ record }) => (num(record, 'counterAmount') > 0 && num(record, 'counterAmount') !== num(record, 'amount') ? null : 'Enter the seller’s counter-offer amount first (Edit → Seller counter-offer).') },
+      guard: ({ record }) => (num(record, 'counterAmount') > 0 && num(record, 'counterAmount') !== num(record, 'amount') ? null : 'Enter the seller’s counter-offer amount first — use “Seller’s response” on the offer.') },
     { from: 'countered', to: 'accepted', label: 'Buyer accepts counter-offer', permission: 'offers.manage', intent: 'primary',
       guard: ({ record, data }) => acceptProblems(record, data)[0] ?? null,
       after: (ctx) => {
@@ -211,7 +214,7 @@ const transferWorkflow: WorkflowDef = {
     { from: 'otp', to: 'bond', label: 'Bond approved / cash confirmed', permission: 'offers.manage', intent: 'primary',
       guard: ({ record, data }) => bondStepProblem(record, data) },
     { from: 'bond', to: 'docs', label: 'Transfer documents signed', permission: 'offers.manage', intent: 'primary',
-      guard: ({ record }) => (str(record, 'conveyancer') ? null : 'Select the transferring conveyancer first (Edit → Conveyancer).') },
+      guard: ({ record }) => (str(record, 'conveyancer') ? null : 'Select the transferring conveyancer first — open the transfer and use the conveyancing checklist.') },
     { from: 'docs', to: 'lodged', label: 'Lodged (simulated)', permission: 'offers.manage', intent: 'primary',
       guard: ({ record }) => lodgementProblems(record)[0] ?? null,
       after: ({ record, api, today }) => api.update('transfers', record.id, { lodgedOn: str(record, 'lodgedOn') || today }, 'Lodgement date recorded') },
@@ -252,7 +255,7 @@ const leaseWorkflow: WorkflowDef = {
       guard: ({ record }) => {
         const v = str(record, 'vetting');
         if (v === 'declined') return 'The vetting outcome is “Declined” — decline the application instead.';
-        return v === 'approved' ? null : 'Record the vetting outcome first (Edit → Vetting outcome). Credit checks are simulated in this demo.';
+        return v === 'approved' ? null : 'Record the vetting outcome first — use “Record vetting outcome” on the lease. Credit checks are simulated in this demo.';
       } },
     { from: 'vetting', to: 'declined', label: 'Decline application', permission: 'tenants.vet', requiresNote: true, intent: 'danger' },
     { from: 'approved', to: 'signed', label: 'Lease signed', permission: 'rentals.manage', intent: 'primary',
@@ -263,7 +266,7 @@ const leaseWorkflow: WorkflowDef = {
       after: ({ record, api, today }) => api.update('leases', record.id, { noticeDate: today }, 'Notice date recorded') },
     { from: 'notice', to: 'active', label: 'Notice withdrawn', permission: 'rentals.manage', requiresNote: true },
     { from: 'notice', to: 'ended', label: 'End lease', permission: 'rentals.manage',
-      guard: ({ record }) => (num(record, 'arrears') > 0 ? `Arrears of ${randOf(num(record, 'arrears'))} must be settled or deducted from the deposit (set arrears to R0) before the lease ends.` : null) },
+      guard: ({ record }) => (num(record, 'arrears') > 0 ? `Arrears of ${randOf(num(record, 'arrears'))} must be settled or deducted from the deposit before the lease ends — use “Record arrears settled” on the lease.` : null) },
   ],
 };
 
@@ -279,11 +282,11 @@ const maintenanceWorkflow: WorkflowDef = {
   ],
   transitions: [
     { from: 'logged', to: 'quoted', label: 'Quote received', permission: 'maintenance', intent: 'primary',
-      guard: ({ record }) => (num(record, 'quote') > 0 && str(record, 'contractor') ? null : 'Record the contractor and their quote first (Edit).') },
+      guard: ({ record }) => (num(record, 'quote') > 0 && str(record, 'contractor') ? null : 'Record the contractor and their quote first — open the job and use “Quote & approval”.') },
     { from: 'quoted', to: 'approved', label: 'Approve quote', permission: 'maintenance', intent: 'primary',
       guard: ({ record }) => maintenanceApprovalProblem(record) },
     { from: 'approved', to: 'assigned', label: 'Assign contractor', permission: 'maintenance', intent: 'primary',
-      guard: ({ record }) => (str(record, 'contractor') ? null : 'Select a contractor first.') },
+      guard: ({ record }) => (str(record, 'contractor') ? null : 'Select a contractor first — open the job and use “Quote & approval”.') },
     { from: 'assigned', to: 'completed', label: 'Mark completed', permission: 'maintenance', requiresNote: true, intent: 'primary' },
     { from: ['logged', 'quoted', 'approved', 'assigned'], to: 'cancelled', label: 'Cancel job', permission: 'maintenance', requiresNote: true, intent: 'danger' },
   ],
@@ -297,7 +300,8 @@ const commissionWorkflow: WorkflowDef = {
   ],
   transitions: [
     { from: 'payable', to: 'paid', label: 'Mark paid (simulated)', permission: 'commission.pay', intent: 'primary',
-      guard: ({ record, data }) => (findRecord(data, 'transfers', str(record, 'transfer'))?.status === 'registered' ? null : 'Commission is only payable once the transfer is registered.') },
+      guard: ({ record, data }) => (findRecord(data, 'transfers', str(record, 'transfer'))?.status === 'registered' ? null : 'Commission is only payable once the transfer is registered.'),
+      after: ({ record, api, today }) => api.update('commissions', record.id, { paidOn: str(record, 'paidOn') || today }, 'Payout date recorded (simulated)') },
   ],
 };
 
@@ -618,11 +622,11 @@ const config: IndustryConfig = {
   modules: [
     { key: 'listings', label: 'Listings & mandates', icon: IcoHome, group: 'Sales', collection: 'listings', detail: ListingDetail, description: 'Valuation → mandate → listed → under offer → sold → registered. Going live needs a current mandate, seller FICA and an agent with a valid FFC.' },
     { key: 'leads', label: 'Buyers & leads', icon: IcoUsers, group: 'Sales', collection: 'leads', detail: LeadDetail, description: 'Buyer enquiries with budget, suburbs and bedrooms — each buyer is matched to listings within ±10% of budget.' },
-    { key: 'viewings', label: 'Viewings & show days', icon: IcoCalendar, group: 'Sales', collection: 'viewings', page: Viewings, description: 'Day schedule per agent. A viewing is only completed once the buyer’s feedback and interest level are recorded.' },
+    { key: 'viewings', label: 'Viewings & show days', icon: IcoCalendar, group: 'Sales', collection: 'viewings', page: Viewings, detail: ViewingDetail, description: 'Day schedule per agent. A viewing is only completed once the buyer’s feedback and interest level are recorded.' },
     { key: 'offers', label: 'Offers to purchase', icon: IcoDoc, group: 'Sales', collection: 'offers', detail: OfferDetail, description: 'Offers, counter-offers and suspensive conditions. Accepting puts the listing under offer; conditions met opens the transfer.' },
-    { key: 'transfers', label: 'Transfers', icon: IcoBriefcase, group: 'Sales', collection: 'transfers', view: 'board', description: 'Conveyancing tracker (simulated): OTP → bond → documents → lodged → registered. Commission becomes payable on registration.' },
+    { key: 'transfers', label: 'Transfers', icon: IcoBriefcase, group: 'Sales', collection: 'transfers', view: 'board', detail: TransferDetail, description: 'Conveyancing tracker (simulated): OTP → bond → documents → lodged → registered. Commission becomes payable on registration.' },
     { key: 'leases', label: 'Rentals & leases', icon: IcoKey, group: 'Rentals', collection: 'leases', detail: LeaseDetail, description: 'Application → vetting → approved → lease signed → active → notice → ended. Signing needs approved vetting and the deposit in trust (both simulated).' },
-    { key: 'maintenance', label: 'Maintenance', icon: IcoWrench, group: 'Rentals', collection: 'maintenance', view: 'board', description: `Logged → quoted → approved → contractor assigned → completed. Quotes above R${OWNER_APPROVAL_LIMIT} need the owner’s approval.` },
+    { key: 'maintenance', label: 'Maintenance', icon: IcoWrench, group: 'Rentals', collection: 'maintenance', view: 'board', detail: MaintenanceDetail, description: `Logged → quoted → approved → contractor assigned → completed. Quotes above R${OWNER_APPROVAL_LIMIT} need the owner’s approval.` },
     { key: 'agents', label: 'Agents & FFCs', icon: IcoShield, group: 'Agency', collection: 'agents', description: 'Agents with fictional Fidelity Fund Certificate numbers and expiry dates. An expired FFC blocks new listings going live.' },
     { key: 'commission', label: 'Commission & reports', icon: IcoChart, group: 'Agency', collection: 'commissions', page: Reports, description: 'Pipeline value by stage, commission by agent (demo 50/50 split), days on market, viewing-to-offer conversion and rental arrears.' },
   ],
@@ -638,6 +642,14 @@ const config: IndustryConfig = {
     'Deposits “held in trust” are figures only — this is not a trust account and is not PPRA trust-accounting compliant.',
     'No messages are sent: no SMS, email or WhatsApp to buyers, sellers, tenants or contractors.',
     'Suburbs, addresses, people and firms are invented. Commission splits and the R2,500 owner-approval limit are demo settings.',
+  ],
+  guide: [
+    { title: 'Put a listing live', detail: 'The mandate is signed but “Go live” is refused: the seller’s FICA is outstanding. Press “Mark FICA verified” in the go-live checks, then “Go live”.', to: 'listings/listings_4', as: 'u_admin' },
+    { title: 'Match a buyer and book a viewing', detail: 'This new enquiry is matched to listings within ±10% of the budget. Press “Book viewing” on the match and save — the buyer moves to “Viewing booked”.', to: 'leads/leads_21', as: 'u_sales' },
+    { title: 'Accept an offer to purchase', detail: 'Press “Seller accepts” and the listing goes under offer. Then tick off the bond and the deposit under Suspensive conditions and press “Conditions met” — the listing is sold and a transfer opens.', to: 'offers/offers_16', as: 'u_sales' },
+    { title: 'Register a transfer', detail: 'On the conveyancing board, press “Registered (simulated)” on a lodged transfer. The listing is marked registered and its commission becomes payable.', to: 'transfers', as: 'u_admin' },
+    { title: 'Sign a lease', detail: 'The tenant is approved, but “Lease signed” is refused until the deposit is in trust. Press “Record deposit received”, then “Lease signed”.', to: 'leases/leases_5', as: 'u_rental' },
+    { title: 'Approve a repair above R2,500', detail: 'The geyser quote is R9,850, so “Approve quote” is refused until the owner agrees. Press “Record owner’s approval”, then “Approve quote”.', to: 'maintenance/maintenance_3', as: 'u_rental' },
   ],
   highlights: [
     'Go-live checks: current mandate, seller FICA and agent Fidelity Fund Certificate',

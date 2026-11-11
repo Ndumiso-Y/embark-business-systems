@@ -6,8 +6,7 @@ import { addDays, daysBetween, formatDate, monthShort, relativeWhen } from '../.
 import { BarChart, Empty, PageHeader, Panel, Pipeline, Stat, StatusTag, Tag } from '../../../core/components/ui';
 import RoleBar from '../../../core/components/RoleBar';
 import { APPOINTMENT_TYPES, PRACTITIONERS, label } from '../data';
-import { claimTotal, dueRecalls, patientName, todayStr } from '../helpers';
-import { byDateTime } from './shared';
+import { byDateTime, claimTotal, dueRecalls, patientName, todayStr } from '../helpers';
 
 export default function Dashboard() {
   const config = useIndustry();

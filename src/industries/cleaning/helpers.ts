@@ -274,14 +274,16 @@ export function siteBelowSla(data: IndustryData, site: DemoRecord): boolean {
   return !!last && inspectionFailed(last, data);
 }
 
-/** Average inspection score and average SLA target for the inspections in a month (YYYY-MM). */
-export function monthScores(data: IndustryData, month: string) {
-  const list = records(data, 'inspections').filter((i) => COUNTED_INSPECTIONS.includes(i.status ?? '') && str(i, 'date').startsWith(month));
+/** Average inspection score and average SLA target for the inspections dated from `from` to `to` inclusive. */
+export function periodScores(data: IndustryData, from: string, to: string) {
+  const list = records(data, 'inspections').filter((i) => COUNTED_INSPECTIONS.includes(i.status ?? '') && str(i, 'date') >= from && str(i, 'date') <= to);
   const scores = list.map((i) => inspectionScore(i) ?? 0);
   const targets = list.map((i) => slaTarget(siteOf(data, i)));
   const avg = (a: number[]) => (a.length ? Math.round(a.reduce((x, y) => x + y, 0) / a.length) : 0);
   return { count: list.length, avg: avg(scores), target: avg(targets), failed: list.filter((i) => inspectionFailed(i, data)).length };
 }
+/** The same figures for one calendar month (YYYY-MM). */
+export const monthScores = (data: IndustryData, month: string) => periodScores(data, `${month}-01`, `${month}-31`);
 
 /* ---------------- Complaints & requests ---------------- */
 export const OPEN_COMPLAINT_STATES = ['logged', 'acknowledged', 'inprogress'];

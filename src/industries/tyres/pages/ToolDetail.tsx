@@ -5,7 +5,7 @@ import { findRecord, num, records, str } from '../../../core/engine';
 import { daysBetween, formatDate } from '../../../core/lib/dates';
 import { Empty, Field, KeyValues, Meters, Notice, Panel, Tag } from '../../../core/components/ui';
 import { RecordDetail } from '../../../core/components/records';
-import { TECHNICIANS, TOOL_LOCATIONS, TOOL_TYPES, label } from '../data';
+import { TECHNICIANS, TOOL_CONDITIONS, TOOL_LOCATIONS, TOOL_TYPES, label } from '../data';
 import { calibrationState, IN_BAY, servicesText, techLabel, todayStr, toolCheckoutProblem, toolHoursOut, toolNotReturned, toolType, vehicleLabel } from '../helpers';
 import { RecordLink } from './shared';
 
@@ -17,6 +17,7 @@ export default function ToolDetail() {
     <RecordDetail aside={t ? <Aside id={t.id} /> : undefined}>
       {t && t.status === 'available' && <CheckOut id={t.id} />}
       {t && t.status === 'checkedout' && <Holding id={t.id} />}
+      {t && t.status === 'calibration' && <Repair id={t.id} />}
       {t && str(t, 'toolType') === 'torque' && <Traceability id={t.id} />}
     </RecordDetail>
   );
@@ -65,6 +66,28 @@ function CheckOut({ id }: { id: string }) {
           <div className="span-2"><button className="btn primary" type="button" onClick={submit} disabled={!!blocked} data-testid="checkout-submit">Check out to {holder ? techLabel(holder) : '…'}</button></div>
         </div>
       ) : <p className="muted-note">Your simulated role cannot issue tools. Switch to a technician or the stock controller.</p>}
+    </Panel>
+  );
+}
+
+/** While a tool is away: record its condition after repair, which "Return to service" checks. */
+function Repair({ id }: { id: string }) {
+  const data = useData();
+  const act = useActions();
+  const { can } = useUser();
+  const t = findRecord(data, 'tools', id)!;
+  const poor = str(t, 'condition') === 'poor';
+  return (
+    <Panel title="Calibration / repair" meta="Record the condition the tool comes back in, then “Return to service” in the workflow panel">
+      {poor && <div style={{ marginBottom: 12 }}><Notice tone="amber">Condition is still “Poor” — the tool cannot return to service until the repair is recorded as Good or Fair.</Notice></div>}
+      {can('tools.calibrate') ? (
+        <Field label="Condition after calibration / repair">
+          <select className="select" aria-label="Condition after repair" data-testid="repair-condition" value={str(t, 'condition')} style={{ maxWidth: 280 }}
+            onChange={(e) => { act.update('tools', t.id, { condition: e.target.value }, `Condition recorded: ${label(TOOL_CONDITIONS, e.target.value)}`); act.toast('Condition saved'); }}>
+            {TOOL_CONDITIONS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+          </select>
+        </Field>
+      ) : <p className="muted-note">Condition: {label(TOOL_CONDITIONS, str(t, 'condition'))}. The stock controller records the repair (needs “Tool calibration”).</p>}
     </Panel>
   );
 }

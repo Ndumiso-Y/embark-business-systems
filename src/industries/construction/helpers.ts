@@ -2,7 +2,7 @@
 // Kept free of page imports so index.ts and pages/*.tsx can both use them without
 // circular imports. All money maths runs on integer cents.
 import type { DemoRecord, IndustryData } from '../../core/types';
-import { findRecord, lines, linesTotals, num, records, str } from '../../core/engine';
+import { can, findRecord, lines, linesTotals, num, records, str } from '../../core/engine';
 import { addDays, daysBetween, dueState, formatDate, type DueState } from '../../core/lib/dates';
 import { formatRand, roundCents, toCents } from '../../core/lib/money';
 import { EMPLOYER_RISK_CAUSES, RETENTION_CAP_PCT, VAT_RATE } from './data';
@@ -192,6 +192,8 @@ export function valuationSubmitProblem(record: DemoRecord, data: IndustryData): 
   if (!project) return 'Select the project this valuation is for.';
   const other = openValuations(data, project.id, record.id)[0];
   if (other) return `${other.ref} (valuation ${num(other, 'valuationNo')}) is still open on this project. Only one open valuation per project — certify or remove it first.`;
+  const twin = valuationsFor(data, project.id).find((v) => v.id !== record.id && num(v, 'valuationNo') === num(record, 'valuationNo'));
+  if (twin) return `Valuation ${num(record, 'valuationNo')} already exists on this project (${twin.ref}). The next number is ${nextValuationNo(data, project.id)} — use “Edit” to correct it.`;
   if (!str(record, 'periodEnd')) return 'Set the valuation date.';
   if (!(num(record, 'workDone') > 0)) return 'Enter the value of work done to date.';
   const earlier = valuationsFor(data, project.id).filter((v) => v.id !== record.id && num(v, 'valuationNo') < num(record, 'valuationNo'));
@@ -203,7 +205,7 @@ export function valuationSubmitProblem(record: DemoRecord, data: IndustryData): 
 }
 
 export function valuationCertifyProblem(record: DemoRecord): string | null {
-  if (!isNum(record.values.certifiedAmount)) return 'Record the certified amount (excl. VAT) from the payment certificate before certifying.';
+  if (!isNum(record.values.certifiedAmount)) return 'Type the certified amount (excl. VAT) from the payment certificate in “Record payment certificate” on this screen.';
   const certified = toCents(num(record, 'certifiedAmount'));
   const submitted = toCents(num(record, 'submittedAmount'));
   if (certified > submitted) return `Certified amount ${rand(certified)} exceeds the ${rand(submitted)} submitted. A certificate cannot exceed the claim.`;
@@ -402,4 +404,17 @@ export function safetyCloseProblem(r: DemoRecord): string | null {
 export function daysSinceLastLti(data: IndustryData, today: string): number | null {
   const last = records(data, 'safety').filter((r) => r.values.lostTime === true).map((r) => str(r, 'date')).sort().pop();
   return last ? Math.max(0, daysBetween(last, today)) : null;
+}
+
+/** One diary entry per site per day: the existing entry for that project and date, if any. */
+export function diaryEntryFor(data: IndustryData, projectId: string, date: string, exceptId?: string): DemoRecord | undefined {
+  return records(data, 'diary').find((d) => d.id !== exceptId && str(d, 'project') === projectId && str(d, 'date') === date);
+}
+
+/* ---------------- Simulated roles ---------------- */
+/** "Name (title)" of the simulated users who hold a permission — used to tell a blocked role who can do the step. */
+export function holders(data: IndustryData, permission: string, exceptUserId?: string): string {
+  const list = data.users.filter((u) => u.id !== exceptUserId && can(u, permission)).map((u) => `${u.name} (${u.title})`);
+  if (!list.length) return 'nobody yet — grant it under Users & permissions';
+  return list.length > 3 ? `${list.slice(0, 2).join(', ')} or ${list.length - 2} others` : list.join(' or ');
 }

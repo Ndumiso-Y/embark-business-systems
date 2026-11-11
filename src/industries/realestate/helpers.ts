@@ -57,15 +57,15 @@ export function goLiveProblems(listing: DemoRecord, data: IndustryData, today: s
   const expiry = str(listing, 'mandateExpiry');
   if (!signed) out.push('Record the date the seller signed the mandate (Edit → Mandate signed on).');
   else if (signed > today) out.push('The mandate signature date is in the future.');
-  if (!expiry) out.push('Record the mandate expiry date (Edit → Mandate expires).');
-  else if (expiry <= today) out.push(`The mandate expired on ${formatDate(expiry)}. Renew it with the seller before marketing the property.`);
-  if (listing.values.sellerFica !== true) out.push('The seller’s FICA documents have not been verified (simulated) — Edit → Seller FICA verified.');
+  if (!expiry) out.push('Record the mandate expiry date — use “Renew mandate” in the go-live checks.');
+  else if (expiry <= today) out.push(`The mandate expired on ${formatDate(expiry)}. Renew it with the seller (“Renew mandate” in the go-live checks) before marketing the property.`);
+  if (listing.values.sellerFica !== true) out.push('The seller’s FICA documents have not been verified (simulated) — use “Mark FICA verified” in the go-live checks.');
   const agent = agentOf(data, listing.values.agent);
   if (!agent) out.push('Assign a listing agent.');
   else {
     const s = ffcState(agent, today);
     if (s === 'missing') out.push(`${str(agent, 'name')} has no Fidelity Fund Certificate on record (fictional register).`);
-    if (s === 'expired') out.push(`${str(agent, 'name')}’s Fidelity Fund Certificate expired on ${formatDate(str(agent, 'ffcExpiry'))}. An agent without a valid FFC may not market property — renew it on the Agents page or reassign the listing.`);
+    if (s === 'expired') out.push(`${str(agent, 'name')}’s Fidelity Fund Certificate expired on ${formatDate(str(agent, 'ffcExpiry'))}. An agent without a valid FFC may not market property — reassign the listing in the go-live checks, or renew the certificate on the agent’s record.`);
   }
   if (!(num(listing, 'askingPrice') > 0)) out.push('Set an asking price.');
   return out;
@@ -114,10 +114,10 @@ export function acceptProblems(offer: DemoRecord, data: IndustryData): string[] 
 export function conditionsProblems(offer: DemoRecord): string[] {
   const out: string[] = [];
   if (offer.values.bondRequired === true && offer.values.bondApproved !== true) {
-    out.push('Bond approval has not been recorded (Edit → Bond approved). If the bond deadline passes without approval, lapse the offer.');
+    out.push('Bond approval has not been recorded — use “Record bond approval” under Suspensive conditions. If the bond deadline passes without approval, lapse the offer.');
   }
-  if (num(offer, 'deposit') > 0 && offer.values.depositPaid !== true) out.push('The deposit has not been confirmed as paid into the conveyancer’s trust account (simulated).');
-  if (str(offer, 'conditions').trim() && offer.values.conditionsFulfilled !== true) out.push('Other suspensive conditions are recorded but not marked fulfilled.');
+  if (num(offer, 'deposit') > 0 && offer.values.depositPaid !== true) out.push('The deposit has not been confirmed as paid into the conveyancer’s trust account (simulated) — use “Record deposit paid” under Suspensive conditions.');
+  if (str(offer, 'conditions').trim() && offer.values.conditionsFulfilled !== true) out.push('Other suspensive conditions are recorded but not marked fulfilled — use “Mark fulfilled” under Suspensive conditions.');
   return out;
 }
 
@@ -132,14 +132,14 @@ export const transferFor = (data: IndustryData, listingId: string) => records(da
 export function bondStepProblem(transfer: DemoRecord, data: IndustryData): string | null {
   const offer = findRecord(data, 'offers', str(transfer, 'offer'));
   if (!offer) return 'Link the transfer to the accepted offer to purchase.';
-  if (offer.values.bondRequired === true && offer.values.bondApproved !== true) return `The buyer’s bond on ${offer.ref} has not been approved yet.`;
+  if (offer.values.bondRequired === true && offer.values.bondApproved !== true) return `The buyer’s bond on ${offer.ref} has not been approved yet — record it on the offer.`;
   return null;
 }
 export function lodgementProblems(transfer: DemoRecord): string[] {
   const out: string[] = [];
-  if (!str(transfer, 'conveyancer')) out.push('Select the transferring conveyancer.');
-  if (transfer.values.transferDuty !== true) out.push('Transfer duty receipt not yet recorded (simulated).');
-  if (transfer.values.ratesClearance !== true) out.push('Rates clearance certificate not yet recorded (simulated).');
+  if (!str(transfer, 'conveyancer')) out.push('Select the transferring conveyancer — open the transfer and use the conveyancing checklist.');
+  if (transfer.values.transferDuty !== true) out.push('Transfer duty receipt not yet recorded (simulated) — open the transfer and tick it off in the conveyancing checklist.');
+  if (transfer.values.ratesClearance !== true) out.push('Rates clearance certificate not yet recorded (simulated) — open the transfer and tick it off in the conveyancing checklist.');
   return out;
 }
 
@@ -214,8 +214,8 @@ export const byDateTime = (a: DemoRecord, b: DemoRecord) => (str(a, 'date') + st
 export function completeViewingProblems(v: DemoRecord, today: string): string[] {
   const out: string[] = [];
   if (str(v, 'date') > today) out.push('A viewing cannot be completed before it takes place.');
-  if (!str(v, 'interest')) out.push('Record the buyer’s interest level (Edit → Interest level).');
-  if (!str(v, 'feedback').trim()) out.push('Record the feedback from the viewing (Edit → Feedback).');
+  if (!str(v, 'interest')) out.push('Record the buyer’s interest level first — open the viewing and use “Feedback after the viewing”.');
+  if (!str(v, 'feedback').trim()) out.push('Record the feedback from the viewing first — open the viewing and use “Feedback after the viewing”.');
   return out;
 }
 /** Checks before booking a viewing: listing on the market, agent FFC valid, no double booking. */
@@ -236,7 +236,7 @@ export const LEASE_LIVE = ['signed', 'active', 'notice'];
 export function leaseSignProblems(lease: DemoRecord): string[] {
   const out: string[] = [];
   if (str(lease, 'vetting') !== 'approved') out.push('The tenant’s vetting outcome must be “Approved” (simulated credit & reference check).');
-  if (lease.values.depositReceived !== true) out.push(`The deposit${num(lease, 'deposit') > 0 ? ` of ${randOf(num(lease, 'deposit'))}` : ''} has not been received into trust (simulated) — Edit → Deposit received.`);
+  if (lease.values.depositReceived !== true) out.push(`The deposit${num(lease, 'deposit') > 0 ? ` of ${randOf(num(lease, 'deposit'))}` : ''} has not been received into trust (simulated) — use “Record deposit received” on the lease.`);
   if (!(num(lease, 'rent') > 0)) out.push('Enter the monthly rent.');
   if (!str(lease, 'startDate') || !str(lease, 'endDate')) out.push('Enter the lease start and end dates.');
   else if (str(lease, 'endDate') <= str(lease, 'startDate')) out.push('The lease must end after it starts.');
@@ -256,9 +256,9 @@ export function nextEscalation(lease: DemoRecord, today: string): string | null 
 /* ---------------- Maintenance ---------------- */
 export function maintenanceApprovalProblem(job: DemoRecord): string | null {
   const quote = num(job, 'quote');
-  if (!(quote > 0)) return 'Record the contractor’s quote first.';
+  if (!(quote > 0)) return 'Record the contractor’s quote first — open the job and use “Quote & approval”.';
   if (quote > OWNER_APPROVAL_LIMIT && job.values.ownerApproved !== true) {
-    return `The quote of ${randOf(quote)} is above the ${randOf(OWNER_APPROVAL_LIMIT)} demo limit — record the owner’s written approval (Edit → Owner approved) first.`;
+    return `The quote of ${randOf(quote)} is above the ${randOf(OWNER_APPROVAL_LIMIT)} demo limit — open the job and record the owner’s written approval first.`;
   }
   return null;
 }

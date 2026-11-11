@@ -7,8 +7,7 @@ import { DueTag, Empty, Panel, StatusTag } from '../../../core/components/ui';
 import { RecordDetail } from '../../../core/components/records';
 import { RecordFormModal } from '../../../core/components/fields';
 import { APPOINTMENT_TYPES, LENS_OPTIONS, RECALL_TYPES, label } from '../data';
-import { todayStr } from '../helpers';
-import { clashes } from './Diary';
+import { clashes, todayStr } from '../helpers';
 import { RxCard } from './shared';
 
 export default function PatientProfile() {
@@ -68,7 +67,15 @@ function Aside({ id }: { id: string }) {
   return (
     <>
       <Panel title="Recall" right={<DueTag state={dueState(str(p, 'recallDue'), todayStr(), 30)} label={dueState(str(p, 'recallDue'), todayStr(), 30) === 'ok' ? 'Not yet due' : undefined} />}>
-        <p className="muted-note"><b>{label(RECALL_TYPES, str(p, 'recallType'))}</b> due {formatDate(str(p, 'recallDue'))}. Last exam {formatDate(str(p, 'lastExam'))}.</p>
+        {str(p, 'recallDue')
+          ? <p className="muted-note"><b>{label(RECALL_TYPES, str(p, 'recallType'))}</b> due {formatDate(str(p, 'recallDue'))}. Last exam {formatDate(str(p, 'lastExam'))}.</p>
+          : <p className="muted-note">No recall yet — the recall date is set automatically when this patient’s first eye exam is finalised.</p>}
+        {!p.values.consentRecall && (
+          <p className="muted-note" style={{ marginTop: 8 }} data-testid="consent-note">
+            No consent for recall reminders is recorded, so this patient is never contacted from the recall list.{' '}
+            {can('patients.edit') && <button className="btn xs" data-testid="record-consent" onClick={() => { act.update('patients', id, { consentRecall: true }, 'Recall reminder consent recorded'); act.toast('Consent recorded — reminders can now be logged'); }}>Record consent</button>}
+          </p>
+        )}
         {upcoming ? <p className="muted-note" style={{ marginTop: 8 }}>Next appointment: {formatDate(str(upcoming, 'date'))} at {str(upcoming, 'time')}.</p>
           : can('bookings') && <button className="btn sm primary" style={{ marginTop: 12 }} onClick={() => setBooking(true)} data-testid="book-patient">Book appointment</button>}
       </Panel>

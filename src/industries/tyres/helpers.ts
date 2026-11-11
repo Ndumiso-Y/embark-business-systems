@@ -36,6 +36,15 @@ export const minText = (m: number | null) => (m === null ? '—' : m < 60 ? `${M
 
 export const kmText = (n: number) => `${group(Math.round(n))} km`;
 
+/** The last `n` calendar months ending with today's month, oldest first, as YYYY-MM keys. */
+export function lastMonths(today: string, n: number) {
+  const [y, m] = today.split('-').map(Number);
+  return Array.from({ length: n }, (_, i) => {
+    const t = y * 12 + (m - 1) - (n - 1 - i);
+    return `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, '0')}`;
+  });
+}
+
 /* ---------------- Tyre sizes ---------------- */
 
 export type TyreSize = { width: number; profile: number; rim: number; commercial: boolean; key: string };
@@ -239,10 +248,10 @@ export const isTyreLine = (l: Line) => /^STK-/.test(l.code ?? '');
 export function inspectionProblem(job: DemoRecord, data: IndustryData): string | null {
   const v = vehicleOf(data, job);
   if (!v) return 'Link the vehicle first.';
-  if (numOrNull(job, 'odometer') === null) return 'Record the odometer reading before completing the inspection.';
+  if (numOrNull(job, 'odometer') === null) return 'Record the odometer reading in “Arrival, bay & technician” on this job before completing the inspection.';
   if (num(job, 'odometer') < num(v, 'odometer')) return `Odometer ${kmText(num(job, 'odometer'))} is below the last recorded ${kmText(num(v, 'odometer'))} for ${str(v, 'reg')}. Re-check the reading.`;
   const missing = POSITIONS.filter((p) => treadOf(job, p.key) === null).map((p) => p.label);
-  if (missing.length) return `Record the tread depth for every wheel position — missing ${missing.join(', ')}.`;
+  if (missing.length) return `Record the tread depth for every wheel position in the wheel table and save — missing ${missing.join(', ')}.`;
   const silly = POSITIONS.filter((p) => { const t = treadOf(job, p.key)!; return t < 0 || t > 20; }).map((p) => p.label);
   if (silly.length) return `Tread depth for ${silly.join(', ')} must be between 0 and 20 mm.`;
   return null;
@@ -262,13 +271,13 @@ export function quoteProblem(job: DemoRecord, data: IndustryData, note?: string)
     }
   }
   const soldSomething = qty > 0 || ['balancing', 'alignment', 'puncture', 'nitrogen', 'rotation'].some((k) => job.values[k] === true);
-  if (!soldSomething) return 'Select at least one tyre or service to quote (Edit → services sold).';
+  if (!soldSomething) return 'Nothing to quote yet: tick a service under “Services & quote”, or tick “Replace” on a wheel, save, and press “Quote for … marked positions”.';
   if (qty > 0) {
     const st = findRecord(data, 'stock', str(job, 'tyreStock'));
-    if (!st) return 'Choose the tyre (stock line) being quoted.';
+    if (!st) return 'Choose the tyre being quoted under “Services & quote” and press “Quote for … marked positions”.';
     const v = vehicleOf(data, job);
     if (v && !sameSize(str(st, 'size'), str(v, 'tyreSize'))) return `Quoted tyre ${str(st, 'size')} does not match ${str(v, 'reg')}’s fitted size ${str(v, 'tyreSize')}. Use Tyre stock → size search for an exact match.`;
-    if (reps.length !== qty) return `Tyres quoted (${qty}) must match the wheel positions marked for replacement (${reps.length}).`;
+    if (reps.length !== qty) return `Tyres quoted (${qty}) must match the wheel positions marked for replacement (${reps.length}). Press “Quote for … marked positions” again under “Services & quote”.`;
   } else if (reps.length) {
     return `${reps.map((p) => p.label).join(', ')} marked for replacement but no tyres are quoted.`;
   }
@@ -287,22 +296,22 @@ export function approvalProblem(job: DemoRecord, data: IndustryData): string | n
   if (!lines(job).length) return 'There is no quote on this job yet.';
   const fleet = jobFleet(data, job);
   if (fleet) {
-    if (fleet.values.poRequired && !str(job, 'fleetPo').trim()) return `${str(fleet, 'name')} requires a fleet purchase order number before work is approved. Enter the PO number (Edit → Fleet PO number).`;
+    if (fleet.values.poRequired && !str(job, 'fleetPo').trim()) return `${str(fleet, 'name')} requires a fleet purchase order number before work is approved. Enter the PO number under “Services & quote” on this job.`;
     const limit = Math.round(num(fleet, 'creditLimit') * 100);
     const after = fleetBalance(data, fleet.id) + jobQuoteTotal(job);
     if (limit > 0 && after > limit) return `This quote takes ${str(fleet, 'name')} to ${formatRand(after)}, over its ${formatRand(limit)} credit limit. Ask the fleet accounts clerk to collect a remittance first.`;
-    if (!fleet.values.poRequired && !str(job, 'approvalChannel')) return 'Record how the fleet manager approved the quote (approval channel).';
+    if (!fleet.values.poRequired && !str(job, 'approvalChannel')) return 'Record how the fleet manager approved the quote — choose the approval channel under “Services & quote” on this job.';
     return null;
   }
-  if (!str(job, 'approvalChannel')) return 'Record how the customer approved the quote — in person, phone, WhatsApp or email (Edit → Approval channel).';
+  if (!str(job, 'approvalChannel')) return 'Record how the customer approved the quote — in person, phone, WhatsApp or email. Choose it under “Services & quote” on this job.';
   return null;
 }
 
 export function fittingProblem(job: DemoRecord, data: IndustryData): string | null {
-  if (!str(job, 'technician')) return 'Assign a fitment technician first.';
-  if (!str(job, 'bay') || str(job, 'bay') === 'align') return 'Allocate a fitment bay (Bay 1–4) first.';
+  if (!str(job, 'technician')) return 'Assign a fitment technician first (“Arrival, bay & technician” on this job).';
+  if (!str(job, 'bay') || str(job, 'bay') === 'align') return 'Allocate a fitment bay (Bay 1–4) first (“Arrival, bay & technician” on this job).';
   const busy = records(data, 'jobs').find((j) => j.id !== job.id && str(j, 'bay') === str(job, 'bay') && IN_BAY.includes(j.status ?? ''));
-  if (busy) return `${label(BAYS, str(job, 'bay'))} is occupied by ${busy.ref}. Choose a free bay.`;
+  if (busy) return `${label(BAYS, str(job, 'bay'))} is occupied by ${busy.ref}. Choose a free bay (“Arrival, bay & technician” on this job).`;
   const qty = num(job, 'tyresQty');
   if (qty > 0) {
     const st = findRecord(data, 'stock', str(job, 'tyreStock'));
@@ -357,7 +366,7 @@ export const toolNotReturned = (tool: DemoRecord, today: string = todayStr()) =>
 
 export function toolCheckoutProblem(tool: DemoRecord, today: string): string | null {
   if (calibrationState(tool, today) === 'expired') return `${str(tool, 'assetNo')} calibration ${str(tool, 'calibrationDue') ? `expired on ${formatDate(str(tool, 'calibrationDue'))}` : 'is not recorded'}. Send it for calibration — it may not be issued.`;
-  if (!str(tool, 'holder')) return 'Choose the technician receiving the tool in the check-out form first.';
+  if (!str(tool, 'holder')) return 'Choose the technician receiving the tool first — use “Check out to…” on the tool’s card or its check-out form.';
   return null;
 }
 
@@ -423,8 +432,8 @@ export function releaseProblem(job: DemoRecord, data: IndustryData): string | nu
   const inv = jobInvoice(data, job.id);
   if (!inv) return 'Issue the invoice for this job before the vehicle leaves.';
   if (inv.status === 'paid' || inv.status === 'onaccount') return null;
-  if (jobFleet(data, job)) return `Put invoice ${inv.ref} on the fleet account (30 days) before releasing the vehicle.`;
-  return `Invoice ${inv.ref} has ${formatRand(invoiceBalance(inv))} outstanding. Retail customers pay before the vehicle leaves.`;
+  if (jobFleet(data, job)) return `Put invoice ${inv.ref} on the fleet account (30 days) before releasing the vehicle — open it from the Invoice panel on this job.`;
+  return `Invoice ${inv.ref} has ${formatRand(invoiceBalance(inv))} outstanding. Retail customers pay before the vehicle leaves — record the payment on the invoice (Invoice panel on this job).`;
 }
 
 /* ---------------- Vehicles ---------------- */

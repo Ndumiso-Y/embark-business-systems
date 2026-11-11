@@ -30,6 +30,25 @@ describe('tyres configuration', () => {
     expect(validateConfig(config)).toEqual([]);
   });
 
+  it('keeps today’s jobs on fixed ids whatever the weekday, so the guide always opens the same records', () => {
+    const shape = (today: string) => {
+      const d = buildIndustryData(config, today);
+      return records(d, 'jobs').filter((j) => j.id.startsWith('jobs_today_')).map((j) => `${j.id}:${j.status}:${str(j, 'vehicle')}:${str(j, 'technician')}:${str(j, 'bay')}`);
+    };
+    const base = shape(TODAY);
+    expect(base.length).toBe(15);
+    expect(base).toContain('jobs_today_5:torque:vehicles_5:sk:b1');
+    expect(base).toContain('jobs_today_6:torque:vehicles_12:md:b4');
+    expect(base).toContain('jobs_today_11:quoted:vehicles_21:jv:');
+    expect(base).toContain('jobs_today_13:inspected:vehicles_2:sk:');
+    expect(base).toContain('jobs_today_14:arrived:vehicles_15::');
+    for (const day of ['2026-11-12', '2026-11-13', '2026-11-14', '2026-11-15', '2026-11-16', '2026-11-17', '2027-03-01']) expect(shape(day)).toEqual(base);
+    for (const g of config.guide ?? []) {
+      const [mod, id] = g.to.split('/');
+      if (id) expect(findRecord(data, mod, id), g.title).toBeTruthy();
+    }
+  });
+
   it('seeds a deterministic fitment centre with history and a full bay queue today', () => {
     const again = buildIndustryData(config, TODAY);
     expect(JSON.stringify(again.collections)).toBe(JSON.stringify(data.collections));

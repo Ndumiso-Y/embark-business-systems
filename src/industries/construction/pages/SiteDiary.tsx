@@ -3,11 +3,11 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useActions, useBase, useData, useIndustry, useUser } from '../../../core/context';
 import { num, records, str } from '../../../core/engine';
 import { addDays, formatDate, parseIso } from '../../../core/lib/dates';
-import { Empty, PageHeader, Panel, Segmented, Stat } from '../../../core/components/ui';
+import { Empty, Notice, PageHeader, Panel, Segmented, Stat } from '../../../core/components/ui';
 import { RecordTable, WorkflowActions } from '../../../core/components/records';
 import { RecordFormModal } from '../../../core/components/fields';
 import { IcoPlus } from '../../../core/components/Icons';
-import { diaryLabour, diarySummary, isRainDay, projectName, todayStr } from '../helpers';
+import { diaryEntryFor, diaryLabour, diarySummary, holders, isRainDay, projectName, todayStr } from '../helpers';
 
 const WEATHER_SHORT: Record<string, string> = { fine: 'Fine', overcast: 'Overcast', windy: 'Windy', showers: 'Showers', rain: 'RAIN DAY' };
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -109,6 +109,7 @@ export default function SiteDiary() {
                 ))}
               </ul>
             ) : <Empty title="Everything is signed" />}
+            {drafts.length > 0 && !can('diary.sign') && <div style={{ marginTop: 10 }}><Notice tone="grey">Entries are signed by {holders(data, 'diary.sign')}.</Notice></div>}
           </Panel>
         </div>
       </div>
@@ -117,9 +118,11 @@ export default function SiteDiary() {
       </Panel>
       {creating && (
         <RecordFormModal def={def} open title="New site diary entry"
-          initial={{ date: today, weather: 'fine', project: siteProjects[0]?.id ?? '', labourGeneral: 0, labourArtisans: 0, labourSteel: 0, labourSubcontract: 0, delayHours: 0 }}
+          initial={{ date: today, weather: 'fine', project: (siteProjects.find((p) => p.status === 'onsite' && !cell(today, p.id)) ?? siteProjects[0])?.id ?? '', labourGeneral: 0, labourArtisans: 0, labourSteel: 0, labourSubcontract: 0, delayHours: 0 }}
           onClose={() => setCreating(false)}
           onSave={(v) => {
+            const dup = diaryEntryFor(data, String(v.project), String(v.date));
+            if (dup) { act.toast(`${dup.ref} is already the entry for that site on ${formatDate(String(v.date))} — one entry per site per day.`, 'err'); return; }
             const r = act.create('diary', v, 'draft', 'Diary entry captured');
             act.toast(`Diary entry ${r.ref} saved as draft`);
             setCreating(false);

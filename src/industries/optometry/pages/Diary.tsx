@@ -9,17 +9,7 @@ import { RecordBoard, RecordTable } from '../../../core/components/records';
 import { RecordFormModal } from '../../../core/components/fields';
 import { IcoBack, IcoArrow, IcoPlus } from '../../../core/components/Icons';
 import { APPOINTMENT_TYPES, PRACTITIONERS, label } from '../data';
-import { patientName, todayStr } from '../helpers';
-import { byDateTime } from './shared';
-
-export const SLOTS = Array.from({ length: 18 }, (_, i) => `${String(8 + Math.floor(i / 2)).padStart(2, '0')}:${i % 2 ? '30' : '00'}`);
-const slotOf = (t: string) => `${t.slice(0, 2)}:${Number(t.slice(3, 5)) >= 30 ? '30' : '00'}`;
-const ACTIVE = ['booked', 'arrived', 'pretest', 'inexam', 'dispensing', 'completed'];
-
-/** True if the practitioner already has an active appointment at that date/time. */
-export function clashes(all: ReturnType<typeof records>, v: Values, ignoreId?: string) {
-  return all.some((a) => a.id !== ignoreId && ACTIVE.includes(a.status ?? '') && str(a, 'date') === v.date && str(a, 'practitioner') === v.practitioner && slotOf(str(a, 'time')) === slotOf(String(v.time ?? '')));
-}
+import { byDateTime, clashes, patientName, slotOf, SLOTS, todayStr } from '../helpers';
 
 export default function Diary() {
   const config = useIndustry();

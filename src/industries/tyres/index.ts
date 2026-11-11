@@ -24,7 +24,7 @@ import StockPage from './pages/StockPage';
 import VehicleDetail from './pages/VehicleDetail';
 import FleetDetail from './pages/FleetDetail';
 import InvoiceDetail from './pages/InvoiceDetail';
-import ClaimDetail from './pages/ClaimDetail';
+import ClaimDetail, { ClaimsPage } from './pages/ClaimDetail';
 import Reports from './pages/Reports';
 
 const opt = (list: Array<{ value: string; label: string }>) => list.map(({ value, label: l }) => ({ value, label: l }));
@@ -170,7 +170,7 @@ export const toolWorkflow: WorkflowDef = {
     },
     {
       from: 'calibration', to: 'available', label: 'Return to service', permission: 'tools.calibrate', intent: 'primary',
-      guard: ({ record }) => (str(record, 'condition') === 'poor' ? 'Record the repair first: set condition to Good or Fair (Edit) before returning the tool to service.' : null),
+      guard: ({ record }) => (str(record, 'condition') === 'poor' ? 'Record the repair first: set condition to Good or Fair in the “Calibration / repair” panel before returning the tool to service.' : null),
       after: ({ record, api, today }) => {
         const t = toolType(record);
         if (t?.calibrated) {
@@ -243,16 +243,16 @@ export const claimWorkflow: WorkflowDef = {
   transitions: [
     {
       from: 'logged', to: 'inspected', label: 'Record casing inspection', permission: 'warranty', intent: 'primary',
-      guard: ({ record }) => (str(record, 'treadRemaining') === '' ? 'Measure and record the tread remaining (mm) first.' : !str(record, 'damageType') ? 'Record the damage type found on inspection.' : null),
+      guard: ({ record }) => (str(record, 'treadRemaining') === '' ? 'Measure and record the tread remaining (mm) first — “Casing inspection” panel below.' : !str(record, 'damageType') ? 'Record the damage type found on inspection — “Casing inspection” panel below.' : null),
     },
     {
       from: 'inspected', to: 'sent', label: 'Send to supplier (simulated)', permission: 'warranty', intent: 'primary',
-      guard: ({ record }) => (!damageWarrantable(record) ? `${label(DAMAGE_TYPES, str(record, 'damageType'))} is not a manufacturing defect — reject the claim with a note instead.` : !str(record, 'supplier') ? 'Record the supplier the claim goes to.' : null),
+      guard: ({ record }) => (!damageWarrantable(record) ? `${label(DAMAGE_TYPES, str(record, 'damageType'))} is not a manufacturing defect — reject the claim with a note instead.` : !str(record, 'supplier') ? 'Record the supplier the claim goes to (Edit → Supplier).' : null),
       after: ({ record, api, today }) => api.update('claims', record.id, { sentOn: today }),
     },
     {
       from: 'sent', to: 'approved', label: 'Record supplier credit', permission: 'warranty', intent: 'primary',
-      guard: ({ record }) => { const c = num(record, 'creditPct'); return c >= 1 && c <= 100 ? null : 'Enter the credit % the supplier approved (1–100) first (Edit → Credit %).'; },
+      guard: ({ record }) => { const c = num(record, 'creditPct'); return c >= 1 && c <= 100 ? null : 'Enter the credit % the supplier approved (1–100) first — “Supplier decision” panel below.'; },
       after: ({ record, api, today }) => api.update('claims', record.id, { decisionOn: today }),
     },
     {
@@ -544,7 +544,7 @@ const config: IndustryConfig = {
     { key: 'jobs', label: 'Bay queue', icon: IcoBoard, group: 'Bays', collection: 'jobs', view: 'board', detail: JobDetail, description: 'Fitment jobs from arrival through wheel inspection, quote, approval, fitting, balancing, alignment and torque check to collection. Steps not sold are skipped.' },
     { key: 'tools', label: 'Tools & equipment', icon: IcoTool, group: 'Stock & tools', collection: 'tools', page: ToolBoard, detail: ToolDetail, description: 'Who holds which tool right now, calibration and service due dates. Expired tools cannot be issued.' },
     { key: 'stock', label: 'Tyre stock', icon: IcoBox, group: 'Stock & tools', collection: 'stock', page: StockPage, description: 'Tyres by size, brand, load/speed index and DOT age. Search a size to see stock and same-rim alternatives.' },
-    { key: 'claims', label: 'Warranty claims', icon: IcoShield, group: 'Stock & tools', collection: 'claims', detail: ClaimDetail, description: 'Tyre claims against suppliers: casing inspection, send to supplier, credit or rejection.' },
+    { key: 'claims', label: 'Warranty claims', icon: IcoShield, group: 'Stock & tools', collection: 'claims', page: ClaimsPage, detail: ClaimDetail, description: 'Tyre claims against suppliers: casing inspection, send to supplier, credit or rejection.' },
     { key: 'vehicles', label: 'Vehicles', icon: IcoCar, group: 'Customers', collection: 'vehicles', detail: VehicleDetail, description: 'Customer and fleet vehicles with tyre size, torque spec, rotation due and tyre history per wheel position.' },
     { key: 'customers', label: 'Customers', icon: IcoUsers, group: 'Customers', collection: 'customers', description: 'Retail walk-in customers and fleet account customers.' },
     { key: 'fleets', label: 'Fleet accounts', icon: IcoTruck, group: 'Customers', collection: 'fleets', detail: FleetDetail, description: 'Fleet companies with credit limits, account balances, PO rules and monthly statements.' },
@@ -561,6 +561,14 @@ const config: IndustryConfig = {
     'Tool calibration dates are records only; no calibration certificates are issued or verified.',
     'No payments are processed; amounts are recorded by hand. VAT at 15% is a demo calculation, not a tax invoice.',
     'Customer and fleet messages (quotes, reminders, statements) are never sent. Plates and PO numbers are fictional (DEMO…).',
+  ],
+  guide: [
+    { title: 'Sign off a torque check', detail: 'The wrench held by the technician is recorded on the job and all four torque values are in spec. Tick the two outstanding QC items and press “Pass QC — ready”: the invoice is raised and Bay 1 frees up.', to: 'jobs/jobs_today_5', as: 'u_align' },
+    { title: 'Unblock a torque check', detail: 'This job cannot be signed off: no calibrated torque wrench is checked out to its technician. Open the tool board and use “Check out to… Musa Dlamini” — TR-TW-03 is refused (calibration expired), TR-TW-05 works.', to: 'jobs/jobs_today_6', as: 'u_fit' },
+    { title: 'Inspect every wheel', detail: 'Save the odometer, type a tread depth for each wheel (try 0.8 mm on one — it turns red) and press “Save & record inspection”.', to: 'jobs/jobs_today_14', as: 'u_fit' },
+    { title: 'Quote a tyre below the legal minimum', detail: '“Send quote” is refused while the left-front tyre is below 1.0 mm and not quoted. Tick “Replace” on LF, save, press “Quote for 1 marked position” and send — or record the customer’s refusal.', to: 'jobs/jobs_today_13', as: 'u_adv' },
+    { title: 'Approve a fleet job with a PO', detail: 'This fleet needs a purchase order on every job. Under “Services & quote”, try “Record approval” without one, then type a PO number such as PO-DEMO-1042.', to: 'jobs/jobs_today_11', as: 'u_adv' },
+    { title: 'Search a tyre size', detail: 'Type a size such as 205/55R16 to see what is in stock, its DOT age and same-rim alternatives within 3% rolling diameter.', to: 'stock', as: 'u_stock' },
   ],
   highlights: [
     'Bay queue: arrive → inspect every wheel → quote → approve → fit → balance → align → torque → ready',

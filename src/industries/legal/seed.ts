@@ -251,7 +251,7 @@ export function buildLegalSeed(today: string) {
     for (const inv of invoices.filter((x) => x.values.matter === M(matterIdx).id)) {
       const amt = Math.min(total(inv), avail);
       if (amt <= 0) continue;
-      T(matterIdx, 'transfer', daysBetween(today, String(inv.values.date)) + 3, amt / 100, 'Mahlaba & Rossouw business account', `Fees per fee note ${inv.ref}`, 'approved', inv.id);
+      T(matterIdx, 'transfer', daysBetween(today, String(inv.values.date)) + 3, amt / 100, 'Firm business account', `Fees per fee note ${inv.ref}`, 'approved', inv.id);
       settle(inv, amt, 'Elsabé Fourie', 'Paid by transfer from trust (simulated)');
       avail -= amt; spent += amt;
     }

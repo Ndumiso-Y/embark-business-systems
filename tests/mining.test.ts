@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import config, {
-  contractorClearance, daysSinceLastLti, gasTestProblem, permitExpired, productionToDate, sectionsToDate, serviceState, setTodayForTests,
+  contractorClearance, daysSinceLastLti, gasTestProblem, holders, permitExpired, productionToDate, sectionsToDate, serviceState, setTodayForTests,
 } from '../src/industries/mining';
 import { applyTransition, records, str, validateConfig } from '../src/core/engine';
 import { buildIndustryData } from '../src/core/seed';
@@ -21,6 +21,27 @@ afterAll(() => setTodayForTests(null));
 describe('mining configuration', () => {
   it('is internally consistent', () => {
     expect(validateConfig(config)).toEqual([]);
+  });
+
+  it('has a guide whose steps point at seeded records in the state the step describes', () => {
+    expect(config.guide).toHaveLength(6);
+    const at = (to: string) => { const [m, id] = to.split('/'); const col = config.modules.find((x) => x.key === m)!.collection!; return records(data, col).find((r) => r.id === id)!; };
+    expect(at('production/shifts_535')).toMatchObject({ status: 'open', values: { date: TODAY, section: 'l7e', shift: 'day' } });
+    expect(at('permits/permits_4')).toMatchObject({ status: 'approved', values: { type: 'confined', gasO2: 18.9, isolationConfirmed: true } });
+    expect(at('incidents/incidents_12')).toMatchObject({ status: 'investigating', values: { rootCause: '' } });
+    expect(at('workorders/workorders_13')).toMatchObject({ status: 'planned', values: { type: 'planned' } });
+    expect(at('environment/envreadings_40')).toMatchObject({ status: 'recorded', values: { parameter: 'dust', value: 1.7 } });
+    // Each step's user can open the module it points at.
+    for (const g of config.guide!) {
+      const u = user(g.as!);
+      expect(u.isSuperAdmin || u.modules.includes(g.to.split('/')[0]), `${g.title} as ${g.as}`).toBe(true);
+    }
+  });
+
+  it('holders() names who can do a step, for roles that cannot', () => {
+    expect(holders(data, 'production.verify')).toBe('Zodwa Mthethwa (Mine manager)');
+    expect(holders(data, 'production.verify', 'u_mm')).toMatch(/nobody yet/);
+    expect(holders(data, 'maintenance')).toBe('Zodwa Mthethwa (Mine manager) or Ruan Visagie (Maintenance planner)');
   });
 
   it('seeds a realistic, deterministic mine', () => {
@@ -146,6 +167,14 @@ describe('incidents', () => {
     const done = withValues(open, { actionsComplete: true });
     expect(applyTransition(wf('incidents'), done, 'closed', user('u_so'), data, '', 'Safety officer')).toEqual({ ok: false, reason: 'A note is required for this step.' });
     expect(applyTransition(wf('incidents'), done, 'closed', user('u_so'), data, 'Verified on site', 'Safety officer')).toMatchObject({ ok: true });
+  });
+
+  it('cannot close with overdue corrective actions that are not marked complete', () => {
+    const overdue = records(data, 'incidents').find((i) => i.status === 'actions' && str(i, 'actionDue') < TODAY && !i.values.actionsComplete)!;
+    const res = applyTransition(wf('incidents'), overdue, 'closed', user('u_so'), data, 'Closing anyway', 'Safety officer');
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.reason).toMatch(/not marked complete \(overdue since/);
+    expect(applyTransition(wf('incidents'), withValues(overdue, { actionsComplete: true }), 'closed', user('u_so'), data, 'Mesh installed', 'Safety officer')).toMatchObject({ ok: true });
   });
 });
 

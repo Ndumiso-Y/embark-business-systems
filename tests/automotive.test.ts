@@ -22,6 +22,23 @@ describe('automotive configuration', () => {
   it('is internally consistent', () => {
     expect(validateConfig(config)).toEqual([]);
   });
+  it('keeps today’s job cards on fixed ids whatever the weekday, so the guide always opens the same records', () => {
+    const shape = (today: string) => {
+      const d = buildIndustryData(config, today);
+      return records(d, 'jobs').filter((j) => j.id.startsWith('jobs_open_')).map((j) => `${j.id}:${j.status}:${str(j, 'vehicle')}:${findRecord(d, 'estimates', str(j, 'estimate'))?.status ?? '-'}`);
+    };
+    const base = shape(TODAY);
+    expect(base.length).toBe(14);
+    expect(base).toContain('jobs_open_10:booked:vehicles_4:approved');
+    expect(base).toContain('jobs_open_6:approval:vehicles_3:sent');
+    expect(base).toContain('jobs_open_3:qc:vehicles_6:approved');
+    expect(base).toContain('jobs_open_1:ready:vehicles_7:approved');
+    for (const day of ['2026-11-12', '2026-11-13', '2026-11-14', '2026-11-15', '2026-11-16', '2026-11-17', '2027-03-01']) expect(shape(day)).toEqual(base);
+    for (const g of config.guide ?? []) {
+      const [mod, id] = g.to.split('/');
+      if (id) expect(findRecord(data, mod, id), g.title).toBeTruthy();
+    }
+  });
   it('seeds a deterministic workshop with history and a full board today', () => {
     const again = buildIndustryData(config, TODAY);
     expect(records(data, 'customers').length).toBe(20);

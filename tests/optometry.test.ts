@@ -1,9 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import config, { claimProblems, examProblems, setTodayForTests } from '../src/industries/optometry';
+import config, { claimOutstanding, claimProblems, examProblems, orderProblems, setTodayForTests, tariffForExam } from '../src/industries/optometry';
 import { anisometropia, formatEye, iopFlag, sphericalEquivalent, transpose, validateEye, validVA } from '../src/industries/optometry/rx';
-import { applyTransition, findRecord, records, str, validateConfig } from '../src/core/engine';
+import { applyTransition, findRecord, findTransition, lines, records, str, validateConfig } from '../src/core/engine';
 import { buildIndustryData } from '../src/core/seed';
-import type { DemoRecord, IndustryData } from '../src/core/types';
+import type { DemoRecord, EffectApi, IndustryData, Values } from '../src/core/types';
 
 const TODAY = '2026-11-11';
 let data: IndustryData;
@@ -95,5 +95,76 @@ describe('practice workflows', () => {
     expect(claimProblems(claim, data)).toEqual([]);
     expect(claimProblems({ ...claim, values: { ...claim.values, icd10: '' } }, data)[0]).toMatch(/ICD-10/);
     expect(claimProblems({ ...claim, values: { ...claim.values, scheme: 'private' } }, data)[0]).toMatch(/Private/);
+  });
+});
+
+/** Records what a transition's side effect asks the store to do. */
+function spyApi() {
+  const calls = { created: [] as Array<{ collection: string; values: Values; status?: string }>, updated: [] as Array<{ collection: string; id: string; values: Values }>, moved: [] as Array<{ collection: string; id: string; to: string }>, toasts: [] as string[] };
+  const api: EffectApi = {
+    create: (collection, values, status) => { calls.created.push({ collection, values, status }); return { id: `${collection}_new`, ref: 'NEW-0001', status, values, history: [], createdAt: '', updatedAt: '' }; },
+    update: (collection, id, values) => { calls.updated.push({ collection, id, values }); },
+    transition: (collection, id, to) => { calls.moved.push({ collection, id, to }); return { ok: true, value: findRecord(data, collection, id)! }; },
+    toast: (text) => { calls.toasts.push(text); },
+  };
+  return { api, calls };
+}
+
+describe('what one step sets in motion', () => {
+  it('finalising an exam issues the prescription, supersedes the old one, moves the recall and drafts the exam fee', () => {
+    const draft = records(data, 'exams').find((e) => e.status === 'draft')!;
+    const exam: DemoRecord = { ...draft, status: 'final', values: { ...draft.values, diagnosis: 'H52.1' } };
+    const { api, calls } = spyApi();
+    findTransition(wf('exams'), 'draft', 'final')!.after!({ record: exam, data, api, today: TODAY, user: user('u_opt') });
+    const patient = str(exam, 'patient');
+    expect(calls.updated.find((u) => u.collection === 'patients')).toMatchObject({ id: patient, values: { lastExam: TODAY } });
+    const old = records(data, 'prescriptions').filter((r) => str(r, 'patient') === patient && r.status === 'issued').map((r) => r.id);
+    expect(calls.moved.map((m) => m.id)).toEqual(old);
+    expect(calls.created.find((c) => c.collection === 'prescriptions')).toMatchObject({ status: 'issued', values: { patient, exam: exam.id } });
+    const claim = calls.created.find((c) => c.collection === 'claims')!;
+    expect(claim).toMatchObject({ status: 'draft', values: { patient, exam: exam.id, icd10: 'H52.1' } });
+    expect((claim.values.lines as Array<{ code?: string }>)[0].code).toBe(tariffForExam(exam, data).code);
+    expect(calls.toasts[0]).toMatch(/^Prescription issued, recall date updated, draft claim/);
+  });
+  it('explains every reason a quote cannot go to the lab', () => {
+    const quote = records(data, 'orders').find((o) => o.status === 'quote')!;
+    const keys = (v: Values) => orderProblems({ ...quote, values: { ...quote.values, ...v } }, data).map((p) => p.key);
+    expect(keys({})).toEqual(['expired']);
+    const valid = records(data, 'prescriptions').find((r) => r.status === 'issued' && str(r, 'expiry') > TODAY)!.id;
+    expect(keys({ prescription: valid })).toEqual([]);
+    expect(keys({ prescription: valid, frame: '', pd: null })).toEqual(['pd', 'frame']);
+    const cloth = records(data, 'stock').find((x) => str(x, 'category') === 'accessory')!.id;
+    expect(keys({ prescription: valid, frame: cloth })).toEqual(['frame']);
+    const sold = records(data, 'stock').find((x) => str(x, 'category') === 'frame' && Number(x.values.qty) === 0)!.id;
+    expect(keys({ prescription: valid, frame: sold })).toEqual(['stock']);
+    expect(keys({ prescription: valid, funding: 'private', deposit: 0 })).toEqual(['deposit']);
+    expect(keys({ prescription: valid, kind: 'cl', frame: '', pd: null })).toEqual([]);
+  });
+  it('passing quality check stamps the ready date; collecting scheme-funded eyewear lands on a claim', () => {
+    const order = records(data, 'orders').find((o) => o.status === 'ready' && str(o, 'funding') === 'scheme')!;
+    const ready = spyApi();
+    findTransition(wf('orders'), 'received', 'ready')!.after!({ record: order, data, api: ready.api, today: TODAY, user: user('u_disp') });
+    expect(ready.calls.updated[0]).toMatchObject({ collection: 'orders', id: order.id, values: { readySince: TODAY } });
+    const done = spyApi();
+    findTransition(wf('orders'), 'ready', 'collected')!.after!({ record: order, data, api: done.api, today: TODAY, user: user('u_disp') });
+    const draft = records(data, 'claims').find((c) => str(c, 'patient') === str(order, 'patient') && c.status === 'draft');
+    const written = draft ? done.calls.updated.find((u) => u.collection === 'claims')!.values : done.calls.created.find((c) => c.collection === 'claims')!.values;
+    expect(written.order).toBe(order.id);
+    const added = (written.lines as Array<{ code?: string }>).slice(-lines(order).length);
+    expect(added.every((l) => /^DEMO-(FR1|LN1)$/.test(l.code ?? ''))).toBe(true);
+  });
+  it('submitting stamps the date and settling records what the patient paid', () => {
+    const part = records(data, 'claims').find((c) => c.status === 'partpaid')!;
+    expect(claimOutstanding(part)).toBeGreaterThan(0);
+    const { api, calls } = spyApi();
+    findTransition(wf('claims'), 'partpaid', 'settled')!.after!({ record: part, data, api, today: TODAY, user: user('u_mgr') });
+    expect(claimOutstanding({ ...part, values: { ...part.values, ...calls.updated[0].values } })).toBe(0);
+    const sub = spyApi();
+    findTransition(wf('claims'), 'draft', 'submitted')!.after!({ record: part, data, api: sub.api, today: TODAY, user: user('u_mgr') });
+    expect(sub.calls.updated[0].values).toEqual({ submittedOn: TODAY });
+  });
+  it('seeds no recall that fell due before the patient’s latest exam', () => {
+    for (const p of records(data, 'patients')) if (str(p, 'lastExam')) expect(str(p, 'recallDue') >= str(p, 'lastExam'), `${p.ref}`).toBe(true);
+    expect(records(data, 'patients').filter((p) => str(p, 'recallDue') < TODAY).length).toBeGreaterThanOrEqual(5);
   });
 });

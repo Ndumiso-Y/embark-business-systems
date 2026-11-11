@@ -1,15 +1,16 @@
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import type { Values } from '../../../core/types';
-import { useActions, useData, useIndustry, useUser } from '../../../core/context';
+import { useActions, useBase, useData, useIndustry, useUser } from '../../../core/context';
 import { findRecord, num, records, str } from '../../../core/engine';
 import { formatDate } from '../../../core/lib/dates';
 import { Empty, KeyValues, Panel, StatusTag, Tag } from '../../../core/components/ui';
 import { RecordDetail } from '../../../core/components/records';
 import { RecordFormModal } from '../../../core/components/fields';
 import { BUDGET_BAND, INTEREST, LEAD_PROPERTY_TYPES, LEAD_SOURCES, PROPERTY_TYPES, label, suburbLabel } from '../data';
-import { LEAD_OPEN, agentOf, bookingProblem, byDateTime, ffcState, listingName, matchListing, matchingListings, randOf, todayStr } from '../helpers';
-import { PersonCard, RecLink } from './shared';
+import { LEAD_OPEN, ON_MARKET, agentOf, bookingProblem, byDateTime, ffcState, listingName, matchListing, matchingListings, randOf, todayStr } from '../helpers';
+import { IcoPlus } from '../../../core/components/Icons';
+import { OfferCapture, PersonCard, RecLink } from './shared';
 
 export default function LeadDetail() {
   const { id } = useParams();
@@ -26,10 +27,12 @@ function Main({ id }: { id: string }) {
   const config = useIndustry();
   const data = useData();
   const act = useActions();
-  const { can } = useUser();
+  const base = useBase();
+  const { can, hasModule } = useUser();
   const today = todayStr();
   const lead = findRecord(data, 'leads', id)!;
   const [booking, setBooking] = useState<Values | null>(null);
+  const [offering, setOffering] = useState<string | null>(null);
   const viewDef = config.collections.find((c) => c.key === 'viewings')!;
   const offerDef = config.collections.find((c) => c.key === 'offers')!;
   const matches = matchingListings(data, lead);
@@ -40,6 +43,9 @@ function Main({ id }: { id: string }) {
   const viewings = records(data, 'viewings').filter((v) => str(v, 'lead') === id).sort(byDateTime).reverse();
   const offers = records(data, 'offers').filter((o) => str(o, 'lead') === id);
   const open = LEAD_OPEN.includes(lead.status ?? '');
+  // Default the offer to the property the buyer viewed most recently (still on the market), else the best match.
+  const viewedLive = viewings.map((v) => findRecord(data, 'listings', str(v, 'listing'))).find((l) => l && ON_MARKET.includes(l.status ?? ''));
+  const offerListing = viewedLive?.id ?? matches[0]?.listing.id ?? '';
 
   const book = (listingId: string) => {
     const l = findRecord(data, 'listings', listingId);
@@ -101,13 +107,15 @@ function Main({ id }: { id: string }) {
                 </div>
                 {str(v, 'interest') && <Tag tone={str(v, 'interest') === 'hot' ? 'green' : str(v, 'interest') === 'warm' ? 'amber' : 'dark'}>{label(INTEREST, str(v, 'interest')).split(' — ')[0]}</Tag>}
                 <StatusTag workflow={viewDef.workflow} status={v.status} />
+                {v.status === 'booked' && str(v, 'date') <= today && can('leads') && hasModule('viewings') && <Link className="btn xs" to={`${base}/viewings/${v.id}`} data-testid="record-feedback">Record feedback</Link>}
               </li>
             ))}
           </ul>
         ) : <Empty title="No viewings yet" body="Book one from a matching listing above." />}
       </Panel>
 
-      <Panel title="Offers to purchase">
+      <Panel title="Offers to purchase" meta={open ? 'Capture the buyer’s offer here once they are ready' : undefined}
+        right={can('offers.manage') && open ? <button className="btn sm primary" onClick={() => setOffering(offerListing)} data-testid="capture-offer"><IcoPlus /> Capture offer</button> : undefined}>
         {offers.length ? (
           <ul className="list">
             {offers.map((o) => (
@@ -123,11 +131,13 @@ function Main({ id }: { id: string }) {
         ) : <Empty title="No offers yet" />}
       </Panel>
       {booking && <RecordFormModal def={viewDef} open title={`Book viewing · ${str(lead, 'name')}`} initial={booking} onClose={() => setBooking(null)} onSave={save} />}
+      {offering !== null && <OfferCapture title={`Capture offer · ${str(lead, 'name')}`} initial={{ lead: id, listing: offering }} onClose={() => setOffering(null)} />}
     </>
   );
 }
 
 function Aside({ id }: { id: string }) {
+  const config = useIndustry();
   const data = useData();
   const lead = findRecord(data, 'leads', id)!;
   const matches = matchingListings(data, lead);
@@ -150,7 +160,7 @@ function Aside({ id }: { id: string }) {
       {matches.length > 0 && (
         <Panel title="Message preview" meta="Preview only — no SMS, email or WhatsApp is sent">
           <div className="sms-preview">
-            Hi {first}, it’s Kestrel Property Group. {matches.length === 1 ? 'A property' : `${matches.length} properties`} on the market match{matches.length === 1 ? 'es' : ''} what you’re looking for:{' '}
+            Hi {first}, it’s {config.businessName}. {matches.length === 1 ? 'A property' : `${matches.length} properties`} on the market match{matches.length === 1 ? 'es' : ''} what you’re looking for:{' '}
             {matches.slice(0, 2).map((m) => `${str(m.listing, 'address')} (${randOf(num(m.listing, 'askingPrice'))})`).join('; ')}. Reply to book a viewing.
           </div>
         </Panel>

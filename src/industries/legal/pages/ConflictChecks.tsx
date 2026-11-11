@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
+import type { DemoRecord } from '../../../core/types';
 import { useActions, useBase, useData, useIndustry, useUser } from '../../../core/context';
 import { records, str } from '../../../core/engine';
 import { Empty, Field, Notice, PageHeader, Panel, Stat, StatusTag, Tag } from '../../../core/components/ui';
@@ -17,8 +18,13 @@ export default function ConflictChecks() {
   const { can, hasModule } = useUser();
   const def = act.def('conflicts');
   const matterDef = config.collections.find((c) => c.key === 'matters')!;
-  const [q, setQ] = useState('');
-  const [matter, setMatter] = useState('');
+  // Arriving from a matter (…/conflicts?matter=<id>) preselects it and searches its opposing party (or client).
+  const [params] = useSearchParams();
+  const preset = records(data, 'matters').find((m) => m.id === params.get('matter') && ['intake', 'conflict'].includes(m.status ?? ''));
+  /** The first name worth searching for a matter: the opposing party, else another party, else the client. */
+  const firstParty = (m: DemoRecord) => str(m, 'opposingParty') || str(m, 'otherParties').split(/[;,]/)[0].trim() || clientName(data, m.values.client);
+  const [q, setQ] = useState(preset ? firstParty(preset) : '');
+  const [matter, setMatter] = useState(preset?.id ?? '');
   const [outcome, setOutcome] = useState('');
   const [note, setNote] = useState('');
   const [err, setErr] = useState('');
@@ -31,7 +37,7 @@ export default function ConflictChecks() {
   const pickMatter = (id: string) => {
     setMatter(id);
     const m = records(data, 'matters').find((x) => x.id === id);
-    if (m && !q.trim()) setQ(str(m, 'opposingParty') || clientName(data, m.values.client));
+    if (m && !q.trim()) setQ(firstParty(m));
   };
   const save = () => {
     if (!matter) return setErr('Select the matter this search is for.');
@@ -42,7 +48,7 @@ export default function ConflictChecks() {
     const r = act.create('conflicts', { matter, searchTerms: q.trim(), hits: hits.length, hitSummary: summary, outcome, note: note.trim(), checkedOn: todayStr() }, 'pending', 'Conflict search recorded');
     const m = records(data, 'matters').find((x) => x.id === matter);
     if (m?.status === 'intake') act.transition('matters', matter, 'conflict');
-    act.toast(`Conflict check ${r.ref} recorded — awaiting clearance`);
+    act.toast(can('conflicts.clear') ? `Conflict check ${r.ref} recorded — clear it under “Awaiting clearance” below` : `Conflict check ${r.ref} recorded — a partner must now clear it`);
     setErr(''); setNote(''); setOutcome(''); setMatter('');
   };
 
@@ -64,6 +70,7 @@ export default function ConflictChecks() {
               <input aria-label="Search name for conflicts" placeholder="Type a person or company name, e.g. Sable" value={q} onChange={(e) => setQ(e.target.value)} data-testid="conflict-search" />
             </label>
             <span className="toolbar-count">{q.trim().length >= 2 ? `${hits.length} hit${hits.length === 1 ? '' : 's'}` : 'Enter at least 2 characters'}</span>
+          {matter && <p className="muted-note" style={{ margin: '0 0 10px' }}>Searching for {records(data, 'matters').find((m) => m.id === matter)?.ref}. Search each party in turn (client, opposing and other parties), then record the outcome on the right.</p>}
           </div>
           {q.trim().length >= 2 && (hits.length ? (
             <div className="table-wrap">
@@ -74,7 +81,7 @@ export default function ConflictChecks() {
                     <tr key={i}>
                       <td><strong>{h.name}</strong></td>
                       <td><Tag tone={h.role === 'Client' ? 'accent' : h.role === 'Opposing party' ? 'red' : 'dark'}>{h.role}</Tag></td>
-                      <td>{h.matterId ? <MatterLink data={data} id={h.matterId} /> : hasModule('clients') && h.clientId ? <Link to={`${base}/clients/${h.clientId}`}>{h.ref}</Link> : h.ref}</td>
+                      <td>{h.matterId ? <><MatterLink data={data} id={h.matterId} />{h.matterId === matter && <small>this matter</small>}</> : hasModule('clients') && h.clientId ? <Link to={`${base}/clients/${h.clientId}`}>{h.ref}</Link> : h.ref}</td>
                       <td>{h.status ? <StatusTag workflow={matterDef.workflow} status={h.status} /> : <Tag tone="green">Client record</Tag>}</td>
                     </tr>
                   ))}
@@ -83,7 +90,7 @@ export default function ConflictChecks() {
             </div>
           ) : <Empty title="No hits" body="No client or party name matches. Record the search as clear if that is the outcome." />)}
         </Panel>
-        <Panel title="Record this search" meta="Creates a conflict check awaiting partner clearance">
+        <Panel title="Record this search" meta="Saves the name searched and the hits found, as a conflict check awaiting partner clearance">
           {can('intake') ? (
             <form className="stack" onSubmit={(e) => { e.preventDefault(); save(); }} noValidate>
               <Field label="Matter">

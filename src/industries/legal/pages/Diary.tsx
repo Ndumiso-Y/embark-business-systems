@@ -5,12 +5,13 @@ import { useActions, useBase, useData, useIndustry, useUser } from '../../../cor
 import { records, str } from '../../../core/engine';
 import { daysBetween, formatDate } from '../../../core/lib/dates';
 import { Empty, Flags, Notice, PageHeader, Panel, Segmented, Stat, Tag } from '../../../core/components/ui';
-import { RecordTable, WorkflowActions } from '../../../core/components/records';
+import { RecordTable } from '../../../core/components/records';
 import { RecordFormModal } from '../../../core/components/fields';
 import { IcoPlus } from '../../../core/components/Icons';
 import { DIARY_TYPES, earner, label } from '../data';
 import { byDeadline, deadlineWindow, todayStr, diaryWhen, type DeadlineWindow } from '../helpers';
 import { MatterLink } from './shared';
+import { PRESCRIPTION_RULE, PostponeModal } from './Postpone';
 
 const SECTIONS: Array<{ key: DeadlineWindow; title: string; meta: string }> = [
   { key: 'overdue', title: 'Overdue', meta: 'Past the date and not marked done' },
@@ -89,18 +90,29 @@ function DiaryRow({ d }: { d: DemoRecord }) {
   const data = useData();
   const base = useBase();
   const act = useActions();
+  const { can } = useUser();
   const def = act.def('diary');
   const today = todayStr();
+  const [postponing, setPostponing] = useState(false);
   const presc = str(d, 'type') === 'prescription';
+  const done = () => { const res = act.transition('diary', d.id, 'done'); act.toast(res.ok ? `${d.ref} marked done` : res.reason, res.ok ? 'ok' : 'err'); };
   return (
-    <li style={presc ? { borderLeft: '4px solid var(--danger)', paddingLeft: 10 } : undefined}>
+    <li style={{ flexWrap: 'wrap', ...(presc ? { borderLeft: '4px solid var(--danger)', paddingLeft: 10 } : {}) }}>
       <span className="time-chip">{diaryWhen(d)}</span>
-      <div className="grow">
+      <div className="grow" style={{ minWidth: 180 }}>
         <Link to={`${base}/diary/${d.id}`}><b>{str(d, 'title')}</b></Link>
         <small><MatterLink data={data} id={d.values.matter} /> · {str(d, 'venue')} · {earner(str(d, 'feeEarner'))?.short}</small>
         <span>{presc ? <Tag tone="red">Prescription date</Tag> : <Tag tone="dark" outline>{label(DIARY_TYPES, str(d, 'type'))}</Tag>} <Flags flags={def.flags?.(d, data, today) ?? []} /></span>
       </div>
-      <WorkflowActions def={def} record={d} compact />
+      {can('diary') && (
+        <div className="btns wf-actions">
+          <button type="button" className="btn xs primary" onClick={done}>Mark done</button>
+          {presc
+            ? <span className="tag dark outline" title={PRESCRIPTION_RULE} data-testid="no-postpone">Cannot be postponed</span>
+            : <button type="button" className="btn xs" onClick={() => setPostponing(true)} data-testid="postpone">Postpone</button>}
+        </div>
+      )}
+      {postponing && <PostponeModal entry={d} onClose={() => setPostponing(false)} />}
     </li>
   );
 }

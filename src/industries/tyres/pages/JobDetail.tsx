@@ -2,14 +2,14 @@ import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import type { DemoRecord, Values } from '../../../core/types';
 import { useActions, useBase, useData, useUser } from '../../../core/context';
-import { findRecord, lines, num, str } from '../../../core/engine';
+import { findRecord, lines, num, records, str } from '../../../core/engine';
 import { formatDate } from '../../../core/lib/dates';
 import { formatRand } from '../../../core/lib/money';
 import { Empty, Field, KeyValues, Notice, Panel, Tag } from '../../../core/components/ui';
 import { RecordDetail } from '../../../core/components/records';
-import { ALIGN_READINGS, ALIGN_SPEC, APPROVAL_CHANNELS, BAYS, BRANDS, CONDITIONS, POSITIONS, QC_ITEMS, SERVICES, SPARE, TREAD_LEGAL_MIN, label, type PosKey } from '../data';
+import { ALIGN_READINGS, ALIGN_SPEC, APPROVAL_CHANNELS, BAYS, BRANDS, CONDITIONS, POSITIONS, QC_ITEMS, SERVICES, SPARE, TECHNICIANS, TREAD_LEGAL_MIN, label, type PosKey } from '../data';
 import {
-  alignmentProblem, belowLegal, calibrationState, dotText, fittingProblem, invoiceBalance, jobFleet, jobInvoice, minText, minutesBetween, qcMissing, quoteLines,
+  IN_BAY, alignmentProblem, approvalProblem, belowLegal, calibrationState, dotText, fittingProblem, invoiceBalance, jobFleet, jobInvoice, kmText, minText, minutesBetween, nowHm, qcMissing, quoteLines,
   replacePositions, stockForSize, stockLabel, techLabel, todayStr, torqueProblem, torqueSpec, torqueWrench, treadTone, vehicleOf, wk, REFUSAL_WORDS,
 } from '../helpers';
 import { LinesTable, RecordLink, VehicleCard, WheelDiagram } from './shared';
@@ -24,6 +24,7 @@ export default function JobDetail() {
   const j = findRecord(data, 'jobs', id);
   return (
     <RecordDetail aside={j ? <Aside id={j.id} /> : undefined}>
+      {j && SETUP.includes(j.status ?? '') && <Setup key={`${j.id}_${str(j, 'odometer')}_${str(j, 'bay')}_${str(j, 'technician')}`} id={j.id} />}
       {j && <Wheels key={j.id} id={j.id} />}
       {j && <Quote id={j.id} />}
       {j && j.values.alignment === true && <Alignment key={`al_${j.id}`} id={j.id} />}
@@ -33,6 +34,80 @@ export default function JobDetail() {
 }
 
 const numIn = (v: string) => (v === '' ? '' : Number(v));
+const SETUP = ['arrived', 'inspected', 'quoted', 'approved'];
+
+/* ---------------- Arrival: odometer, bay and technician ---------------- */
+/** The three things later steps are blocked on, in one small form instead of the full Edit dialog. */
+function Setup({ id }: { id: string }) {
+  const data = useData();
+  const act = useActions();
+  const { can } = useUser();
+  const j = findRecord(data, 'jobs', id)!;
+  const v = vehicleOf(data, j);
+  const status = j.status ?? 'arrived';
+  const [odo, setOdo] = useState(str(j, 'odometer'));
+  const [bay, setBay] = useState(str(j, 'bay') === 'align' ? '' : str(j, 'bay'));
+  const [tech, setTech] = useState(str(j, 'technician'));
+  const [err, setErr] = useState('');
+  const mayEdit = can('jobs.manage') || can('fitment');
+  const odoEdit = INSPECT.includes(status);
+  const dirty = odo !== str(j, 'odometer') || bay !== (str(j, 'bay') === 'align' ? '' : str(j, 'bay')) || tech !== str(j, 'technician');
+  const last = num(v, 'odometer');
+  const busy = (b: string) => records(data, 'jobs').find((x) => x.id !== j.id && str(x, 'bay') === b && IN_BAY.includes(x.status ?? ''));
+  const fitBays = BAYS.filter((b) => b.value !== 'align');
+  const occupants = fitBays.map((b) => busy(b.value));
+  const allBusy = !IN_BAY.includes(status) && occupants.every(Boolean);
+  const nearest = occupants.find((o) => o?.status === 'torque') ?? occupants.find(Boolean);
+  const todo = [
+    odoEdit && str(j, 'odometer') === '' ? 'the odometer reading (needed for the inspection)' : '',
+    !str(j, 'technician') ? 'a technician' : '',
+    !str(j, 'bay') ? 'a fitment bay' : '',
+  ].filter(Boolean);
+  const save = () => {
+    if (odo !== '' && (!Number.isFinite(Number(odo)) || Number(odo) < 0)) { setErr('Enter the odometer reading in kilometres.'); return; }
+    if (odo !== '' && Number(odo) < last) { setErr(`${kmText(Number(odo))} is below the last recorded ${kmText(last)} for ${str(v, 'reg')}. Re-check the reading.`); return; }
+    act.update('jobs', j.id, { odometer: odo === '' ? '' : Number(odo), bay, technician: tech, ...(str(j, 'arrivedAt') ? {} : { arrivedAt: nowHm() }) },
+      `Arrival details: ${odo === '' ? 'no odometer yet' : kmText(Number(odo))} · ${label(BAYS, bay)} · ${techLabel(tech)}`);
+    act.toast('Arrival details saved');
+    setErr('');
+  };
+  return (
+    <Panel title="Arrival, bay & technician" meta="Odometer for the inspection; a free fitment bay and a technician before fitting starts">
+      {mayEdit ? (
+        <>
+          {todo.length > 0 && <div style={{ marginBottom: 12 }}><Notice tone="amber">Still needed: {todo.join(', ')}.</Notice></div>}
+          {allBusy && (
+            <div style={{ marginBottom: 12 }}>
+              <Notice tone="grey">
+                <b>All four fitment bays are occupied right now.</b> A bay frees up when its job passes the torque check and QC{nearest ? <> — the nearest is <RecordLink module="jobs" record={nearest}>{nearest.ref}</RecordLink> in {label(BAYS, str(nearest, 'bay'))}{nearest.status === 'torque' ? ', already at the torque check' : ''}. Sign it off, then start fitting here.</> : '.'}
+              </Notice>
+            </div>
+          )}
+          <div className="form-grid">
+            <Field label="Odometer (km)" error={err || undefined} hint={`Last recorded ${kmText(last)} — a lower reading is refused.`}>
+              <input className="input num" type="number" min={0} step={1} aria-label="Odometer (km)" data-testid="job-odometer" disabled={!odoEdit} value={odo} placeholder="Reading in km" onChange={(e) => { setOdo(e.target.value); setErr(''); }} />
+            </Field>
+            <Field label="Technician">
+              <select className="select" aria-label="Job technician" data-testid="job-technician" value={tech} onChange={(e) => setTech(e.target.value)}>
+                <option value="">No technician yet</option>
+                {TECHNICIANS.map((t) => <option key={t.value} value={t.value}>{t.label} · {t.skill}</option>)}
+              </select>
+            </Field>
+            <Field label="Fitment bay" hint="The alignment bay is used automatically when alignment was sold.">
+              <select className="select" aria-label="Fitment bay" data-testid="job-bay" value={bay} onChange={(e) => setBay(e.target.value)}>
+                <option value="">No bay yet</option>
+                {fitBays.map((b) => { const o = busy(b.value); return <option key={b.value} value={b.value}>{b.label}{o ? ` — occupied by ${o.ref}` : ' — free'}</option>; })}
+              </select>
+            </Field>
+            <div style={{ alignSelf: 'center' }}><button className="btn primary sm" type="button" data-testid="save-setup" disabled={!dirty} onClick={save}>{dirty ? 'Save arrival details' : 'Saved'}</button></div>
+          </div>
+        </>
+      ) : (
+        <p className="muted-note">Odometer {str(j, 'odometer') ? kmText(num(j, 'odometer')) : 'not recorded'} · {label(BAYS, str(j, 'bay'))} · {techLabel(str(j, 'technician'))}. The counter or a fitment technician records these.</p>
+      )}
+    </Panel>
+  );
+}
 
 /* ---------------- Signature screen: wheel positions ---------------- */
 function Wheels({ id }: { id: string }) {
@@ -67,6 +142,11 @@ function Wheels({ id }: { id: string }) {
     act.update('jobs', j.id, patch, inspectEdit ? 'Wheel inspection updated' : 'Torque values recorded');
     act.toast(inspectEdit ? 'Wheel inspection saved' : 'Torque values saved');
   };
+  const completeInspection = () => {
+    if (dirty) save();
+    const res = act.transition('jobs', j.id, 'inspected');
+    if (!res.ok) act.toast(res.reason, 'err'); else act.toast(`${j.ref}: inspection recorded — now quote the customer`);
+  };
   const low = belowLegal({ ...j, values: { ...j.values, ...draft } });
 
   const row = (p: { key: PosKey; label: string; name: string }) => {
@@ -98,7 +178,8 @@ function Wheels({ id }: { id: string }) {
       right={(inspectEdit || torqueEdit) ? (
         <>
           {inspectEdit && <button className="btn sm" type="button" onClick={fillDefaults}>Fill size & placard kPa</button>}
-          <button className="btn sm primary" type="button" disabled={!dirty} onClick={save} data-testid="save-wheels">{dirty ? 'Save wheels' : 'Saved'}</button>
+          <button className={`btn sm ${status === 'arrived' && can('fitment') ? '' : 'primary'}`} type="button" disabled={!dirty} onClick={save} data-testid="save-wheels">{dirty ? 'Save wheels' : 'Saved'}</button>
+          {status === 'arrived' && can('fitment') && <button className="btn sm primary" type="button" onClick={completeInspection} data-testid="complete-inspection">Save & record inspection</button>}
         </>
       ) : undefined}>
       <div className="grid-2-even" style={{ marginBottom: 0, alignItems: 'start' }}>
@@ -107,8 +188,9 @@ function Wheels({ id }: { id: string }) {
           {low.length > 0 && (
             <Notice tone="red"><b>{low.map((p) => p.label).join(', ')} below {TREAD_LEGAL_MIN.toFixed(1)} mm.</b> Demo rule: the tyre must be quoted for replacement, or the customer’s refusal recorded with a note before the quote goes out.</Notice>
           )}
-          {status === 'arrived' && <Notice tone="amber">Measure tread on all four positions (spare optional) and the odometer before completing the inspection.</Notice>}
-          {torqueEdit && <Notice tone="accent">Record a torque value for every wheel during the torque check. Values outside {spec.min}–{spec.max} Nm block QC.</Notice>}
+          {status === 'arrived' && <Notice tone="amber">Type the tread depth for all four positions in the table below (spare optional), tick “Replace” on any tyre to quote, then “Save &amp; record inspection”. The odometer goes in the panel above.</Notice>}
+          {status === 'inspected' && inspectEdit && <Notice tone="accent">Inspection recorded. Tick “Replace” on the wheels to quote and “Save wheels”, then build the quote under “Services &amp; quote”.</Notice>}
+          {torqueEdit && <Notice tone="accent">Type the torque value for every wheel in the table below and press “Save wheels”. Values outside {spec.min}–{spec.max} Nm block QC.</Notice>}
           {!inspectEdit && !torqueEdit && <p className="muted-note">Inspection is recorded at arrival; torque values during the torque check. Switch to a fitment technician to edit.</p>}
           {sel && <SelectedWheel values={draft} pos={sel} />}
         </div>
@@ -209,6 +291,10 @@ function Quote({ id }: { id: string }) {
         { label: 'Approval', value: fleet ? `${str(fleet, 'name')} · PO ${str(j, 'fleetPo') || (fleet.values.poRequired ? 'required — not yet captured' : 'not required')}` : label(APPROVAL_CHANNELS, str(j, 'approvalChannel')) },
         { label: 'Customer refusal', value: str(j, 'refusalNote') },
       ]} />
+      {status === 'inspected' && can('jobs.manage') && unquoted.length === 0 && (
+        <p className="muted-note" style={{ marginTop: 12 }}><b>Next:</b> when the lines above are right, press “Send quote” in the Workflow panel at the top. The quote is then fixed and waits for approval.</p>
+      )}
+      {status === 'quoted' && can('jobs.manage') && <Approve key={`${j.id}_${str(j, 'fleetPo')}_${str(j, 'approvalChannel')}`} id={j.id} />}
       {status === 'inspected' && unquoted.length > 0 && can('jobs.manage') && (
         <div style={{ marginTop: 14 }}>
           <Notice tone="red"><b>Below-legal tyre not quoted:</b> {unquoted.map((p) => p.label).join(', ')}. Either mark it for replacement above, or send the quote with the customer’s refusal recorded.</Notice>
@@ -219,6 +305,50 @@ function Quote({ id }: { id: string }) {
         </div>
       )}
     </Panel>
+  );
+}
+
+/** Focused approval: how a retail customer approved, or the fleet purchase order number. */
+function Approve({ id }: { id: string }) {
+  const data = useData();
+  const act = useActions();
+  const j = findRecord(data, 'jobs', id)!;
+  const fleet = jobFleet(data, j);
+  const needsPo = !!fleet?.values.poRequired;
+  const [channel, setChannel] = useState(str(j, 'approvalChannel'));
+  const [po, setPo] = useState(str(j, 'fleetPo'));
+  const [err, setErr] = useState('');
+  const submit = () => {
+    const before = { approvalChannel: str(j, 'approvalChannel'), fleetPo: str(j, 'fleetPo') };
+    const next = { approvalChannel: channel, fleetPo: po.trim() };
+    const problem = approvalProblem({ ...j, values: { ...j.values, ...next } }, data);
+    if (problem) { setErr(problem); return; }
+    act.update('jobs', j.id, next);
+    const res = act.transition('jobs', j.id, 'approved');
+    if (!res.ok) { act.update('jobs', j.id, before); setErr(res.reason); return; }
+    act.toast(`${j.ref}: approval recorded${needsPo ? ` — PO ${po.trim()}` : ` (${label(APPROVAL_CHANNELS, channel)})`}`);
+  };
+  return (
+    <div style={{ marginTop: 14 }} data-testid="approve-quote">
+      <Notice tone="amber">
+        <b>Waiting for approval.</b> {fleet ? (needsPo ? `${str(fleet, 'name')} needs a purchase order number on every job — no PO, no work.` : `Record how ${str(fleet, 'name')}’s fleet manager approved.`) : 'Record how the customer approved before any tyre is fitted.'}
+      </Notice>
+      <div className="form-grid" style={{ marginTop: 10 }}>
+        {needsPo && (
+          <Field label="Fleet PO number" hint="Fictional, e.g. PO-DEMO-1042. Carried onto the invoice.">
+            <input className="input" aria-label="Fleet PO number" data-testid="approve-po" value={po} placeholder="PO-DEMO-…" onChange={(e) => { setPo(e.target.value); setErr(''); }} />
+          </Field>
+        )}
+        <Field label={needsPo ? 'Approval channel (optional)' : 'Approval channel'}>
+          <select className="select" aria-label="Approval channel" data-testid="approve-channel" value={channel} onChange={(e) => { setChannel(e.target.value); setErr(''); }}>
+            <option value="">Select how they approved…</option>
+            {APPROVAL_CHANNELS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+          </select>
+        </Field>
+      </div>
+      {err && <p className="field-error" role="alert" style={{ marginTop: 8 }}>{err}</p>}
+      <button className="btn primary sm" type="button" style={{ marginTop: 10 }} data-testid="approve-submit" onClick={submit}>Record approval</button>
+    </div>
   );
 }
 
@@ -309,6 +439,7 @@ function TorqueQc({ id }: { id: string }) {
 /* ---------------- Aside ---------------- */
 function Aside({ id }: { id: string }) {
   const data = useData();
+  const { hasModule } = useUser();
   const j = findRecord(data, 'jobs', id)!;
   const inv = jobInvoice(data, j.id);
   const fleet = jobFleet(data, j);
@@ -331,7 +462,9 @@ function Aside({ id }: { id: string }) {
       )}
       <Panel title="Invoice">
         {inv ? (
-          <p className="muted-note"><RecordLink module="invoices" record={inv}><b>{inv.ref}</b></RecordLink> · issued {formatDate(str(inv, 'issuedOn'))} · balance {formatRand(invoiceBalance(inv))} · {inv.status === 'onaccount' ? 'on fleet account' : inv.status}</p>
+          <p className="muted-note"><RecordLink module="invoices" record={inv}><b>{inv.ref}</b></RecordLink> · issued {formatDate(str(inv, 'issuedOn'))} · balance {formatRand(invoiceBalance(inv))} · {inv.status === 'onaccount' ? 'on fleet account' : inv.status}
+            {inv.status === 'issued' && j.status === 'ready' && !hasModule('invoices') && <><br />The counter takes payment (or puts a fleet invoice on account) before hand-over.</>}
+            {inv.status === 'issued' && j.status === 'ready' && hasModule('invoices') && <><br /><RecordLink module="invoices" record={inv}><span className="btn sm" style={{ marginTop: 10 }} data-testid="open-invoice">{fleet ? `Put ${inv.ref} on the fleet account →` : `Record payment on ${inv.ref} →`}</span></RecordLink></>}</p>
         ) : <p className="muted-note">Raised automatically from the quote when the job passes QC.</p>}
       </Panel>
       {st && <p className="muted-note">Stock line {st.ref} · {label(BRANDS, str(st, 'brand'))} · {num(st, 'qty')} on hand.</p>}

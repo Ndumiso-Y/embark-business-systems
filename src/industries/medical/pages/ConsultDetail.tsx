@@ -137,8 +137,30 @@ export default function ConsultDetail() {
             {draft && <Notice tone="grey">Save your changes before signing.</Notice>}
             <div style={{ marginTop: 12 }}>{!draft && <WorkflowActions def={def} record={consult} />}</div>
             <p className="muted-note" style={{ marginTop: 10 }}>Signing locks the note and creates a draft claim with a demo tariff line. Checks are demo data-entry rules, not clinical guidance.</p>
-            {claim && hasModule('claims') && <Link className="btn sm" style={{ marginTop: 10 }} to={`${base}/claims/${claim.id}`}>Open claim {claim.ref}</Link>}
+            {claim && (hasModule('claims')
+              ? <Link className="btn sm" style={{ marginTop: 10 }} to={`${base}/claims/${claim.id}`}>Open claim {claim.ref}</Link>
+              : <p className="muted-note" style={{ marginTop: 6 }} data-testid="consult-claim">Draft claim <b>{claim.ref}</b> is waiting for the billing administrator.</p>)}
           </Panel>
+          {visit && (
+            <Panel title="Visit" right={<StatusTag workflow={act.def('visits').workflow} status={visit.status} />}>
+              <p className="muted-note">
+                {visit.status === 'withdoctor' && consult.status !== 'signed' && 'The patient is with the doctor. Sign this consultation, then send them to billing.'}
+                {visit.status === 'withdoctor' && consult.status === 'signed' && 'Consultation signed — the patient can go to the front desk for billing and check-out.'}
+                {visit.status === 'triaged' && 'The patient is triaged but has not been called in yet.'}
+                {visit.status === 'billing' && 'The patient is at the front desk: billing handles the claim and reception checks them out.'}
+                {visit.status === 'done' && 'The patient has been checked out.'}
+              </p>
+              <div className="btns" style={{ marginTop: 10, flexWrap: 'wrap' }}>
+                {visit.status === 'withdoctor' && consult.status === 'signed' && can('clinical.record') && (
+                  <button className="btn sm primary" data-testid="send-to-billing" onClick={() => {
+                    const res = act.transition('visits', visit.id, 'billing');
+                    act.toast(res.ok ? `${visit.ref}: sent to billing` : res.reason, res.ok ? 'ok' : 'err');
+                  }}>Send patient to billing</button>
+                )}
+                {hasModule('waiting') && <Link className="btn sm" to={`${base}/waiting/${visit.id}`} data-testid="open-visit">Open visit {visit.ref}</Link>}
+              </div>
+            </Panel>
+          )}
           {visit && <Panel title="Triage vitals" meta={`${visit.ref}${str(visit, 'triagedAt') ? ` · triaged ${str(visit, 'triagedAt')}` : ''}`}><VitalsCard values={visit.values} /></Panel>}
           <Panel title="Patient"><PatientCard data={data} patientId={consult.values.patient} /></Panel>
           <Panel title="History"><History record={consult} /></Panel>

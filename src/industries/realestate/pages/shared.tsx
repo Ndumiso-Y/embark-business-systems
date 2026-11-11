@@ -1,12 +1,13 @@
 import type { ReactNode } from 'react';
-import { Link } from 'react-router-dom';
-import type { DemoRecord, IndustryData } from '../../../core/types';
+import { Link, useNavigate } from 'react-router-dom';
+import type { DemoRecord, IndustryData, Values } from '../../../core/types';
 import { findRecord, num, str } from '../../../core/engine';
-import { useBase, useUser } from '../../../core/context';
-import { daysBetween, formatDate } from '../../../core/lib/dates';
+import { useActions, useBase, useData, useIndustry, useUser } from '../../../core/context';
+import { addDays, daysBetween, formatDate } from '../../../core/lib/dates';
 import { Tag } from '../../../core/components/ui';
+import { RecordFormModal } from '../../../core/components/fields';
 import { DESIGNATIONS, PROPERTY_TYPES, label, suburbLabel } from '../data';
-import { ffcState, randOf } from '../helpers';
+import { ffcState, randOf, todayStr } from '../helpers';
 
 /** Link to a record when the simulated user has the module; plain text otherwise. */
 export function RecLink({ module, id, children }: { module: string; id: string | undefined; children: ReactNode }) {
@@ -70,17 +71,49 @@ export function ListingCard({ data, id }: { data: IndustryData; id: unknown }) {
   );
 }
 
-/** Pass / fail checklist used for go-live, lease signing and offer conditions. */
-export function Checklist({ items }: { items: Array<{ label: string; ok: boolean; detail?: string }> }) {
+/**
+ * Pass / fail checklist used for go-live, lease signing and offer conditions.
+ * An item may carry an `action`: the control that fixes it, right where it is reported.
+ */
+export function Checklist({ items }: { items: Array<{ label: string; ok: boolean; detail?: ReactNode; action?: ReactNode }> }) {
   return (
     <ul className="list">
       {items.map((i) => (
-        <li key={i.label}>
+        <li key={i.label} style={{ flexWrap: 'wrap' }}>
           <span className={`dot ${i.ok ? 'green' : 'red'}`} />
-          <div className="grow"><b>{i.label}</b>{i.detail && <small>{i.detail}</small>}</div>
+          <div className="grow" style={{ minWidth: 160 }}><b>{i.label}</b>{i.detail && <small>{i.detail}</small>}</div>
+          {i.action}
           <Tag tone={i.ok ? 'green' : 'red'}>{i.ok ? 'OK' : 'Blocked'}</Tag>
         </li>
       ))}
     </ul>
+  );
+}
+
+/**
+ * Capture an offer to purchase from a listing, a buyer or a completed viewing.
+ * The buyer moves to “Offer made” and the new offer opens so the seller’s response can be recorded.
+ */
+export function OfferCapture({ initial, title, onClose }: { initial: Values; title: string; onClose: () => void }) {
+  const config = useIndustry();
+  const data = useData();
+  const base = useBase();
+  const act = useActions();
+  const navigate = useNavigate();
+  const { hasModule } = useUser();
+  const today = todayStr();
+  const offerDef = config.collections.find((c) => c.key === 'offers')!;
+  return (
+    <RecordFormModal def={offerDef} open title={title}
+      initial={{ validUntil: addDays(today, 3), bondRequired: true, bondDeadline: addDays(today, 30), deposit: 0, ...initial }}
+      onClose={onClose}
+      onSave={(v) => {
+        const o = act.create('offers', v, 'submitted', 'Offer captured');
+        const lead = findRecord(data, 'leads', String(v.lead ?? ''));
+        if (lead && ['new', 'contacted', 'viewing'].includes(lead.status ?? '')) act.transition('leads', lead.id, 'offer');
+        act.toast(`Offer ${o.ref} captured — now record the seller’s response`);
+        onClose();
+        if (hasModule('offers')) navigate(`${base}/offers/${o.id}`);
+      }} />
   );
 }

@@ -3,9 +3,9 @@ import config, {
   acceptProblems, commissionSplit, conditionsProblems, daysOnMarket, ffcState, goLiveProblems, leaseSignProblems, maintenanceApprovalProblem, matchListing,
   matchingBuyers, matchingListings, setTodayForTests, suburbsIn, unknownSuburbs,
 } from '../src/industries/realestate';
-import { applyTransition, records, str, validateConfig } from '../src/core/engine';
+import { applyTransition, findTransition, hasModule, records, str, validateConfig } from '../src/core/engine';
 import { buildIndustryData } from '../src/core/seed';
-import type { DemoRecord, IndustryData, Values } from '../src/core/types';
+import type { DemoRecord, EffectApi, IndustryData, Values } from '../src/core/types';
 
 const TODAY = '2026-11-11';
 let data: IndustryData;
@@ -224,5 +224,40 @@ describe('buyer ↔ listing matching', () => {
     }
     expect(records(data, 'leads').some((b) => matchingListings(data, b).length > 0)).toBe(true);
     expect(records(data, 'listings').filter((l) => l.status === 'listed').some((l) => matchingBuyers(data, l).length > 0)).toBe(true);
+  });
+});
+
+describe('guided walkthrough and on-screen fixes', () => {
+  it('every guide step opens a module its fictional user holds, on a record in the state the step describes', () => {
+    expect(config.guide?.length).toBe(6);
+    for (const g of config.guide ?? []) expect(hasModule(user(g.as!), g.to.split('/')[0]), g.title).toBe(true);
+    const rec = (to: string) => { const [mod, id] = to.split('/'); return records(data, config.modules.find((m) => m.key === mod)!.collection!).find((r) => r.id === id)!; };
+    const [goLive, buyer, offer, , leaseStep, repair] = config.guide!;
+    expect(goLiveProblems(rec(goLive.to), data, TODAY)).toHaveLength(1); // only seller FICA
+    expect(goLiveProblems(rec(goLive.to), data, TODAY)[0]).toMatch(/FICA/);
+    expect(['new', 'contacted']).toContain(rec(buyer.to).status);
+    expect(matchingListings(data, rec(buyer.to)).length).toBeGreaterThan(0);
+    expect(rec(offer.to).status).toBe('submitted');
+    expect(acceptProblems(rec(offer.to), data)).toEqual([]);
+    expect(records(data, 'transfers').some((t) => t.status === 'lodged')).toBe(true);
+    expect(rec(leaseStep.to).status).toBe('approved');
+    expect(leaseSignProblems(rec(leaseStep.to))).toHaveLength(1);
+    expect(maintenanceApprovalProblem(rec(repair.to))).toMatch(/owner/);
+  });
+
+  it('blocked steps point at a control on the screen, not at the generic edit form', () => {
+    for (const l of records(data, 'listings').filter((x) => x.status === 'mandate')) {
+      for (const p of goLiveProblems(l, data, TODAY)) expect(p).not.toMatch(/Edit →/);
+    }
+    for (const o of records(data, 'offers').filter((x) => x.status === 'accepted')) for (const p of conditionsProblems(o)) expect(p).not.toMatch(/Edit →/);
+    expect(leaseSignProblems(lease('28 Quartz Lane'))[0]).toMatch(/Record deposit received/);
+  });
+
+  it('marking commission paid records the payout date', () => {
+    const payable = records(data, 'commissions').find((c) => c.status === 'payable')!;
+    const updates: Array<[string, string, Values]> = [];
+    const api: EffectApi = { create: () => payable, update: (c, id, v) => { updates.push([c, id, v]); }, transition: () => ({ ok: false, reason: 'not used' }), toast: () => undefined };
+    findTransition(wf('commissions'), 'payable', 'paid')!.after!({ record: payable, data, api, today: TODAY, user: user('u_book') });
+    expect(updates).toEqual([['commissions', payable.id, { paidOn: TODAY }]]);
   });
 });

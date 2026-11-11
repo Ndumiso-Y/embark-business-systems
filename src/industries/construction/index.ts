@@ -25,6 +25,12 @@ import SiteDiary from './pages/SiteDiary';
 import ValuationDetail from './pages/ValuationDetail';
 import PlantDetail from './pages/PlantDetail';
 import SubcontractorDetail from './pages/SubcontractorDetail';
+import DiaryDetail from './pages/DiaryDetail';
+import VariationDetail from './pages/VariationDetail';
+import SnagDetail from './pages/SnagDetail';
+import RequisitionDetail from './pages/RequisitionDetail';
+import SafetyDetail from './pages/SafetyDetail';
+import { PlantPage, ProcurementPage, SafetyPage, SnagsPage, SubcontractorsPage, ValuationsPage, VariationsPage } from './pages/Registers';
 
 const afterDate = (startKey: string, what: string) => (v: unknown, all: Record<string, unknown>) =>
   all[startKey] && String(v) < String(all[startKey]) ? `Must be on or after the ${what}.` : null;
@@ -534,14 +540,14 @@ const config: IndustryConfig = {
   modules: [
     { key: 'projects', label: 'Projects', icon: IcoBriefcase, group: 'Projects', collection: 'projects', detail: ProjectDetail, description: 'Contracts from tender to final completion: value, retention, programme, variations, valuations and the diary in one place. Practical completion is blocked by open critical snags.' },
     { key: 'programme', label: 'Programme & milestones', icon: IcoCalendar, group: 'Projects', collection: 'tasks', page: Programme, description: 'Planned vs actual dates and % complete per task, with slippage and overdue milestones, drawn as a simple bar chart per project.' },
-    { key: 'variations', label: 'Variations', icon: IcoFlag, group: 'Commercial', collection: 'variations', view: 'board', description: 'Site instructions priced, submitted and approved or rejected. Approved variations add to the revised contract sum. No written instruction, no submission.' },
-    { key: 'valuations', label: 'Payment valuations', icon: IcoReceipt, group: 'Commercial', collection: 'valuations', detail: ValuationDetail, description: 'Monthly progress claims: work done, materials on site and variations, less retention and previous certificates, plus VAT. Illustrative only — not payment certificates.' },
-    { key: 'procurement', label: 'Procurement', icon: IcoBox, group: 'Commercial', collection: 'requisitions', view: 'board', description: 'Requisitions approved by the project manager, purchase orders issued by procurement and deliveries received against a delivery note.' },
-    { key: 'diary', label: 'Site diary', icon: IcoDoc, group: 'Site', collection: 'diary', page: SiteDiary, description: 'Daily weather, labour by trade, plant, work done, delays and visitors. Rain and employer delays feed an indicative extension-of-time summary.' },
-    { key: 'plant', label: 'Plant & equipment', icon: IcoTruck, group: 'Site', collection: 'plant', detail: PlantDetail, description: 'Owned and hired plant by project, running hire cost, idle hired plant, overdue off-hire and service dates.' },
-    { key: 'snags', label: 'Snags & defects', icon: IcoAlert, group: 'Site', collection: 'snags', view: 'board', description: 'Snag lists per project: categorise, fix and verify. Open critical snags block practical completion; any open snag blocks final completion.' },
-    { key: 'subcontractors', label: 'Subcontractors', icon: IcoUsers, group: 'Compliance', collection: 'subcontractors', detail: SubcontractorDetail, description: 'CIDB grade (demo), COIDA letter of good standing, tax compliance and safety file. Non-compliant subcontractors cannot be assigned to variations.' },
-    { key: 'safety', label: 'Health & safety', icon: IcoHelmet, group: 'Compliance', collection: 'safety', description: 'Toolbox talks, inspections, near misses and incidents. Incidents close out only with a corrective action.' },
+    { key: 'variations', label: 'Variations', icon: IcoFlag, group: 'Commercial', collection: 'variations', view: 'board', page: VariationsPage, detail: VariationDetail, description: 'Site instructions priced, submitted and approved or rejected. Approved variations add to the revised contract sum. No written instruction, no submission.' },
+    { key: 'valuations', label: 'Payment valuations', icon: IcoReceipt, group: 'Commercial', collection: 'valuations', page: ValuationsPage, detail: ValuationDetail, description: 'Monthly progress claims: work done, materials on site and variations, less retention and previous certificates, plus VAT. Illustrative only — not payment certificates.' },
+    { key: 'procurement', label: 'Procurement', icon: IcoBox, group: 'Commercial', collection: 'requisitions', view: 'board', page: ProcurementPage, detail: RequisitionDetail, description: 'Requisitions approved by the project manager, purchase orders issued by procurement and deliveries received against a delivery note.' },
+    { key: 'diary', label: 'Site diary', icon: IcoDoc, group: 'Site', collection: 'diary', page: SiteDiary, detail: DiaryDetail, description: 'Daily weather, labour by trade, plant, work done, delays and visitors. Rain and employer delays feed an indicative extension-of-time summary.' },
+    { key: 'plant', label: 'Plant & equipment', icon: IcoTruck, group: 'Site', collection: 'plant', page: PlantPage, detail: PlantDetail, description: 'Owned and hired plant by project, running hire cost, idle hired plant, overdue off-hire and service dates.' },
+    { key: 'snags', label: 'Snags & defects', icon: IcoAlert, group: 'Site', collection: 'snags', view: 'board', page: SnagsPage, detail: SnagDetail, description: 'Snag lists per project: categorise, fix and verify. Open critical snags block practical completion; any open snag blocks final completion.' },
+    { key: 'subcontractors', label: 'Subcontractors', icon: IcoUsers, group: 'Compliance', collection: 'subcontractors', page: SubcontractorsPage, detail: SubcontractorDetail, description: 'CIDB grade (demo), COIDA letter of good standing, tax compliance and safety file. Non-compliant subcontractors cannot be assigned to variations.' },
+    { key: 'safety', label: 'Health & safety', icon: IcoHelmet, group: 'Compliance', collection: 'safety', page: SafetyPage, detail: SafetyDetail, description: 'Toolbox talks, inspections, near misses and incidents. Incidents close out only with a corrective action.' },
   ],
   collections,
   seed: buildConstructionSeed,
@@ -554,6 +560,14 @@ const config: IndustryConfig = {
     'No accounting, ERP, scheduling (MS Project / P6), BIM or supplier integration — every figure is seed data or typed in this browser.',
     'Extension-of-time figures from the diary are indicative only and are not a claim or an entitlement.',
     'All clients, sites, people, suppliers, subcontractors and amounts are fictional.',
+  ],
+  guide: [
+    { title: 'Sign a site diary entry', detail: 'Under “Awaiting signature” the warehouse entry is refused — a 3-hour delay with no cause. Open it, choose the cause, save and sign.', to: 'diary', as: 'u_sa' },
+    { title: 'Approve a variation', detail: 'Press “Record client approval”. “Contract impact” shows the project’s revised contract sum rise by R39,800.', to: 'variations/variations_3', as: 'u_pm1' },
+    { title: 'Run a payment valuation', detail: 'Check retention, previous certificates and VAT, submit it, then record the certificate — it cannot exceed the claim — and mark it paid.', to: 'valuations/valuations_6', as: 'u_qs' },
+    { title: 'Unblock practical completion', detail: 'An open critical snag blocks it. Open the snag from “Completion checks”, mark it fixed and verify it, then come back and certify.', to: 'projects/projects_2', as: 'u_pm1' },
+    { title: 'Issue a purchase order', detail: 'This requisition is approved. Choose the expected delivery, issue the PO, then receive the goods against a delivery note number.', to: 'procurement/requisitions_3', as: 'u_ps' },
+    { title: 'Off-hire idle plant', detail: 'This hired excavator is standing idle at R3,900 a day, past its off-hire date. Press “Off-hire today” to stop the cost.', to: 'plant/plant_4', as: 'u_sa' },
   ],
   highlights: [
     'Payment valuations: retention (capped), previous certificates and VAT computed live',

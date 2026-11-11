@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { DemoRecord, Values } from '../../../core/types';
 import { useActions, useBase, useData, useIndustry, useUser } from '../../../core/context';
@@ -95,6 +95,10 @@ function QueueCard({ visit, today, onTriage }: { visit: DemoRecord; today: boole
   const act = useActions();
   const { can } = useUser();
   const def = act.def('visits');
+  // Users who can triage get the vitals form button, which also marks the visit triaged —
+  // so the generic "Record triage" step (blocked until vitals exist) is not shown twice.
+  const canTriage = can('triage');
+  const cardDef = useMemo(() => (canTriage ? { ...def, workflow: { ...def.workflow!, transitions: def.workflow!.transitions.filter((t) => t.to !== 'triaged') } } : def), [def, canTriage]);
   const wait = today ? minutesWaiting(visit, todayStr()) : null;
   const alerts = can('clinical.view') ? vitalAlerts(visit.values) : [];
   return (
@@ -105,10 +109,10 @@ function QueueCard({ visit, today, onTriage }: { visit: DemoRecord; today: boole
       <Flags flags={alerts} />
       <AllergyTag data={data} patientId={visit.values.patient} />
       <div className="btns" style={{ flexWrap: 'wrap' }}>
-        {can('triage') && ['arrived', 'triaged', 'withdoctor'].includes(visit.status ?? '') && (
+        {canTriage && ['arrived', 'triaged', 'withdoctor'].includes(visit.status ?? '') && (
           <button type="button" className={`btn xs ${visit.status === 'arrived' ? 'primary' : ''}`} onClick={onTriage} data-testid="open-triage">{visit.status === 'arrived' ? 'Triage (vitals)' : 'Update vitals'}</button>
         )}
-        <WorkflowActions def={def} record={visit} compact />
+        <WorkflowActions def={cardDef} record={visit} compact />
       </div>
     </article>
   );
