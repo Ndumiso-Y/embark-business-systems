@@ -1,13 +1,13 @@
 # QA results
 
-Run on 11 Nov 2026 in a Linux cloud container (Node 22, Chromium via Playwright 1.52).
+Last full run 12 Nov 2026 (first run 11 Nov 2026) in a Linux cloud container (Node 22, Chromium via Playwright 1.52).
 
 | Check | Command | Result |
 | --- | --- | --- |
 | Typecheck | `npm run typecheck` | Pass |
 | Lint | `npm run lint` | 0 errors, 8 warnings (react-refresh "only export components" — dev hot-reload hint only) |
-| Unit tests | `npm test` | **148 passed** in 9 files: engine 13 · optometry 11 · medical 13 · automotive 12 · tyres 17 · mining 17 · construction 23 · real estate 21 · legal 21 |
-| Browser tests | `npm run e2e` | **27 passed**: 8 cross-industry smoke, 9 optometry workflows, 10 client-link checks (run with `PAGES_URL` against the Pages build) |
+| Unit tests | `npm test` | **276 passed** in 12 files: engine 13 · brand 8 · optometry 16 · medical 18 · automotive 13 · tyres 18 · mining 21 · construction 29 · real estate 24 · legal 26 · security 50 · cleaning 40 |
+| Browser tests | `npm run e2e` | **120 passed** against the built site: 10 cross-industry smoke · 9 optometry workflows · 5 shared-foundation · 4 branding · 13 client-link checks · 79 end-to-end journeys across the ten industries (`e2e/journeys/`) |
 | Production build | `npm run build` | Pass — JS 780 kB (238 kB gzip), CSS 37 kB |
 | Preview build | `npm run build:preview` | Single self-contained HTML (~800 kB) boots with no console errors |
 
@@ -35,12 +35,19 @@ fewer modules than the administrator; no page errors or console errors throughou
 - Long attention tags overflowed narrow board cards; they now wrap.
 - The trust-ledger table was squashed at desktop width; it now keeps a minimum width and scrolls inside its panel.
 
+## Functional audit (November 2026)
+
+Every industry was driven through its real screens as a first-time user, fixed where it stalled, and its journey
+kept as a permanent browser test. Findings and fixes are in `docs/AUDIT_REPORT.md`. The journey tests were also run
+with the browser clock pinned to early morning, late evening, a Sunday and the first of a month, to catch anything
+that only looks right at certain times.
+
 ## Client links
 
-`e2e/client-links.spec.ts` builds on `npm run build:pages` served at the same path as GitHub Pages: each of the eight
+`e2e/client-links.spec.ts` builds on `npm run build:pages` served at the same path as GitHub Pages: each of the ten
 client links opens its own dashboard with the right page title, shows no "All industry demos" link, redirects the
 gallery route and every other industry's route back to its own dashboard, and contains none of the other businesses'
-names; the root page has no links; the unlisted hub shows all eight industries.
+names; the root page has no links; the unlisted hub shows all ten industries.
 
 ## Deployment check (11 Nov 2026)
 

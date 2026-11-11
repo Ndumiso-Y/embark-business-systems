@@ -9,6 +9,7 @@ import { RecordDetail } from '../../../core/components/records';
 import { VAT_RATE } from '../data';
 import { calloutExtras, invoiceOverdue, invoiceTotals, kindOf, rec, shiftTitle, unfilledShifts } from '../helpers';
 import { SHIFT_SHORT } from '../data';
+import { DAYS_BACK } from '../seed';
 import { useClock } from './format';
 
 export default function InvoiceDetail() {
@@ -62,6 +63,8 @@ function Aside({ invoice: r }: { invoice: DemoRecord }) {
   const period = str(r, 'period');
   const live = contract ? unfilledShifts(data, contract.id, period, today) : [];
   const extras = contract ? calloutExtras(data, contract, period) : null;
+  // What was billed is fixed on the invoice when it is built; the live records may since have aged out of the demo.
+  const billed = lines(r).filter((l) => l.id.endsWith('-CO')).reduce((n, l) => n + l.qty, 0);
   return (
     <>
       <Panel title="Terms" right={invoiceOverdue(r, today) ? <Tag tone="red">Overdue</Tag> : undefined}>
@@ -80,8 +83,13 @@ function Aside({ invoice: r }: { invoice: DemoRecord }) {
               <li key={s.id}><span className="dot red" /><div className="grow">{hasModule('roster') ? <Link to={`${base}/roster/${s.id}`}><b>{shiftTitle(data, s)}</b></Link> : <b>{shiftTitle(data, s)}</b>}<small>{formatDate(str(s, 'date'))} · {SHIFT_SHORT[kindOf(data, s)]} shift · {s.status === 'absent' ? 'absent, no relief' : 'no officer posted'}</small></div></li>
             ))}
           </ul>
-        ) : <Empty title="No unfilled shifts on the roster" body="The demo roster only holds the last two weeks; older penalties are stored on the invoice." />}
-        {extras && <p className="muted-note" style={{ marginTop: 10 }}>{extras.count} call-out{extras.count === 1 ? '' : 's'} logged for the month · {extras.included} included · {extras.billable} billable at {formatRand(Math.round(extras.fee * 100))}.</p>}
+        ) : <Empty title="No unfilled shifts on the roster" body={`The demo roster only holds the last ${DAYS_BACK} days; older penalties are stored on the invoice.`} />}
+        {extras && (
+          <p className="muted-note" style={{ marginTop: 10 }}>
+            {billed} billable call-out{billed === 1 ? '' : 's'} on this invoice at {formatRand(Math.round(extras.fee * 100))} each — the first {extras.included} a month are included in the contract.
+            {' '}{extras.count} call-out record{extras.count === 1 ? '' : 's'} for the month {extras.count === 1 ? 'is' : 'are'} still held in the demo (it keeps about six weeks).
+          </p>
+        )}
       </Panel>
     </>
   );

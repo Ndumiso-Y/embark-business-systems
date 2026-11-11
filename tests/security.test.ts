@@ -357,7 +357,7 @@ describe('incidents', () => {
     expect(api.toast).toHaveBeenCalledWith(expect.stringMatching(/nothing is actually sent/), 'info');
   });
 
-  it('closing needs root cause, outcome, a logged client report and the close permission', () => {
+  it('closing needs the client notification time, root cause, outcome, a logged client report and the close permission', () => {
     const reported = get('incidents', SEED.reportedIncident);
     expect(reported.status).toBe('clientreport');
     expect(reason(move('incidents', reported, 'closed', 'u_dir'))).toMatch(/Outcome not recorded/);
@@ -366,6 +366,8 @@ describe('incidents', () => {
     expect(move('incidents', done, 'closed', 'u_dir')).toMatchObject({ ok: true });
     expect(reason(move('incidents', withValues(done, { clientReportSent: false }), 'closed', 'u_dir'))).toMatch(/Client report has not been logged/);
     expect(reason(move('incidents', withValues(done, { rootCause: '' }), 'closed', 'u_dir'))).toMatch(/Root cause/);
+    // Everything the close-out checklist shows is enforced, including the time the client was phoned.
+    expect(reason(move('incidents', withValues(done, { clientNotifiedAt: '' }), 'closed', 'u_dir'))).toMatch(/time the client was notified is not recorded/);
     expect(reason(move('incidents', withValues(done, { severity: 'high' }), 'closed', 'u_dir'))).toMatch(/SAPS/);
     expect(move('incidents', withValues(done, { severity: 'high', noSapsReason: 'No offence.' }), 'closed', 'u_dir')).toMatchObject({ ok: true });
   });

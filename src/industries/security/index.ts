@@ -505,7 +505,7 @@ const collections: CollectionDef[] = [
   {
     key: 'sites', singular: 'Site', plural: 'Sites', refPrefix: 'ST', editPermission: 'contracts',
     title: (r) => str(r, 'name'),
-    subtitle: (r, d) => `${str(r, 'code')} · ${label(SITE_TYPES, str(r, 'type'))} · ${str(r, 'area')} · ${str(d.collections.contracts?.find((c) => c.id === r.values.contract), 'client')}`,
+    subtitle: (r, d) => [str(r, 'code'), label(SITE_TYPES, str(r, 'type')), str(r, 'area'), str(d.collections.contracts?.find((c) => c.id === r.values.contract), 'client')].filter(Boolean).join(' · '),
     sort: (a, b) => str(a, 'name').localeCompare(str(b, 'name')),
     flags: (r, data, today) => {
       const f: Flag[] = [];
@@ -551,7 +551,7 @@ const collections: CollectionDef[] = [
       { key: 'period', label: 'Month (YYYY-MM)', type: 'text', required: true, table: true, validate: (v) => (/^\d{4}-(0[1-9]|1[0-2])$/.test(String(v)) ? null : 'Use the format YYYY-MM.') },
       { key: 'issueDate', label: 'Issue date', type: 'date' },
       { key: 'dueDate', label: 'Due date', type: 'date', table: true },
-      { key: 'lines', label: 'Posts and extras', type: 'lines' },
+      { key: 'lines', label: 'Posts and extras', type: 'lines', hint: 'The total under these lines is before penalties. The invoice page takes the unfilled-shift penalties off before VAT.' },
       { key: 'unfilledShifts', label: 'Unfilled shifts (penalised)', type: 'number', min: 0 },
       { key: 'penaltyPerShift', label: 'Penalty per unfilled shift', type: 'money', min: 0 },
       { key: 'paidOn', label: 'Paid on', type: 'date' },

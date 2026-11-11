@@ -21,7 +21,8 @@ permanent browser test in `e2e/journeys/`.
 | Construction | Valuation maths correct; one guided record missing on Mondays; fixes buried in Edit | Works end to end |
 | Real estate | Every blocked step pointed into Edit (25 fields on a listing) | Works end to end |
 | Law firm | Rules worked; several dead ends and unexplained second clicks | Works end to end |
-| Security, Cleaning | New; audited in the same way before release | See QA_RESULTS.md |
+| Security | New. Journeys ran; a time-of-day trap in the occurrence book, two rules that did not match the screen, cramped phone layouts | Works end to end |
+| Cleaning | New. Relief cover never showed who was ineligible (its main selling point); clock-ins only looked right during shift hours; three steps hid their fix in Edit | Works end to end |
 
 **The single biggest finding, in every industry:** the rules were right, but when a step was refused the screen
 said "Edit → some field" and the field was one of 10–25 in a generic form. A prospect would have stalled. Each
@@ -54,6 +55,9 @@ mandate", "Confirm isolation", "Scheme remittance", "Check out to…"), and the 
 - *Law firm:* intake staff can open matters; postponing asks for date and reason together; engagement checklist; clearing a conflict moves the matter on; trust transfers settle the fee note automatically and overdrafts are refused at capture.
 - *All:* business name is never hard-coded (so branding applies everywhere); roles that can see but not act are told who does.
 
+**Found in the final run:** in a client link, jumping to two other industries' addresses in very quick succession could
+occasionally skip the redirect back to the client's own dashboard. Fixed (`LockedRedirect`), and re-run repeatedly.
+
 ## Known limits (not fixed)
 
 - Steps that are typed by hand in the demo (remittances, lab results, registrations, client sign-offs) would be
@@ -62,6 +66,9 @@ mandate", "Confirm isolation", "Scheme remittance", "Check out to…"), and the 
 - The generic "Edit" form still lists every field of a record; it is now the fallback rather than the only route.
 - Demo data is per browser. A prospect on a second device starts fresh.
 - Only Chromium was used. Safari, Firefox and screen readers were not tested.
+- Backlog raised by auditors, not yet done: a way to make a field read-only once a record reaches a given state (the
+  generic Edit form can still change, for example, who a firearm is issued to); invoice line editors that understand
+  deductions; value labels on bar charts.
 - Some role designs are simplifications (for example only the mine manager verifies production). Each such
   screen names who can act; permissions can be changed under Users & permissions.
 

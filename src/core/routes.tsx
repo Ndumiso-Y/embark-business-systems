@@ -1,5 +1,5 @@
 import type { RouteObject } from 'react-router-dom';
-import { Navigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { LOCKED_INDUSTRY } from '../industries/registry';
 import IndustryLayout from './IndustryLayout';
 import Gallery from './pages/Gallery';
@@ -9,6 +9,7 @@ import SearchPage from './pages/SearchPage';
 import NotFound from './pages/NotFound';
 import RequireModule from './components/RequireModule';
 import GuidePanel from './components/GuidePanel';
+import LockedRedirect from './components/LockedRedirect';
 import { ModuleDetailView, ModuleView } from './components/records';
 import { useIndustry } from './context';
 
@@ -28,7 +29,7 @@ function ModuleRoute({ detail }: { detail?: boolean }) {
 
 export const routes: RouteObject[] = [
   // A locked client build has no gallery: the root opens that industry's dashboard.
-  { path: '/', element: LOCKED_INDUSTRY ? <Navigate to={`/${LOCKED_INDUSTRY}`} replace /> : <Gallery /> },
+  { path: '/', element: LOCKED_INDUSTRY ? <LockedRedirect to={LOCKED_INDUSTRY} /> : <Gallery /> },
   {
     path: '/:industry',
     element: <IndustryLayout />,
@@ -42,5 +43,5 @@ export const routes: RouteObject[] = [
       { path: '*', element: <NotFound /> },
     ],
   },
-  { path: '*', element: LOCKED_INDUSTRY ? <Navigate to={`/${LOCKED_INDUSTRY}`} replace /> : <div className="content"><NotFound /></div> },
+  { path: '*', element: LOCKED_INDUSTRY ? <LockedRedirect to={LOCKED_INDUSTRY} /> : <div className="content"><NotFound /></div> },
 ];

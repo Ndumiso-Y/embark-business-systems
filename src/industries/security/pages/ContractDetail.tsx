@@ -35,6 +35,7 @@ function Body({ contract: c }: { contract: DemoRecord }) {
   return (
     <>
       <Panel title="Sites and posts" meta={`${sites.length} site${sites.length === 1 ? '' : 's'} · ${posts.length} posts · ${money(contractMonthly(data, c.id))} per month excl. VAT`}>
+        {sites.length ? (
         <div className="table-wrap">
           <table className="table" data-testid="contract-sites">
             <thead><tr><th>Site</th><th className="num">Day posts</th><th className="num">Night posts</th><th className="num">Armed</th><th className="num">Monthly value</th><th>Coverage today</th></tr></thead>
@@ -56,6 +57,7 @@ function Body({ contract: c }: { contract: DemoRecord }) {
             </tbody>
           </table>
         </div>
+        ) : <Empty title="No sites on this contract yet" body="Add a site under Sites & posts and choose this contract, then add its posts." />}
       </Panel>
       <Panel title="Invoices" meta="Monthly invoices for this contract">
         {invoices.length ? (

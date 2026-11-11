@@ -50,6 +50,7 @@ function Issue({ item: e }: { item: DemoRecord }) {
     <Panel title="Issue to an officer" meta={firearm ? 'Firearms: only to an officer with valid competency who is posted on an armed post this shift (demo rule)' : 'Equipment is issued at book-on to an officer on the current or next shift'}>
       {permitExpired(e, today) && <Notice tone="red">{PERMIT_LABEL[str(e, 'category')] ?? 'Permit'} expired on {formatDate(str(e, 'permitExpiry'))} — this item cannot be issued.</Notice>}
       <div className="form-grid">
+        <div className="span-2">
         <Field label="Officer" hint={firearm ? 'Officers on an armed post are listed first. Pick anyone to see why they would be refused.' : 'Officers posted on today’s day or night shift.'}>
           <select className="select" aria-label="Issue to officer" value={officer} onChange={(ev) => setOfficer(ev.target.value)}>
             <option value="">Select officer…</option>
@@ -60,7 +61,8 @@ function Issue({ item: e }: { item: DemoRecord }) {
             ))}
           </select>
         </Field>
-        <label className="check" style={{ alignSelf: 'end', minHeight: 44 }}>
+        </div>
+        <label className="check span-2">
           <input type="checkbox" checked={everyone} onChange={(ev) => setEveryone(ev.target.checked)} /> Also list officers who are not on shift
         </label>
       </div>

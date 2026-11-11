@@ -48,6 +48,8 @@ export default function OccurrenceBook() {
     setForm({ ...form, entry: '', time: '' });
     setErr('');
     setDate(today);
+    // Show the book the entry went into, so the new entry is easy to find.
+    setSite(target);
   };
 
   return (
@@ -60,86 +62,85 @@ export default function OccurrenceBook() {
         <Stat label="Current shift handovers" value={`${handedNow}/${sites.length}`} sub={`${SHIFT_SHORT[cur.kind]} shift — needed before officers can book off`} />
       </div>
       <div className="section-gap" />
+      {/* Writing comes first (also on a phone); the book itself runs full width below. */}
       <div className="grid-2">
-        <div className="stack">
-          <Panel title="Write an entry" meta={`Dated ${formatDate(today)} — entries cannot be back-dated in the demo`}>
-            {can('ob.record') ? (
-              <div className="form-grid">
-                <Field label="Site">
-                  <select className="select" aria-label="Entry site" value={form.site || site} onChange={(e) => setForm({ ...form, site: e.target.value })}>
-                    <option value="">Select site…</option>
-                    {sites.map((s) => <option key={s.id} value={s.id}>{str(s, 'name')}</option>)}
-                  </select>
+        <Panel title="Write an entry" meta={`Dated ${formatDate(today)} — entries cannot be back-dated in the demo`}>
+          {can('ob.record') ? (
+            <div className="form-grid">
+              <Field label="Site">
+                <select className="select" aria-label="Entry site" value={form.site || site} onChange={(e) => setForm({ ...form, site: e.target.value })}>
+                  <option value="">Select site…</option>
+                  {sites.map((s) => <option key={s.id} value={s.id}>{str(s, 'name')}</option>)}
+                </select>
+              </Field>
+              <Field label="Entry type">
+                <select className="select" aria-label="Entry type" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
+                  {OB_TYPES.filter((t) => t.value !== 'followup').map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                </select>
+              </Field>
+              <Field label="Shift" hint="The demo always treats today’s day shift as the shift on duty.">
+                <select className="select" aria-label="Entry shift" value={form.shift || cur.kind} onChange={(e) => setForm({ ...form, shift: e.target.value })}>
+                  {SHIFT_KINDS.map((k) => <option key={k.value} value={k.value}>{k.label}{k.value === cur.kind ? ' — on duty' : ''}</option>)}
+                </select>
+              </Field>
+              <Field label="Time" hint="Defaults to now.">
+                <input className="input" type="time" aria-label="Entry time" value={form.time || time} onChange={(e) => setForm({ ...form, time: e.target.value })} />
+              </Field>
+              <Field label="Entered by">
+                <input className="input" aria-label="Entered by" placeholder={user.name} value={form.by} onChange={(e) => setForm({ ...form, by: e.target.value })} />
+              </Field>
+              <div className="span-2">
+                <Field label="Entry" error={err || undefined}>
+                  <textarea className="textarea" aria-label="Entry text" value={form.entry} onChange={(e) => setForm({ ...form, entry: e.target.value })} placeholder="What happened, who was involved, what was done" />
                 </Field>
-                <Field label="Entry type">
-                  <select className="select" aria-label="Entry type" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
-                    {OB_TYPES.filter((t) => t.value !== 'followup').map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                  </select>
-                </Field>
-                <Field label="Shift" hint="The demo always treats today’s day shift as the shift on duty.">
-                  <select className="select" aria-label="Entry shift" value={form.shift || cur.kind} onChange={(e) => setForm({ ...form, shift: e.target.value })}>
-                    {SHIFT_KINDS.map((k) => <option key={k.value} value={k.value}>{k.label}{k.value === cur.kind ? ' — on duty' : ''}</option>)}
-                  </select>
-                </Field>
-                <Field label="Time" hint="Defaults to now.">
-                  <input className="input" type="time" aria-label="Entry time" value={form.time || time} onChange={(e) => setForm({ ...form, time: e.target.value })} />
-                </Field>
-                <Field label="Entered by">
-                  <input className="input" aria-label="Entered by" placeholder={user.name} value={form.by} onChange={(e) => setForm({ ...form, by: e.target.value })} />
-                </Field>
-                <div className="span-2">
-                  <Field label="Entry" error={err || undefined}>
-                    <textarea className="textarea" aria-label="Entry text" value={form.entry} onChange={(e) => setForm({ ...form, entry: e.target.value })} placeholder="What happened, who was involved, what was done" />
-                  </Field>
-                </div>
-                <div className="span-2 btns">
-                  <button className="btn primary" onClick={() => add(true)} data-testid="ob-sign">Write &amp; sign</button>
-                  <button className="btn" onClick={() => add(false)} data-testid="ob-draft">Save as draft</button>
-                </div>
               </div>
-            ) : <Notice tone="grey">Your simulated role cannot write occurrence book entries.</Notice>}
-          </Panel>
-          <Panel title="Unsigned drafts" meta="Sign each entry to lock it">
-            {drafts.length ? (
-              <ul className="list">
-                {drafts.slice(0, 6).map((e) => (
-                  <li key={e.id}>
-                    <div className="grow"><Link to={`${base}/ob/${e.id}`}><b>{e.ref} · {siteName(data, e.values.site)}</b></Link><small>{formatDate(str(e, 'date'))} {str(e, 'time')} · {label(OB_TYPES, str(e, 'type'))}</small></div>
-                    <WorkflowActions def={def} record={e} compact />
-                  </li>
-                ))}
-              </ul>
-            ) : <Empty title="Every entry is signed" />}
-          </Panel>
-        </div>
-        <Panel title="Book entries" meta="Oldest first, as in the paper book">
-          <div className="toolbar diary-nav">
-            <button className="btn sm" aria-label="Previous day" onClick={() => setDate(addDays(date, -1))}><IcoBack /></button>
-            <input className="input sm" type="date" aria-label="Book date" value={date} max={today} onChange={(e) => e.target.value && setDate(e.target.value)} style={{ width: 160 }} />
-            <button className="btn sm" aria-label="Next day" disabled={date >= today} onClick={() => setDate(addDays(date, 1))}><IcoArrow /></button>
-            <select className="select" aria-label="Site" value={site} onChange={(e) => setSite(e.target.value)}>
-              <option value="">All sites</option>
-              {sites.map((s) => <option key={s.id} value={s.id}>{str(s, 'name')}</option>)}
-            </select>
-            <span className="toolbar-count">{rows.length} entries</span>
-          </div>
-          {rows.length ? (
-            <ul className="list" data-testid="ob-list">
-              {rows.map((e) => (
-                <li key={e.id} style={{ alignItems: 'flex-start' }}>
-                  <span className="time-chip">{str(e, 'time')}<br />{e.ref}</span>
-                  <div className="grow">
-                    <Link to={`${base}/ob/${e.id}`}><b>{label(OB_TYPES, str(e, 'type'))}{site ? '' : ` · ${siteName(data, e.values.site)}`}</b></Link>
-                    <small style={{ color: 'var(--ink-3)', whiteSpace: 'pre-wrap' }}>{str(e, 'entry')}</small>
-                    <small>{str(e, 'by')} · {SHIFT_SHORT[str(e, 'shift')] ?? ''} shift{str(e, 'followsUp') ? ' · follow-up entry' : ''}</small>
-                  </div>
-                  {e.status === 'signed' ? <Tag tone="green"><IcoLock style={{ width: 11, height: 11, marginRight: 4 }} />Signed</Tag> : <><StatusTag workflow={def.workflow} status={e.status} /><WorkflowActions def={def} record={e} compact /></>}
+              <div className="span-2 btns">
+                <button className="btn primary" onClick={() => add(true)} data-testid="ob-sign">Write &amp; sign</button>
+                <button className="btn" onClick={() => add(false)} data-testid="ob-draft">Save as draft</button>
+              </div>
+            </div>
+          ) : <Notice tone="grey">Your simulated role cannot write occurrence book entries.</Notice>}
+        </Panel>
+        <Panel title="Unsigned drafts" meta="Sign each entry to lock it">
+          {drafts.length ? (
+            <ul className="list">
+              {drafts.slice(0, 6).map((e) => (
+                <li key={e.id}>
+                  <div className="grow"><Link to={`${base}/ob/${e.id}`}><b>{e.ref} · {siteName(data, e.values.site)}</b></Link><small>{formatDate(str(e, 'date'))} {str(e, 'time')} · {label(OB_TYPES, str(e, 'type'))}</small></div>
+                  <WorkflowActions def={def} record={e} compact />
                 </li>
               ))}
             </ul>
-          ) : <Empty title="No entries for this day" body="The demo seeds the last three days. Write an entry with the form on this page." />}
+          ) : <Empty title="Every entry is signed" />}
         </Panel>
       </div>
+      <Panel title="Book entries" meta="Oldest first, as in the paper book">
+        <div className="toolbar diary-nav">
+          <button className="btn sm" aria-label="Previous day" onClick={() => setDate(addDays(date, -1))}><IcoBack /></button>
+          <input className="input sm" type="date" aria-label="Book date" value={date} max={today} onChange={(e) => e.target.value && setDate(e.target.value)} style={{ width: 160 }} />
+          <button className="btn sm" aria-label="Next day" disabled={date >= today} onClick={() => setDate(addDays(date, 1))}><IcoArrow /></button>
+          <select className="select" aria-label="Site" value={site} onChange={(e) => setSite(e.target.value)}>
+            <option value="">All sites</option>
+            {sites.map((s) => <option key={s.id} value={s.id}>{str(s, 'name')}</option>)}
+          </select>
+          <span className="toolbar-count">{rows.length} entries</span>
+        </div>
+        {rows.length ? (
+          <ul className="list" data-testid="ob-list">
+            {rows.map((e) => (
+              <li key={e.id} style={{ alignItems: 'flex-start' }}>
+                <span className="time-chip">{str(e, 'time')}<br />{e.ref}</span>
+                <div className="grow">
+                  <Link to={`${base}/ob/${e.id}`}><b>{label(OB_TYPES, str(e, 'type'))}{site ? '' : ` · ${siteName(data, e.values.site)}`}</b></Link>
+                  <small style={{ color: 'var(--ink-3)', whiteSpace: 'pre-wrap' }}>{str(e, 'entry')}</small>
+                  <small>{str(e, 'by')} · {SHIFT_SHORT[str(e, 'shift')] ?? ''} shift{str(e, 'followsUp') ? ' · follow-up entry' : ''}</small>
+                </div>
+                {e.status === 'signed' ? <Tag tone="green"><IcoLock style={{ width: 11, height: 11, marginRight: 4 }} />Signed</Tag> : <><StatusTag workflow={def.workflow} status={e.status} /><WorkflowActions def={def} record={e} compact /></>}
+              </li>
+            ))}
+          </ul>
+        ) : <Empty title="No entries for this day" body="The demo seeds the last three days. Write an entry with the form on this page." />}
+      </Panel>
     </>
   );
 }

@@ -59,7 +59,7 @@ export default function Patrols() {
         <Panel title="Start a round" meta={`Dated ${formatDate(today)} · started now (${time})`}>
           {can('patrols') ? (
             <>
-              <div className="form-grid">
+              <div style={{ display: 'grid', gap: 12 }}>
                 <Field label="Site">
                   <select className="select" aria-label="Patrol site" value={site} onChange={(e) => { setSite(e.target.value); setOfficer(''); }}>
                     <option value="">Select site…</option>

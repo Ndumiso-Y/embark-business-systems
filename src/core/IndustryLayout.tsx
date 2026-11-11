@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useState, type CSSProperties } from 'react';
-import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { IcoBack, IcoGrid, IcoHome, IcoKey, IcoMenu, IcoSearch, IcoSettings } from './components/Icons';
 import { Toasts } from './components/ui';
 import { IndustryContext } from './context';
@@ -10,6 +10,7 @@ import { getIndustry, LOCKED_INDUSTRY } from '../industries/registry';
 import { brandedConfig, parseUrlBrand, sanitiseBrand } from './brand';
 import { useIndustry } from './context';
 import NotFound from './pages/NotFound';
+import LockedRedirect from './components/LockedRedirect';
 
 /** Shell for one industry: themed sidebar, top bar with simulated sign-in, routed content. */
 export default function IndustryLayout() {
@@ -36,7 +37,7 @@ export default function IndustryLayout() {
         .catch(() => { /* unknown brand key: keep the default look */ });
     }
   }, [config, setBrand]);
-  if (!config) return LOCKED_INDUSTRY ? <Navigate to={`/${LOCKED_INDUSTRY}`} replace /> : <div className="content"><NotFound /></div>;
+  if (!config) return LOCKED_INDUSTRY ? <LockedRedirect to={LOCKED_INDUSTRY} /> : <div className="content"><NotFound /></div>;
   if (!data) return null;
   return (
     <IndustryContext.Provider value={branded ?? config}>

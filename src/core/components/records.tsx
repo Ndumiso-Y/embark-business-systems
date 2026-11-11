@@ -29,7 +29,10 @@ export function WorkflowActions({ def, record, compact, onDone, hide }: { def: C
   const [note, setNote] = useState('');
   const [err, setErr] = useState('');
   if (!def.workflow) return null;
-  const options = availableTransitions(def.workflow, record, user, data)
+  const every = availableTransitions(def.workflow, record, user, data);
+  // If the page handles every available step itself, show nothing rather than "final state".
+  if (every.length && hide && every.every((o) => hide.includes(o.transition.to))) return null;
+  const options = every
     .filter((o) => !hide?.includes(o.transition.to))
     .map((o) => (o.blocked === PERMISSION_REFUSED ? { ...o, blocked: permissionHint(config, data, o.transition.permission), byPermission: true } : { ...o, byPermission: false }));
   if (!options.length) return compact ? null : <span className="muted-note">No further steps — this is a final state.</span>;

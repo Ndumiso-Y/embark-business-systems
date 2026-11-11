@@ -8,6 +8,9 @@ import { Field, Modal } from './ui';
 import { IcoPlus, IcoTrash } from './Icons';
 import { newId } from '../store';
 
+/** "Stock item" → "stock item", but "OB entry" and "PPE issue" keep their capitals. */
+const lowerFirst = (s: string) => (/^[A-Z][a-z]/.test(s) ? s[0].toLowerCase() + s.slice(1) : s);
+
 export const money = (rand: number) => formatRand(Math.round(rand * 100));
 
 /** Human display of a stored value. */
@@ -168,7 +171,7 @@ export function RecordFormModal({ def, record, initial, open, onClose, onSave, t
     onSave(values);
   };
   return (
-    <Modal open={open} wide title={title ?? (record ? `Edit ${def.singular.toLowerCase()} ${record.ref}` : `New ${def.singular.toLowerCase()}`)} sub="Fictional demonstration record — saved in this browser only." onClose={onClose}
+    <Modal open={open} wide title={title ?? (record ? `Edit ${lowerFirst(def.singular)} ${record.ref}` : `New ${lowerFirst(def.singular)}`)} sub="Fictional demonstration record — saved in this browser only." onClose={onClose}
       footer={<><button className="btn" onClick={onClose}>Cancel</button><button className="btn primary" onClick={submit} data-testid="save-record">Save</button></>}>
       <form ref={form} className="form-grid" onSubmit={(e) => { e.preventDefault(); submit(); }} noValidate>
         {/* Lets Enter in any field save the form; the visible Save button lives in the dialog footer. */}
