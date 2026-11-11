@@ -2,13 +2,13 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// GitHub Pages serves a project site from /<repo>/. `npm run build:preview`
-// overrides this with a relative base for portable static previews.
-const REPO_NAME = 'embark-industry-demos';
+// Relative base: with hash routing the same build works at any path — a GitHub
+// Pages project site (/<repo>/), a custom domain root, or a single-file preview —
+// so renaming the repository needs no code change.
 
 export default defineConfig({
   plugins: [react()],
-  base: `/${REPO_NAME}/`,
+  base: './',
   build: { outDir: 'dist', sourcemap: false, target: 'es2020' },
   test: { environment: 'node', include: ['tests/**/*.test.ts'] },
 });

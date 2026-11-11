@@ -20,9 +20,15 @@ export default function Gallery() {
           configured with modules that matter to that industry. Open one, switch between fictional staff in the top bar, and work through real-looking tasks.
         </p>
       </section>
+      <nav className="gallery-jump" aria-label="Jump to an industry">
+        {list.map((c) => (
+          <a key={c.id} href={`#/`} onClick={(e) => { e.preventDefault(); document.getElementById(`card-${c.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}
+            style={{ '--accent': c.theme.accent } as CSSProperties}><i />{c.industry}</a>
+        ))}
+      </nav>
       <div className="gallery-grid">
         {list.map((c, i) => (
-          <article key={c.id} className={`gallery-card ${i === 0 ? 'featured' : ''}`} style={{ '--accent': c.theme.accent, '--accent-tint': c.theme.accentTint, '--accent-text': c.theme.accentText, '--accent-line': c.theme.accentLine } as CSSProperties} data-testid={`industry-${c.id}`}>
+          <article key={c.id} id={`card-${c.id}`} className={`gallery-card ${i === 0 ? 'featured' : ''}`} style={{ '--accent': c.theme.accent, '--accent-tint': c.theme.accentTint, '--accent-text': c.theme.accentText, '--accent-line': c.theme.accentLine } as CSSProperties} data-testid={`industry-${c.id}`}>
             <div className="gallery-card-top">
               <span className="gallery-mono">{c.monogram}</span>
               <div>
@@ -32,8 +38,15 @@ export default function Gallery() {
             </div>
             <p>{c.summary}</p>
             <ul className="gallery-highlights">{c.highlights.map((h) => <li key={h}>{h}</li>)}</ul>
-            <div className="gallery-modules">{c.modules.map((m) => <span key={m.key}>{m.label}</span>)}</div>
-            <Link className="btn primary" to={`/${c.id}`}>Open {c.industry.toLowerCase()} demo <IcoArrow /></Link>
+            <div className="gallery-modules-head">{c.modules.length} modules · open any one directly</div>
+            <nav className="gallery-modules" aria-label={`${c.industry} modules`}>
+              {c.modules.map((m) => (
+                <Link key={m.key} to={`/${c.id}/${m.key}`} title={m.description} data-testid={`module-${c.id}-${m.key}`}>
+                  <m.icon /><span>{m.label}</span>
+                </Link>
+              ))}
+            </nav>
+            <Link className="btn primary" to={`/${c.id}`}>Open {c.industry.toLowerCase()} dashboard <IcoArrow /></Link>
           </article>
         ))}
       </div>

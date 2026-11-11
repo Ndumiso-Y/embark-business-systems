@@ -113,8 +113,6 @@ a:focus-visible, button:focus-visible, .clickable:focus-visible, select:focus-vi
 .gallery-card h2 { font-size: 20px; letter-spacing: -.5px; margin-top: 3px; }
 .gallery-card p { color: var(--muted); font-size: 13px; line-height: 1.55; }
 .gallery-highlights { margin: 0; padding-left: 18px; color: var(--ink-3); font-size: 12.5px; line-height: 1.6; }
-.gallery-modules { display: flex; flex-wrap: wrap; gap: 6px; }
-.gallery-modules span { font-size: 10.5px; font-weight: 700; color: var(--muted); background: var(--bg-subtle); border: 1px solid var(--line); border-radius: 20px; padding: 4px 9px; }
 .gallery-card .btn { align-self: flex-start; margin-top: auto; }
 .gallery-boundary { margin-top: 24px; background: var(--bg-subtle); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; font-size: 13px; color: var(--muted); line-height: 1.6; }
 .gallery-boundary b { color: var(--ink-2); display: block; margin-bottom: 4px; }
@@ -187,3 +185,17 @@ a:focus-visible, button:focus-visible, .clickable:focus-visible, select:focus-vi
 .board-card .tag, .patient-card .tag, .list .tag { white-space: normal; line-height: 1.3; max-width: 100%; }
 .board-card .flags { display: flex; }
 body { background: var(--bg-app); }
+
+/* Gallery: module links inside each industry card, and an industry jump bar */
+.gallery-jump { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 22px; }
+.gallery-jump a { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; font-size: 12px; font-weight: 700; color: var(--ink-3); background: #fff; border: 1px solid var(--line); border-radius: 30px; padding: 8px 14px; }
+.gallery-jump a:hover { border-color: var(--line-3); color: var(--ink); }
+.gallery-jump i { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); }
+.gallery-card { scroll-margin-top: 16px; }
+.gallery-modules-head { font-size: 10px; letter-spacing: 1.2px; font-weight: 800; text-transform: uppercase; color: var(--muted-2); }
+.gallery-modules { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px; }
+.gallery-modules a { display: flex; align-items: center; gap: 9px; min-width: 0; text-decoration: none; font-size: 12.5px; font-weight: 600; color: var(--ink-2); background: var(--bg-subtle); border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; }
+.gallery-modules a .ico { width: 16px; height: 16px; color: var(--accent-text); flex: none; }
+.gallery-modules a span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gallery-modules a:hover { background: var(--accent-tint); border-color: var(--accent-line); color: var(--ink); }
+@media (max-width: 480px) { .gallery-modules { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }

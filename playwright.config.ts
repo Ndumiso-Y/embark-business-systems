@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const BASE = '/embark-industry-demos/';
+const BASE = '/';
 const PORT = 5174;
 
 export default defineConfig({

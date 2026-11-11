@@ -26,7 +26,7 @@ npm install
 ```
 
 ```bash
-npm run dev          # http://localhost:5173/embark-industry-demos/
+npm run dev          # http://localhost:5173/
 ```
 
 ```bash
@@ -42,7 +42,7 @@ npm run e2e          # Playwright browser tests (first time: npx playwright inst
 ```
 
 ```bash
-npm run build        # GitHub Pages build (base /embark-industry-demos/)
+npm run build        # static build in dist/ (works at any path)
 npm run build:preview  # portable build with relative paths (dist-preview/)
 ```
 

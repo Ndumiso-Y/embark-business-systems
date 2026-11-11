@@ -7,7 +7,7 @@ Run on 11 Nov 2026 in a Linux cloud container (Node 22, Chromium via Playwright 
 | Typecheck | `npm run typecheck` | Pass |
 | Lint | `npm run lint` | 0 errors, 8 warnings (react-refresh "only export components" — dev hot-reload hint only) |
 | Unit tests | `npm test` | **87 passed** in 6 files: engine 13 · optometry 11 · medical 13 · automotive 12 · mining 17 · legal 21 |
-| Browser tests | `npm run e2e` | **14 passed** (5 cross-industry smoke + 9 optometry workflows) |
+| Browser tests | `npm run e2e` | **14 passed** (5 cross-industry smoke + 9 optometry workflows, incl. opening-screen module links) |
 | Production build | `npm run build` | Pass — JS 780 kB (238 kB gzip), CSS 37 kB |
 | Preview build | `npm run build:preview` | Single self-contained HTML (~800 kB) boots with no console errors |
 
