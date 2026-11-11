@@ -12,8 +12,16 @@
 | Estate agency client | https://ndumiso-y.github.io/embark-business-systems/real-estate/ | Kestrel Property Group only |
 | Construction client | https://ndumiso-y.github.io/embark-business-systems/construction/ | Ironbark Building & Civils only |
 | Tyre fitment client | https://ndumiso-y.github.io/embark-business-systems/tyre-fitment/ | TreadRight Tyre & Fitment only |
-| Embark Digitals (internal) | https://ndumiso-y.github.io/embark-business-systems/hub-k7q3m9/ | Gallery of all eight, grouped by family |
+| Security company client | https://ndumiso-y.github.io/embark-business-systems/security/ | Sentinel Ridge Security only |
+| Cleaning company client | https://ndumiso-y.github.io/embark-business-systems/cleaning/ | BrightPath Cleaning Services only |
+| Embark Digitals (internal) | https://ndumiso-y.github.io/embark-business-systems/hub-k7q3m9/ | Gallery of all ten, grouped by family |
 | Anyone at the root | https://ndumiso-y.github.io/embark-business-systems/ | Neutral page, lists nothing |
+
+## Branding a link for a client
+
+Add the client's name and colour to any client link, e.g.
+`…/optometry/?name=Acme+Eye+Care&accent=1a73e8`, or publish a brand file so the logo travels too
+(`…/optometry/?brand=<key>`). See `docs/BRANDING.md`.
 
 ## How the separation works
 

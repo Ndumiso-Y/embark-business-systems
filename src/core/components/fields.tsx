@@ -125,7 +125,7 @@ function RefSelect({ f, value, onChange, common, data, collections, values }: { 
   return (
     <>
       {all.length > 12 && (
-        <input className="input sm ref-filter" aria-label={`Filter ${f.label}`} placeholder={`Type to filter ${all.length} ${def.plural.toLowerCase()}…`} value={q} onChange={(e) => setQ(e.target.value)}
+        <input className="input sm ref-filter" aria-label="Type to narrow the list below" placeholder={`Type to filter ${all.length} ${def.plural.toLowerCase()}…`} value={q} onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); const first = opts.find((r) => r.id !== value) ?? opts[0]; if (needle && first) { onChange(first.id); setQ(''); } } }} />
       )}
       <select className="select" {...common} value={String(value ?? '')} onChange={(e) => onChange(e.target.value)}>

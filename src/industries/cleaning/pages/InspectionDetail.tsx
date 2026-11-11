@@ -67,7 +67,7 @@ function ScoreSheet({ id }: { id: string }) {
               <Field label="Corrective action"><textarea className="textarea" aria-label="Corrective action" disabled={!editable} value={String(v.correctiveAction ?? '')} onChange={(e) => setDraft({ ...(draft ?? {}), correctiveAction: e.target.value })} placeholder="What will be done, and by whom" /></Field>
             </div>
             <Field label="Due date"><input className="input" type="date" aria-label="Corrective action due" disabled={!editable} value={String(v.correctiveDue ?? '')} onChange={(e) => setDraft({ ...(draft ?? {}), correctiveDue: e.target.value })} /></Field>
-            {editable && <div style={{ alignSelf: 'end' }}><button className="btn primary" disabled={!draft} onClick={save} data-testid="save-corrective">{draft ? 'Save corrective action' : 'Saved'}</button></div>}
+            {editable && <div style={{ alignSelf: 'end' }}><button className="btn primary" disabled={!draft} onClick={save} data-testid="save-corrective">Save corrective action</button></div>}
           </div>
           {r.status !== 'draft' && str(r, 'correctiveAction') && can('inspections') && (
             <label className="check" style={{ marginTop: 10 }}>

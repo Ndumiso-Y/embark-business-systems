@@ -47,7 +47,7 @@ const siteWorkflow: WorkflowDef = {
   transitions: [
     { from: 'active', to: 'notice', label: 'Record notice of termination', permission: 'sites.manage', requiresNote: true, noteHint: 'who gave notice, when and why', intent: 'danger' },
     { from: 'notice', to: 'active', label: 'Renew contract', permission: 'sites.manage', intent: 'primary',
-      guard: ({ record }) => (str(record, 'contractEnd') > addDays(todayStr(), 60) ? null : 'Update the contract end date first (Edit) — a renewed contract must run for more than 60 days.') },
+      guard: ({ record }) => (str(record, 'contractEnd') > addDays(todayStr(), 60) ? null : 'Update the contract end date first (Edit → Contract end) — a renewed contract must run for more than 60 days from today.') },
     { from: 'notice', to: 'ended', label: 'Close contract', permission: 'sites.manage', requiresNote: true },
   ],
 };
@@ -326,6 +326,7 @@ const collections: CollectionDef[] = [
     title: (r) => str(r, 'name'),
     subtitle: (r, d) => `${label(SITE_TYPES, str(r, 'siteType'))} · ${clientName(d, r.values.client)}`,
     sort: (a, b) => str(a, 'name').localeCompare(str(b, 'name')),
+    createDefaults: (today) => ({ cleanersPerShift: 2, serviceDays: 'weekdays', shiftStart: '06:00', shiftEnd: '14:00', contractStart: today, contractEnd: addDays(today, 365), slaTarget: 85 }),
     flags: (r, d, today) => siteFlags(r, d, today),
     fields: [
       { key: 'name', label: 'Site', type: 'text', required: true },
@@ -521,6 +522,7 @@ const collections: CollectionDef[] = [
     title: (r, d) => str(findRecord(d, 'stock', str(r, 'item')), 'name') || 'Stock item',
     subtitle: (r) => `${num(r, 'qty')} from ${str(r, 'supplier') || 'supplier to be chosen'}`,
     sort: (a, b) => str(b, 'expected').localeCompare(str(a, 'expected')),
+    createDefaults: (today) => ({ expected: addDays(today, 7) }),
     flags: (r, _d, today) => (r.status === 'ordered' && str(r, 'expected') && str(r, 'expected') < today ? [{ tone: 'red', label: 'Delivery overdue' }] : []),
     fields: [
       { key: 'item', label: 'Stock item', type: 'ref', ref: 'stock', required: true },
@@ -536,6 +538,7 @@ const collections: CollectionDef[] = [
     title: (r) => `${label(EQUIPMENT_TYPES, str(r, 'type'))} ${str(r, 'assetNo')}`,
     subtitle: (r, d) => `${str(r, 'model')} · ${str(r, 'site') ? siteName(d, r.values.site) : 'In store'}`,
     sort: (a, b) => str(a, 'assetNo').localeCompare(str(b, 'assetNo')),
+    createDefaults: (today) => ({ condition: 'good', purchased: today, serviceDue: addDays(today, 180) }),
     flags: (r, _d, today) => equipmentFlags(r, today),
     fields: [
       { key: 'assetNo', label: 'Asset no.', type: 'text', required: true },

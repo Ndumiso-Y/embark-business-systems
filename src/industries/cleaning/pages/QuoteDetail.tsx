@@ -54,7 +54,7 @@ function ScheduleJob({ id }: { id: string }) {
             {leaders.map((p) => <option key={p.id} value={p.id}>{fullName(p)}</option>)}
           </select>
         </Field>
-        {editable && <div style={{ alignSelf: 'end' }}><button className="btn primary" disabled={!draft} onClick={save} data-testid="save-job">{draft ? 'Save job details' : 'Saved'}</button></div>}
+        {editable && <div style={{ alignSelf: 'end' }}><button className="btn primary" disabled={!draft} onClick={save} data-testid="save-job">Save job details</button></div>}
       </div>
       {problem && !draft && <p className="muted-note" style={{ marginTop: 10 }}>{problem.replace(/ \(“Schedule the job” panel on the quote\)/, '')}</p>}
       {waiting && <div style={{ marginTop: 12 }}><Notice tone="grey">“Job completed” is refused until {formatDate(str(q, 'jobDate'))}. To finish the walkthrough today, change the job date to today and save.</Notice></div>}

@@ -1,7 +1,8 @@
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { useBase, useData, useIndustry, useUser } from '../../../core/context';
+import { useActions, useBase, useData, useIndustry, useUser } from '../../../core/context';
 import { findRecord, num, str } from '../../../core/engine';
-import { daysBetween, formatDate } from '../../../core/lib/dates';
+import { addDays, daysBetween, formatDate } from '../../../core/lib/dates';
 import { Empty, KeyValues, Meters, Notice, Panel, StatusTag, Tag } from '../../../core/components/ui';
 import { RecordDetail } from '../../../core/components/records';
 import { COMPLAINT_CATEGORIES, label } from '../data';
@@ -93,7 +94,9 @@ function Main({ id }: { id: string }) {
 function Aside({ id }: { id: string }) {
   const data = useData();
   const base = useBase();
-  const { hasModule } = useUser();
+  const act = useActions();
+  const { can, hasModule } = useUser();
+  const [newEnd, setNewEnd] = useState('');
   const today = todayStr();
   const month = today.slice(0, 7);
   const site = findRecord(data, 'sites', id)!;
@@ -117,6 +120,17 @@ function Aside({ id }: { id: string }) {
           { label: 'Chemical-trained cleaners', value: trained.length || 'None in date' },
         ]} />
         {ending !== null && <div style={{ marginTop: 12 }}><Notice tone="amber">{ending < 0 ? 'The contract end date has passed.' : `The contract ends in ${ending} days.`} {site.status === 'notice' ? 'The client has given notice.' : 'Agree the renewal and update the end date.'}</Notice></div>}
+        {ending !== null && site.status !== 'ended' && can('sites.manage') && (
+          <div className="toolbar" style={{ marginTop: 12, marginBottom: 0 }} data-testid="extend-contract">
+            <input className="input" type="date" aria-label="New contract end date" min={addDays(today, 61)} value={newEnd || addDays(str(site, 'contractEnd') > today ? str(site, 'contractEnd') : today, 365)} onChange={(e) => setNewEnd(e.target.value)} />
+            <button className="btn sm" onClick={() => {
+              const end = newEnd || addDays(str(site, 'contractEnd') > today ? str(site, 'contractEnd') : today, 365);
+              act.update('sites', id, { contractEnd: end }, `Contract end date moved to ${formatDate(end)}`);
+              act.toast(`Contract now runs to ${formatDate(end)}${site.status === 'notice' ? ' — press “Renew contract” in the workflow to lift the notice' : ''}`);
+              setNewEnd('');
+            }}>Set new end date</button>
+          </div>
+        )}
       </Panel>
       <Panel title="Inspection score trend" meta="Submitted inspections against the SLA target" right={hasModule('inspections') ? <Link className="btn sm" to={`${base}/inspections`}>Inspections</Link> : undefined}>
         <ScoreTrend data={data} site={site} />

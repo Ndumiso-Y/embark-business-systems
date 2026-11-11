@@ -212,10 +212,9 @@ test.describe('Mining journeys', () => {
 
     // Closing is refused until the actions are marked complete.
     await step(page, 'Close incident').click();
-    await page.getByLabel('Transition note').fill('Checked on site.');
-    await page.getByTestId('confirm-transition').click();
-    await expect(page.locator('.modal')).toContainText('not marked complete');
-    await page.locator('.modal').getByRole('button', { name: 'Cancel' }).click();
+    // The refusal is immediate: no note is asked for when a note cannot fix the problem.
+    await expect(page.locator('.toast').last()).toContainText('not marked complete');
+    await expect(page.locator('.modal')).toHaveCount(0);
     await page.getByTestId('actions-complete').click();
     await expect(blocked(page)).toHaveCount(0);
     await step(page, 'Close incident').click();

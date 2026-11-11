@@ -11,7 +11,7 @@ import RoleBar from '../../../core/components/RoleBar';
 import { IcoBack, IcoEdit } from '../../../core/components/Icons';
 import { STAFF_ROLES, label } from '../data';
 import {
-  assignmentProblem, checklistState, csv, fullName, isRosterable, rosterProblems, shiftAbsent, shiftCleaners, siteOf, staffByRef, staffing, toCsv, todayStr,
+  assignmentProblem, checklistState, csv, fullName, inductedAt, isRosterable, rosterProblems, shiftAbsent, shiftCleaners, siteOf, staffByRef, staffing, toCsv, todayStr,
 } from '../helpers';
 import { cleanerState, isRelief, useShiftActions } from './attendance';
 import { StaffingTag } from './shared';
@@ -50,6 +50,9 @@ export default function ShiftDetail() {
   // Absences and relief cover are handled next to the names below, so the generic step buttons are left out here.
   const stepsDef = { ...def, workflow: { ...def.workflow!, transitions: def.workflow!.transitions.filter((t) => t.to !== 'short' && t.to !== 'relief') } };
   const canCover = can('schedule.manage');
+  // The picker lists cleaners inducted at this site first; when covering an absence the relief cleaners are already listed above.
+  const others = candidates.filter((p) => shift.status !== 'short' || !reliefStaff.includes(p));
+  const homeTeam = candidates.filter((p) => str(p, 'homeSite') === site?.id && !assignmentProblem(p, shift, data));
   const check = checklistState(shift, data);
   const canTick = started && shift.status !== 'completed' && can('attendance');
   const problems = shift.status === 'draft' ? rosterProblems(shift, data) : [];
@@ -63,6 +66,11 @@ export default function ShiftDetail() {
     act.update('shifts', shift.id, { cleaners: toCsv([...onShift, p.ref]) }, `Rostered: ${fullName(p)}`);
     setMessage({ tone: 'accent', text: `${fullName(p)} added to the roster.` });
     setPick('');
+  };
+  const addHomeTeam = () => {
+    const add = homeTeam.slice(0, st.unfilled);
+    act.update('shifts', shift.id, { cleaners: toCsv([...onShift, ...add.map((p) => p.ref)]) }, `Rostered the site team: ${add.map(fullName).join(', ')}`);
+    setMessage({ tone: 'accent', text: `${add.length} cleaner${add.length === 1 ? '' : 's'} based at this site added to the roster. Confirm the roster in the workflow above.` });
   };
   const remove = (p: DemoRecord) => {
     act.update('shifts', shift.id, { cleaners: toCsv(onShift.filter((r) => r !== p.ref)), absentees: toCsv(shiftAbsent(shift).filter((r) => r !== p.ref)) }, `Removed from roster: ${fullName(p)}`);
@@ -167,9 +175,15 @@ export default function ShiftDetail() {
               <div className="toolbar" style={{ marginTop: 14, marginBottom: 0 }}>
                 <select className="select" aria-label="Choose a cleaner" value={pick} onChange={(e) => setPick(e.target.value)}>
                   <option value="">{shift.status === 'short' ? 'Or try any other cleaner (same checks)…' : 'Add a cleaner to the roster…'}</option>
-                  {candidates.filter((p) => shift.status !== 'short' || !reliefStaff.includes(p)).map((p) => <option key={p.id} value={p.id}>{fullName(p)} · {label(STAFF_ROLES, str(p, 'role'))}</option>)}
+                  <optgroup label="Inducted at this site">
+                    {others.filter((p) => inductedAt(p, site)).map((p) => <option key={p.id} value={p.id}>{fullName(p)} · {label(STAFF_ROLES, str(p, 'role'))}</option>)}
+                  </optgroup>
+                  <optgroup label="No induction at this site (will be refused)">
+                    {others.filter((p) => !inductedAt(p, site)).map((p) => <option key={p.id} value={p.id}>{fullName(p)} · {label(STAFF_ROLES, str(p, 'role'))}</option>)}
+                  </optgroup>
                 </select>
                 <button className="btn sm" disabled={!pick} onClick={() => { const p = findRecord(data, 'staff', pick); if (!p) return; if (shift.status === 'short') tryRelief(p); else addCleaner(); }}>{shift.status === 'short' ? 'Assign as relief' : 'Add to roster'}</button>
+                {rosterOpen && homeTeam.length > 0 && st.unfilled > 0 && <button className="btn sm primary" onClick={addHomeTeam} data-testid="add-site-team">Add the site’s own team ({Math.min(homeTeam.length, st.unfilled)})</button>}
               </div>
             )}
           </Panel>

@@ -109,6 +109,34 @@ test.describe('Cleaning services journeys', () => {
     await expect(panel(page, 'Staffing')).toContainText('Rostered3');
   });
 
+  test('new shift: the roster is refused until every cleaner passes the rostering rules', async ({ page }) => {
+    const errors = watchErrors(page);
+    await page.goto('#/cleaning/schedule');
+    await signInAs(page, 'u_ops');
+    await page.getByTestId('new-record').click();
+    await modal(page).getByLabel('Site', { exact: true }).selectOption({ label: 'Meridian Office Park — Block A · ST-0002' });
+    // An extra afternoon shift, so the site team is free whatever day of the week it is.
+    await modal(page).getByLabel('Starts').fill('15:00');
+    await modal(page).getByLabel('Ends').fill('19:00');
+    await page.getByTestId('save-record').click();
+    await expect(toast(page)).toContainText('add cleaners and confirm the roster');
+    await expect(status(page)).toHaveText('Roster to confirm');
+    await step(page, 'Confirm roster').click();
+    await expect(toast(page)).toContainText('Add at least one cleaner to the roster');
+    // A cleaner with no induction at this site is refused, with the reason.
+    await page.getByLabel('Choose a cleaner').selectOption({ label: 'Nokuthula Nkosi · Team leader' });
+    await page.getByRole('button', { name: 'Add to roster' }).click();
+    await expect(toast(page)).toContainText('Nokuthula Nkosi has not completed the site induction for Meridian Office Park — Block A');
+    await page.getByTestId('add-site-team').click();
+    await expect(panel(page, 'Roster & attendance').locator('.panel-head .tag')).toHaveText('4/4 rostered');
+    await step(page, 'Confirm roster').click();
+    await expect(status(page)).toHaveText('Scheduled');
+    // Tomorrow's shift cannot be started today.
+    await step(page, 'Start shift').click();
+    await expect(toast(page)).toContainText('A shift can only be started on its own day');
+    expect(errors).toEqual([]);
+  });
+
   test('inspection: a low area needs a corrective action → submit → below SLA schedules a re-inspection', async ({ page }) => {
     const errors = watchErrors(page);
     await page.goto('#/cleaning/inspections');
@@ -352,6 +380,19 @@ test.describe('Cleaning services journeys', () => {
     await expect(toast(page)).toContainText('does not hold in-date working-at-heights training');
     await expect(status(page)).toHaveText('Planned');
     expect(errors).toEqual([]);
+  });
+
+  test('contract on notice: renewal is refused until the end date is extended, which is done on the site itself', async ({ page }) => {
+    await page.goto('#/cleaning/sites/sites_14');
+    await signInAs(page, 'u_ops');
+    await expect(status(page)).toHaveText('On notice');
+    await step(page, 'Renew contract').click();
+    await expect(toast(page)).toContainText('Update the contract end date first');
+    await page.getByTestId('extend-contract').getByRole('button', { name: 'Set new end date' }).click();
+    await expect(toast(page)).toContainText('Contract now runs to');
+    await step(page, 'Renew contract').click();
+    await expect(status(page)).toHaveText('Active contract');
+    await expect(panel(page, 'Contract')).not.toContainText('The contract ends in');
   });
 
   test('guide: all six steps open the right screen as the right person and work on a fresh seed', async ({ page }) => {

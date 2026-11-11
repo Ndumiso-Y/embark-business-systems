@@ -22,8 +22,12 @@ Score each candidate from 1 to 3 on five questions:
 | --- | --- | --- | --- |
 | Health practices | Optometry, General practice | Diary → clinical record → script/Rx → medical-aid claim → recall | Dental, physiotherapy, veterinary, audiology, psychology |
 | Vehicles & workshops | Automotive workshop, Tyre & fitment centre | Job card through bays → customer approval → parts/tools → QC → invoice | Panel beaters (insurance assessor approvals), fleet maintenance, auto electricians |
-| Site & field operations | Mining, Construction | Daily log → permits/safety → plant → contractor compliance → progress claims | Security companies (guard rosters, incidents), cleaning & facilities, electrical/plumbing contractors |
+| Site & field operations | Mining, Construction | Daily log → permits/safety → plant → contractor compliance → progress claims | Electrical/plumbing contractors, civil maintenance, renewable-energy installers |
+| Contract services | Security, Cleaning | Staff deployed to client sites → rosters and attendance → site checks and inspections → incidents/complaints → contract billing with penalties | Landscaping & garden services, pest control, facilities management, staffing/labour brokers, catering contracts |
 | Property & professional services | Real estate, Law firm | Pipeline of deals/matters → compliance checks → trust money → fees | Property management & body corporates (levies, arrears, maintenance), accounting & bookkeeping practices, insurance brokers |
+
+Security and cleaning were added in November 2026 as a fifth family because both are fast-growing, labour-intensive
+services run largely on WhatsApp and spreadsheets, with strong compliance and client-reporting pain.
 
 ## Recommended next demos (in order)
 
@@ -34,8 +38,8 @@ Score each candidate from 1 to 3 on five questions:
    recalls). Very cheap and a large, well-paid market.
 3. **Private schools and early-learning centres.** Enrolments, fee billing and arrears, attendance, parent
    communication. Strong pain and recurring fees. It is a new family, so it costs more, but it opens the education sector.
-4. **Security companies.** Guard scheduling, site patrols, incident reports, PSIRA registration expiries. Reuses
-   mining/construction (shifts, incidents, compliance expiries).
+4. **Facilities management / landscaping / pest control.** Now cheap: they reuse the contract-services family
+   (rosters, site inspections, complaints, contract billing) built for security and cleaning.
 5. **Panel beaters.** Insurance-driven jobs (assessor approval, parts authorisation, photos at each stage). Reuses the
    workshop family almost entirely and is a common client profile.
 6. **Accounting & bookkeeping practices.** Client deadlines (VAT, PAYE, provisional tax), document requests, time and

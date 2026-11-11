@@ -132,6 +132,23 @@ What those builds ran into, and how to handle it:
 | Circular imports between config and pages | Put rules and lookups in `helpers.ts`; `index.ts` imports pages, pages import helpers |
 | A record created from a register should be linked to its parent (estimate → job) | Create it from the parent's detail page with `initial` values, or resolve the link in a helper |
 
+## 6a. What the November 2026 audit added (use these)
+
+| Need | Use |
+| --- | --- |
+| Show a newcomer what to try | `guide: GuideStep[]` on the config — 5–6 steps, each `to` a module (or `module/recordId`), `as` a seeded user. `validateConfig` checks the module, user and — across seven consecutive days — that a linked record exists in the same state |
+| A blocked step needs a value | Put a small form for that value on the detail page next to the workflow, and make the guard message point to it. Never answer "Edit → field" |
+| Your page has its own button for a step | `<RecordDetail hideTransitions={['state']}>` / `<WorkflowActions hide={[...]}>` so the generic button does not appear twice |
+| Prefill the "New …" form | `CollectionDef.createDefaults(today, data)` |
+| Keep a value on the record but out of generic forms and details | `FieldDef.hidden`; show units with `FieldDef.unit` |
+| Limit a record picker | `FieldDef.refFilter(target, values, data)` (pickers over 12 options get a type-to-filter box automatically) |
+| Tell the user what a required note should say | `Transition.noteHint` |
+| Month charts | `monthKeys(today, n)` from `core/lib/dates` — never subtract ~30 days repeatedly |
+| Records the walkthrough links to | Give them stable ids (create them before any weekday-dependent history) |
+| Time | Rules and flags use dates only ("kept overnight"), never hours on the wall clock; seeded "today" must look right at 07:00 and at 22:00 |
+| Business name | `useIndustry().businessName` — never hard-code it; client branding replaces it at runtime (`docs/BRANDING.md`) |
+| Check your work | Follow `docs/AUDIT_BRIEF.md` and add `e2e/journeys/<id>.spec.ts` |
+
 ## 7. Honesty rules for every demo
 
 - Every person, business, number, code and document is fictional. Use `example.com` emails and `555` phone numbers.
