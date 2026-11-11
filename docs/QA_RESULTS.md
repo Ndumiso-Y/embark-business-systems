@@ -1,6 +1,6 @@
 # QA results
 
-Last full run 12 Nov 2026 (first run 11 Nov 2026) in a Linux cloud container (Node 22, Chromium via Playwright 1.52).
+Run on 11 Nov 2026 (latest full run 23:20 UTC) in a Linux cloud container (Node 22, Chromium via Playwright 1.52).
 
 | Check | Command | Result |
 | --- | --- | --- |
