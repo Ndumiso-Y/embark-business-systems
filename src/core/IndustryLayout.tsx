@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useState, type CSSProperties } from 'react';
 import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { IcoBack, IcoGrid, IcoHome, IcoKey, IcoMenu, IcoSearch, IcoSettings } from './components/Icons';
 import { Toasts } from './components/ui';
@@ -6,6 +6,8 @@ import { IndustryContext } from './context';
 import { useStore } from './store';
 import { currentUser, hasModule } from './engine';
 import { getIndustry, LOCKED_INDUSTRY } from '../industries/registry';
+import { brandedConfig, parseUrlBrand, sanitiseBrand } from './brand';
+import { useIndustry } from './context';
 import NotFound from './pages/NotFound';
 
 /** Shell for one industry: themed sidebar, top bar with simulated sign-in, routed content. */
@@ -15,19 +17,37 @@ export default function IndustryLayout() {
   const ensure = useStore((s) => s.ensure);
   const data = useStore((s) => (config ? s.data[config.id] : undefined));
 
+  const brand = useStore((s) => (config ? s.brands[config.id] : undefined));
+  const setBrand = useStore((s) => s.setBrand);
+  const branded = useMemo(() => (config ? brandedConfig(config, brand) : undefined), [config, brand]);
+
   useLayoutEffect(() => { if (config) ensure(config); }, [config, ensure]);
+  // Branding carried by the link (?name=&accent= or ?brand=<key>) is applied once per page load.
+  useEffect(() => {
+    if (!config || urlBrandApplied.has(config.id)) return;
+    urlBrandApplied.add(config.id);
+    const { key, brand: fromUrl } = parseUrlBrand(window.location.search);
+    if (fromUrl) setBrand(config.id, fromUrl);
+    if (key) {
+      fetch(new URL(`brands/${key}.json`, document.baseURI))
+        .then((r) => (r.ok ? r.json() : null))
+        .then((json) => { const b = sanitiseBrand(json); if (b) setBrand(config.id, { ...b, ...fromUrl }); })
+        .catch(() => { /* unknown brand key: keep the default look */ });
+    }
+  }, [config, setBrand]);
   if (!config) return LOCKED_INDUSTRY ? <Navigate to={`/${LOCKED_INDUSTRY}`} replace /> : <div className="content"><NotFound /></div>;
   if (!data) return null;
   return (
-    <IndustryContext.Provider value={config}>
+    <IndustryContext.Provider value={branded ?? config}>
       <Shell />
     </IndustryContext.Provider>
   );
 }
 
+const urlBrandApplied = new Set<string>();
+
 function Shell() {
-  const { industry } = useParams();
-  const config = getIndustry(industry)!;
+  const config = useIndustry();
   const data = useStore((s) => s.data[config.id])!;
   const signInAs = useStore((s) => s.signInAs);
   const [open, setOpen] = useState(false);
@@ -59,7 +79,9 @@ function Shell() {
       <div className={`drawer-backdrop ${open ? 'open' : ''}`} onClick={() => setOpen(false)} aria-hidden="true" />
       <aside className={`sidebar ${open ? 'open' : ''}`} aria-label="Main navigation">
         <NavLink to={base} className="brand" aria-label={`${config.businessName} — demonstration workspace`}>
-          <span className="brand-monogram">{config.monogram}<span>.</span></span>
+          {config.logo
+            ? <img className="brand-logo" src={config.logo} alt={`${config.businessName} logo`} />
+            : <span className="brand-monogram">{config.monogram}<span>.</span></span>}
           <span className="brand-sub">{config.businessName.toUpperCase()}</span>
         </NavLink>
         <div className="workspace-tag">{config.workspaceTag}</div>
@@ -123,7 +145,9 @@ function Shell() {
         </header>
         <main className="content" id="main" tabIndex={-1}>
           <Outlet />
-          <div className="footer-note">{config.businessName} is a fictional business · All people, records and figures are fictional demonstration data · Built by Embark Digitals</div>
+          <div className="footer-note">{config.brandedFor
+            ? `Demonstration prepared for ${config.brandedFor} by Embark Digitals · All people, records and figures shown are fictional sample data`
+            : `${config.businessName} is a fictional business · All people, records and figures are fictional demonstration data · Built by Embark Digitals`}</div>
         </main>
       </div>
       <Toasts />

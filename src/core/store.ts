@@ -6,6 +6,7 @@ import type { Activity, DemoRecord, DemoUser, IndustryConfig, IndustryData, Indu
 import { applyTransition, collectionDef, currentUser, findTransition, formatRef } from './engine';
 import { buildIndustryData, SCHEMA_VERSION } from './seed';
 import { todayIso } from './lib/dates';
+import { sanitiseBrand, type Brand } from './brand';
 
 export const STORAGE_KEY = 'embark-industry-demos-v1';
 
@@ -31,6 +32,9 @@ export type Result<T = undefined> = { ok: true; value: T } | { ok: false; reason
 
 type State = {
   data: Partial<Record<IndustryId, IndustryData>>;
+  /** Client branding per industry. Kept when demo data is reset. */
+  brands: Partial<Record<IndustryId, Brand>>;
+  setBrand: (id: IndustryId, brand: Brand | null) => void;
   toasts: Toast[];
   ensure: (config: IndustryConfig) => void;
   reset: (config: IndustryConfig) => void;
@@ -68,6 +72,13 @@ export const useStore = create<State>()(
 
       return {
         data: {},
+        brands: {},
+        setBrand: (id, brand) => set((s) => {
+          const next = { ...s.brands };
+          const clean = brand ? sanitiseBrand(brand) : null;
+          if (clean) next[id] = clean; else delete next[id];
+          return { brands: next };
+        }),
         toasts: [],
 
         ensure: (config) => {
@@ -208,7 +219,7 @@ export const useStore = create<State>()(
       name: STORAGE_KEY,
       version: SCHEMA_VERSION,
       storage: createJSONStorage(() => safeStorage),
-      partialize: (s) => ({ data: s.data }),
+      partialize: (s) => ({ data: s.data, brands: s.brands }),
     },
   ),
 );

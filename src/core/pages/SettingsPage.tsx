@@ -3,6 +3,7 @@ import { useActions, useData, useIndustry } from '../context';
 import { useStore } from '../store';
 import { Confirm, KeyValues, Notice, PageHeader, Panel } from '../components/ui';
 import { formatDateTime } from '../lib/dates';
+import BrandStudio from '../components/BrandStudio';
 
 export default function SettingsPage() {
   const config = useIndustry();
@@ -13,11 +14,13 @@ export default function SettingsPage() {
   const total = Object.values(data.collections).reduce((n, l) => n + l.length, 0);
   return (
     <>
-      <PageHeader kicker={`${config.businessName} / Settings`} title="Settings & demo reset" subtitle="What this demonstration stores, what it does not do, and how to start again." />
+      <PageHeader kicker={`${config.businessName} / Settings`} title="Settings & demo reset" subtitle="Brand the demo for a client, see what it stores and does not do, and start again." />
+      <BrandStudio />
+      <div style={{ height: 16 }} />
       <div className="grid-2-even">
         <Panel title="Demo data in this browser">
           <KeyValues items={[
-            { label: 'Fictional business', value: config.businessName },
+            { label: config.brandedFor ? 'Demo branded for' : 'Fictional business', value: config.businessName },
             { label: 'Records stored', value: String(total) },
             { label: 'Demo users', value: String(data.users.length) },
             { label: 'Data seeded', value: formatDateTime(data.seededAt) },

@@ -192,6 +192,9 @@ export type IndustryConfig = {
   boundaries: string[];
   /** Short highlights for the gallery card. */
   highlights: string[];
+  /** Set at runtime by client branding (see core/brand.ts): the client's logo and name. */
+  logo?: string;
+  brandedFor?: string;
   /** Guided walkthrough shown on the dashboard: the few things a first-time visitor should try. */
   guide?: GuideStep[];
 };
