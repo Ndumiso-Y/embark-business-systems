@@ -15,6 +15,8 @@ export const CLIENT_SLUGS = {
   construction: 'construction',
   realestate: 'real-estate',
   legal: 'law-firm',
+  security: 'security',
+  cleaning: 'cleaning',
 };
 // Unlisted, not secret: the repository is public. See docs/SHARING_LINKS.md.
 export const HUB_PATH = 'hub-k7q3m9';

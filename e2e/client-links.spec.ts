@@ -12,6 +12,8 @@ const SITES = [
   { slug: 'real-estate', id: 'realestate', name: 'Kestrel Property Group' },
   { slug: 'construction', id: 'construction', name: 'Ironbark Building & Civils' },
   { slug: 'tyre-fitment', id: 'tyres', name: 'TreadRight Tyre & Fitment' },
+  { slug: 'security', id: 'security', name: 'Sentinel Ridge Security' },
+  { slug: 'cleaning', id: 'cleaning', name: 'BrightPath Cleaning Services' },
 ];
 const HUB = 'hub-k7q3m9';
 

@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import type { CollectionDef, DemoRecord, FieldDef, IndustryData, Line, Value, Values } from '../types';
 import { can, linesTotals, records, validateValues } from '../engine';
 import { formatDate } from '../lib/dates';
@@ -131,16 +131,27 @@ export function RecordFormModal({ def, record, initial, open, onClose, onSave, t
   const fields = !record && def.createFields ? visible.filter((f) => def.createFields!.includes(f.key)) : visible;
   const [values, setValues] = useState<Values>(() => ({ ...(initial ?? {}), ...(record?.values ?? {}) }));
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const form = useRef<HTMLFormElement>(null);
   const submit = () => {
     const e = validateValues(fields, values);
     setErrors(e);
-    if (Object.keys(e).length) return;
+    if (Object.keys(e).length) {
+      // Take the user to the first problem instead of leaving them to hunt for it.
+      requestAnimationFrame(() => {
+        const first = form.current?.querySelector<HTMLElement>('[aria-invalid="true"]');
+        first?.scrollIntoView({ block: 'center' });
+        first?.focus();
+      });
+      return;
+    }
     onSave(values);
   };
   return (
     <Modal open={open} wide title={title ?? (record ? `Edit ${def.singular.toLowerCase()} ${record.ref}` : `New ${def.singular.toLowerCase()}`)} sub="Fictional demonstration record — saved in this browser only." onClose={onClose}
       footer={<><button className="btn" onClick={onClose}>Cancel</button><button className="btn primary" onClick={submit} data-testid="save-record">Save</button></>}>
-      <form className="form-grid" onSubmit={(e) => { e.preventDefault(); submit(); }} noValidate>
+      <form ref={form} className="form-grid" onSubmit={(e) => { e.preventDefault(); submit(); }} noValidate>
+        {/* Lets Enter in any field save the form; the visible Save button lives in the dialog footer. */}
+        <button type="submit" hidden aria-hidden="true" tabIndex={-1} />
         {fields.map((f) => (
           <div key={f.key} className={f.wide || f.type === 'textarea' || f.type === 'lines' ? 'span-2' : ''}>
             <FieldInput f={f} value={values[f.key]} error={errors[f.key]} data={data} collections={config.collections} onChange={(v) => setValues((s) => ({ ...s, [f.key]: v }))} />

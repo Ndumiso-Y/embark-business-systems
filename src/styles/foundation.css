@@ -237,3 +237,7 @@ body { background: var(--bg-app); }
 .brand-colour input[type="color"] { width: 46px; height: 44px; padding: 2px; border: 1px solid var(--line-3); border-radius: 10px; background: #fff; }
 .brand-link { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; min-height: 64px; }
 @media (max-width: 900px) { .brand-studio { grid-template-columns: minmax(0, 1fr); } }
+
+/* Search on phones: the top-bar field is hidden, so offer a button to the search page. */
+.search-mobile { display: none; text-decoration: none; }
+@media (max-width: 900px) { .search-mobile { display: inline-flex; } }

@@ -58,6 +58,12 @@ function Shell() {
   const base = `/${config.id}`;
   const roleLabel = config.roles.find((r) => r.key === user.role)?.label ?? user.role;
   useEffect(() => { setOpen(false); window.scrollTo?.(0, 0); }, [location.pathname]);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open]);
   useEffect(() => { document.title = `${config.businessName} · Demonstration`; }, [config.businessName]);
 
   const visible = config.modules.filter((m) => hasModule(user, m.key));
@@ -134,6 +140,7 @@ function Shell() {
               <input aria-label="Search workspace" placeholder="Search workspace" value={query} onChange={(e) => setQuery(e.target.value)} />
               <kbd>↵</kbd>
             </form>
+            <Link to={`${base}/search`} className="circle-button search-mobile" aria-label="Open search"><IcoSearch /></Link>
             <label className="user-switch" title="Simulated sign-in — not real authentication">
               <span className="top-avatar" aria-hidden="true">{initials}</span>
               <span className="user-switch-text"><b>{user.name}</b><small>{user.title} · {roleLabel}</small></span>
