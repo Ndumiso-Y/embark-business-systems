@@ -19,8 +19,8 @@ export default function Roster() {
   const act = useActions();
   const navigate = useNavigate();
   const { can } = useUser();
-  const { today, time } = useClock();
-  const cur = currentSlot(today, time);
+  const { today } = useClock();
+  const cur = currentSlot(today);
   const [date, setDate] = useState(cur.date);
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const def = act.def('roster');
@@ -33,8 +33,8 @@ export default function Roster() {
   const all = [...byKind.day, ...byKind.night];
   const absent = all.filter((r) => r.status === 'absent' || !!str(r, 'reliefOfficer')).length;
   const shiftFor = (post: DemoRecord) => byKind[str(post, 'shift') === 'night' ? 'night' : 'day'].find((r) => str(r, 'post') === post.id);
-  const phaseOf = (kind: string) => slotPhase(date, kind, today, time);
-  const phaseLabel = (kind: string) => ({ past: 'completed', current: 'running now', future: 'upcoming' }[phaseOf(kind)]);
+  const phaseOf = (kind: string) => slotPhase(date, kind, today);
+  const phaseLabel = (kind: string) => ({ past: 'completed', current: 'on duty', future: 'upcoming' }[phaseOf(kind)]);
 
   const addShift = (post: DemoRecord) => {
     const r = act.create('roster', { date, post: post.id, officer: '' }, 'open', 'Shift added to the roster');
@@ -71,7 +71,7 @@ export default function Roster() {
         <button className="btn sm" aria-label="Previous day" onClick={() => setDate(addDays(date, -1))}><IcoBack /></button>
         <input className="input sm" type="date" aria-label="Roster date" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} style={{ width: 160 }} />
         <button className="btn sm" aria-label="Next day" onClick={() => setDate(addDays(date, 1))}><IcoArrow /></button>
-        {date !== cur.date && <button className="btn sm" onClick={() => setDate(cur.date)}>Current shift</button>}
+        {date !== cur.date && <button className="btn sm" onClick={() => setDate(cur.date)}>Today</button>}
         <b className="diary-date">{formatDate(date)}{date === today ? ' · today' : date === addDays(today, 1) ? ' · tomorrow' : ''}</b>
         <div style={{ marginLeft: 'auto' }}>
           <Segmented label="Roster view" value={view} onChange={setView} options={[{ value: 'grid', label: 'Grid by site' }, { value: 'list', label: 'List with actions' }]} />
@@ -103,7 +103,7 @@ export default function Roster() {
         </Panel>
       )}
       {view === 'grid' ? (
-        <Panel title="Roster grid by site" meta="Each card is one post for the shift: officer, status and the post’s requirements. Click a card to open the shift.">
+        <Panel title="Roster grid by site" meta="Each card is one post for the shift: officer, status and the post’s requirements. Click a card to open the shift. The demo always treats today’s day shift as the shift on duty.">
           <div className="table-wrap">
             <table className="table" data-testid="roster-grid">
               <thead><tr><th style={{ width: '22%' }}>Site</th>{SHIFT_KINDS.map((k) => <th key={k.value}>{k.label}<small> · {cover[k.value as 'day' | 'night'].pct}% covered</small></th>)}</tr></thead>

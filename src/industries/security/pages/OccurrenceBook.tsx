@@ -7,7 +7,7 @@ import { Empty, Field, Notice, PageHeader, Panel, Stat, StatusTag, Tag } from '.
 import { WorkflowActions } from '../../../core/components/records';
 import { IcoArrow, IcoBack, IcoLock } from '../../../core/components/Icons';
 import { OB_TYPES, SHIFT_SHORT, label } from '../data';
-import { currentSlot, handoverEntry, prevSlot, siteName } from '../helpers';
+import { currentSlot, handoverEntry, kindOfTime, prevSlot, siteName } from '../helpers';
 import { useClock } from './format';
 
 export default function OccurrenceBook() {
@@ -26,7 +26,7 @@ export default function OccurrenceBook() {
   const all = records(data, 'ob');
   const rows = all.filter((e) => str(e, 'date') === date && (!site || str(e, 'site') === site)).sort((a, b) => str(a, 'time').localeCompare(str(b, 'time')) || a.ref.localeCompare(b.ref));
   const drafts = all.filter((e) => e.status === 'draft');
-  const cur = currentSlot(today, time);
+  const cur = currentSlot(today);
   const prev = prevSlot(cur);
   const handedOver = sites.filter((s) => handoverEntry(data, s.id, prev.date, prev.kind)).length;
   const handedNow = sites.filter((s) => handoverEntry(data, s.id, cur.date, cur.kind)).length;
@@ -36,7 +36,7 @@ export default function OccurrenceBook() {
     if (!target) { setErr('Choose the site whose occurrence book you are writing in.'); return; }
     if (!form.entry.trim()) { setErr('Write the entry.'); return; }
     const t = form.time || time;
-    const r = act.create('ob', { site: target, date: today, time: t, shift: currentSlot(today, t).kind, type: form.type, entry: form.entry.trim(), by: form.by.trim() || user.name }, 'draft', 'Entry written');
+    const r = act.create('ob', { site: target, date: today, time: t, shift: kindOfTime(t), type: form.type, entry: form.entry.trim(), by: form.by.trim() || user.name }, 'draft', 'Entry written');
     if (sign) {
       const res = act.transition('ob', r.id, 'signed');
       if (!res.ok) act.toast(res.reason, 'err');

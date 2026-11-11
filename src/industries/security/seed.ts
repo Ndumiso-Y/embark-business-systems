@@ -1,13 +1,14 @@
 // Fictional seed data for the security demo. Every client, site, officer, PSIRA number,
-// serial number, case number and vehicle is invented. Dates are relative to `today` and
-// the roster is relative to the shift running right now, so the demo always looks current.
+// serial number, case number and vehicle is invented. Dates are relative to `today`, so the
+// demo always looks current. The seed depends on the date only, never on the time of day:
+// today's day shift is "on duty", tonight's night shift is "posted".
 import { seeder, user } from '../../core/seed';
 import type { DemoRecord, IndustryData, Values } from '../../core/types';
 import { addDays, daysBetween } from '../../core/lib/dates';
 import { SHIFT_START } from './data';
 import {
-  buildInvoiceValues, currentSlot, fromMin, minutesAgo, minutesBetween, nextSlot, nowTime, prevSlot, previousPeriod, slotKey, slotPhase,
-  staticPostingProblems, toMin, type ShiftKind, type Slot,
+  buildInvoiceValues, currentSlot, fromMin, nextSlot, plusMin, prevSlot, previousPeriod, slotKey, slotPhase, staticPostingProblems, toMin,
+  type ShiftKind, type Slot,
 } from './helpers';
 
 /** Small deterministic PRNG (same algorithm as optometry/seed.ts) so resets are identical. */
@@ -147,8 +148,7 @@ const INCIDENTS: Array<[number, number, string, string, string, string, string]>
 function buildCollections(today: string) {
   const rnd = prng(20261109);
   const { collections, rec, day } = seeder(today);
-  const time = nowTime();
-  const cur = currentSlot(today, time);
+  const cur = currentSlot(today);
   const lookup = { collections } as unknown as IndustryData;
 
   /* ---------- Contracts, sites, posts ---------- */
@@ -225,7 +225,7 @@ function buildCollections(today: string) {
     const date = day(d);
     for (const kind of ['day', 'night'] as const) {
       const slot: Slot = { date, kind };
-      const phase = slotPhase(date, kind, today, time);
+      const phase = slotPhase(date, kind, today);
       const list = posts.filter((p) => p.values.shift === kind);
       const made: DemoRecord[] = [];
       list.forEach((post, pos) => {
@@ -252,12 +252,12 @@ function buildCollections(today: string) {
           status = 'open';
         } else if (phase === 'current' && pos === 2) {
           status = 'absent';
-          history = [{ daysAgo: 0, by: kind === 'day' ? CTL : CTL_NIGHT, role: ROLE.ctl, action: 'Mark absent', note: 'Phoned in sick at the start of the shift. A relief officer still has to be arranged.' }];
+          history = [{ daysAgo: 0, by: CTL, role: ROLE.ctl, action: 'Mark absent', note: 'Phoned in sick at the start of the shift. A relief officer still has to be arranged.' }];
           who = undefined;
         } else if (phase === 'current' && pos === 13) {
           status = 'open';
           values.officer = '';
-          history = [{ daysAgo: 0, by: kind === 'day' ? CTL : CTL_NIGHT, role: ROLE.ctl, action: 'Post left unfilled', note: 'Rostered officer swapped out at short notice — nobody posted yet.' }];
+          history = [{ daysAgo: 0, by: CTL, role: ROLE.ctl, action: 'Post left unfilled', note: 'Rostered officer swapped out at short notice — nobody posted yet.' }];
           who = undefined;
         } else if (phase === 'current' && pos === 16) {
           status = 'posted';
@@ -273,7 +273,7 @@ function buildCollections(today: string) {
           }
         } else if (phase === 'current') {
           values.bookedOn = fromMin(toMin(SHIFT_START[kind]) - 3 - (pos % 9));
-          history = [{ daysAgo: 0, by: kind === 'day' ? CTL : CTL_NIGHT, role: ROLE.ctl, action: 'Book on' }];
+          history = [{ daysAgo: 0, by: CTL, role: ROLE.ctl, action: 'Book on' }];
         }
         if (who) busy.add(key(who.id, slot));
         const r = rec('roster', 'RS', values, { status, createdDaysAgo: Math.max(0, -d), history });
@@ -298,7 +298,6 @@ function buildCollections(today: string) {
     return { date: addDays(s.date, Math.floor(m / 1440)), time: fromMin(m) };
   };
   const ago = (date: string) => Math.max(0, daysBetween(date, today));
-  const intoShift = Math.max(1, minutesBetween(cur.date, SHIFT_START[cur.kind], today, time));
 
   /* ---------- Equipment & armoury (60 items) ---------- */
   const onDuty = inSlot(cur).filter((r) => r.status === 'onduty');
@@ -357,8 +356,8 @@ function buildCollections(today: string) {
   });
   mainSites.forEach((si, k) => {
     const who = name(workerAt(cur, si));
-    ob(si, at(cur, Math.min(5 + k, intoShift)), cur.kind, 'routine', `Shift commenced. Took over from the ${cur.kind === 'day' ? 'night' : 'day'} shift, equipment checked and in order.`, who);
-    if (k < 3) ob(si, at(cur, Math.min(40 + k * 25, intoShift)), cur.kind, OB_TEXT[k + 2][0], OB_TEXT[k + 2][1], who, 'draft');
+    ob(si, at(cur, 5 + k), cur.kind, 'routine', `Shift commenced. Took over from the ${cur.kind === 'day' ? 'night' : 'day'} shift, equipment checked and in order.`, who);
+    if (k < 3) ob(si, at(cur, 40 + k * 25), cur.kind, OB_TEXT[k + 2][0], OB_TEXT[k + 2][1], who, 'draft');
   });
 
   /* ---------- Incidents: 18 over the last 60 days ---------- */
@@ -383,14 +382,12 @@ function buildCollections(today: string) {
     { daysAgo: 5, by: SUPERVISOR, role: ROLE.sup, action: 'Start investigation' },
     { daysAgo: 4, by: SUPERVISOR, role: ROLE.sup, action: 'Log client report', note: 'Report logged in the demo — nothing was sent.' },
   ]);
-  const recent = minutesAgo(today, time, 35);
-  inc(3, ago(recent.date), recent.time, 'trespass', 'low', 'Unknown person climbing the perimeter wall near gate 2', 'reported', {
+  inc(3, 0, '07:15', 'trespass', 'low', 'Unknown person climbing the perimeter wall near gate 2', 'reported', {
     description: 'Resident reported a person on the wall near gate 2. Estate patrol sent to check.', reportedBy: name(workerAt(cur, 3)),
   });
-  const responding = minutesAgo(today, time, 22);
-  inc(5, ago(responding.date), responding.time, 'assault', 'medium', 'Visitor threatening nursing staff at casualty', 'responding', {
+  inc(5, 0, '06:50', 'assault', 'medium', 'Visitor threatening nursing staff at casualty', 'responding', {
     description: 'Visitor refused to leave casualty and threatened staff. Officer at casualty entrance is on scene; supervisor en route.', reportedBy: name(workerAt(cur, 5)),
-  }, [{ daysAgo: ago(responding.date), by: CTL, role: ROLE.ctl, action: 'Incident reported' }, { daysAgo: ago(responding.date), by: CTL, role: ROLE.ctl, action: 'Respond' }]);
+  }, [{ daysAgo: 0, by: CTL, role: ROLE.ctl, action: 'Incident reported' }, { daysAgo: 0, by: CTL, role: ROLE.ctl, action: 'Respond' }]);
   inc(0, 1, '10:15', 'vehicle', 'medium', 'Delivery truck damaged the loading dock boom', 'investigating', {
     description: 'Truck reversed into the boom arm at the loading dock. Driver details and photographs taken.', clientNotifiedAt: '10:30',
   });
@@ -412,12 +409,10 @@ function buildCollections(today: string) {
   const callout = (siteIdx: number, when: { date: string; time: string }, signal: string, zone: string, status: string, extra: Values = {}) => rec('callouts', 'CO', {
     site: sites[siteIdx].id, date: when.date, receivedAt: when.time, signal, zone, ...extra,
   }, { status, createdDaysAgo: ago(when.date), history: [{ daysAgo: ago(when.date), by: CTL, role: ROLE.ctl, action: 'Alarm signal received' }] });
-  const plus = (t: string, m: number) => fromMin(toMin(t) + m);
-  callout(3, minutesAgo(today, time, 3), 'panic', 'House 41 — panic button', 'received');
-  const c2 = minutesAgo(today, time, 9);
-  callout(0, c2, 'intruder', 'Zone 7 — rear service corridor', 'dispatched', { vehicle: vehicles[1].id, dispatchedAt: plus(c2.time, 2) });
-  const c3 = minutesAgo(today, time, 26);
-  callout(13, c3, 'fence', 'Electric fence — yard east', 'onscene', { vehicle: vehicles[2].id, dispatchedAt: plus(c3.time, 2), onSceneAt: plus(c3.time, 12) });
+  const plus = plusMin;
+  callout(3, { date: today, time: '07:42' }, 'panic', 'House 41 — panic button', 'received');
+  callout(0, { date: today, time: '07:31' }, 'intruder', 'Zone 7 — rear service corridor', 'dispatched', { vehicle: vehicles[1].id, dispatchedAt: '07:33' });
+  callout(13, { date: today, time: '07:05' }, 'fence', 'Electric fence — yard east', 'onscene', { vehicle: vehicles[2].id, dispatchedAt: '07:07', onSceneAt: '07:17' });
   const responseMins = [7, 9, 12, 6, 17, 11, 8, 13, 10, 22, 9, 14, 7, 11, 19, 8, 12, 10, 6, 13, 9, 11];
   const outcomes = ['false', 'false', 'usererror', 'positive', 'false', 'fault', 'false', 'arrest', 'usererror', 'false'];
   const signals = ['intruder', 'panic', 'fence', 'intruder', 'tamper', 'fire', 'duress', 'intruder'];
@@ -449,18 +444,15 @@ function buildCollections(today: string) {
       patrol(si, s, due + si * 5, 'completed', a < 0.14 ? 20 + Math.floor(b * 25) : Math.floor(b * 8), a > 0.84 ? (b > 0.6 ? 2 : 1) : 0);
     }
   }));
-  const due1 = Math.max(0, intoShift - 18);
-  const due2 = Math.max(0, intoShift - 44);
-  patrol(0, cur, due1, 'started', Math.min(4, intoShift - due1));
-  patrol(3, cur, due2, 'started', Math.min(31, intoShift - due2));
+  patrol(0, cur, 90, 'started', 4);
+  patrol(3, cur, 60, 'started', 31);
 
   /* ---------- Site inspections and corrective actions ---------- */
   const inspection = (siteIdx: number, d: number, scores: number[], status: string, findings = '', inspector = SUPERVISOR, at?: string) => rec('inspections', 'INS', {
     site: sites[siteIdx].id, date: day(-d), time: at ?? fromMin(540 + ((siteIdx * 47 + d * 13) % 420)), inspector,
     uniform: String(scores[0]), postOrders: String(scores[1]), obUpToDate: String(scores[2]), equipment: String(scores[3]), alertness: String(scores[4]), findings,
   }, { status, createdDaysAgo: d, history: [{ daysAgo: d, by: inspector, role: ROLE.sup, action: status === 'submitted' ? 'Submit inspection' : 'Inspection started' }] });
-  const visit = minutesAgo(today, time, 50);
-  inspection(5, 0, [2, 1, 0, 2, 2], 'draft', 'Officer on post could not name the fire assembly point. Occurrence book not written up since 22:00 the previous night.', SUPERVISOR, visit.date === today ? visit.time : '00:05');
+  inspection(5, 0, [2, 1, 0, 2, 2], 'draft', 'Officer on post could not name the fire assembly point. Occurrence book not written up since 22:00 the previous night.', SUPERVISOR, '08:10');
   const findingsText = ['Officer without name badge.', 'Post orders file missing two pages.', 'Occurrence book entries not numbered.', 'Torch not working — battery to be replaced.', 'Officer slow to challenge the inspector at the gate.'];
   const lastBySite: DemoRecord[] = SITES.map((s, si) => {
     const scores = [2, 2, 2, 2, 2];
@@ -495,7 +487,7 @@ function buildCollections(today: string) {
       const d = ago(issueDate);
       const payAfter = 9 + (i % 6) * 3;
       rec('invoices', 'INV', {
-        ...buildInvoiceValues(lookup, c, period, today, time, { unfilled: unfilledHistory[period][i], billable: billableHistory[period][i] }),
+        ...buildInvoiceValues(lookup, c, period, today, { unfilled: unfilledHistory[period][i], billable: billableHistory[period][i] }),
         issueDate, dueDate, paidOn: paid ? addDays(issueDate, Math.min(payAfter, d)) : '',
       }, { status: paid ? 'paid' : 'issued', createdDaysAgo: d, history: [{ daysAgo: d, by: ACCOUNTS, role: ROLE.acc, action: 'Issue invoice' }, ...(paid ? [{ daysAgo: Math.max(0, d - payAfter), by: ACCOUNTS, role: ROLE.acc, action: 'Record payment' }] : [])] });
     });

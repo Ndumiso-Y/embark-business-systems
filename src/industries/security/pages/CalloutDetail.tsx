@@ -7,8 +7,8 @@ import { Field, KeyValues, Meters, Notice, Panel, Tag } from '../../../core/comp
 import { RecordDetail } from '../../../core/components/records';
 import { OUTCOMES, SIGNALS, label } from '../data';
 import {
-  calloutSla, contractOfSite, duration, elapsedMinutes, equipmentLabel, minutesFromTo, onSceneProblem, rec, responseMinutes, siteName, slaState,
-  standDownProblem, vehicleProblem,
+  calloutSla, contractOfSite, duration, equipmentLabel, minutesFromTo, onSceneProblem, rec, responseMinutes, siteName, slaState, standDownProblem,
+  suggestedTime, vehicleProblem,
 } from '../helpers';
 import { useClock } from './format';
 
@@ -27,14 +27,15 @@ function Response({ callout: c }: { callout: DemoRecord }) {
   const data = useData();
   const act = useActions();
   const { can } = useUser();
-  const { today, time } = useClock();
+  const { today } = useClock();
   const [vehicle, setVehicle] = useState('');
   const [at, setAt] = useState('');
   const [outcome, setOutcome] = useState(str(c, 'outcome'));
   const [notes, setNotes] = useState(str(c, 'notes'));
-  const s = slaState(data, c, today, time);
+  const s = slaState(data, c);
   const vehicles = records(data, 'equipment').filter((e) => str(e, 'category') === 'vehicle' && e.values.response === true);
-  const t = at || time;
+  // Suggested from the times already on the call-out (not the clock), so the walkthrough reads the same at any hour.
+  const t = at || suggestedTime(c, c.status === 'received' ? 'dispatched' : c.status === 'dispatched' ? 'onscene' : 'stooddown');
   const step = (to: string, values: Record<string, string>, problem: string | null, done: string) => {
     if (problem) { act.toast(problem, 'err'); return; }
     act.update('callouts', c.id, values);
@@ -51,15 +52,15 @@ function Response({ callout: c }: { callout: DemoRecord }) {
   return (
     <>
       <Panel title="Response timeline" meta={`SLA: on scene within ${s.sla} minutes of the signal (demo rule from the client contract)`}
-        right={<Tag tone={s.state === 'breached' ? 'red' : s.state === 'met' ? 'green' : s.state === 'running' ? 'amber' : 'dark'}>{s.state === 'met' ? `${s.minutes} min — within SLA` : s.state === 'breached' ? (resp !== null ? `${s.minutes} min — over SLA` : `SLA breached — ${duration(s.minutes)}`) : s.state === 'running' ? `${s.minutes} of ${s.sla} min` : 'No response time'}</Tag>}>
+        right={<Tag tone={s.state === 'breached' ? 'red' : s.state === 'met' ? 'green' : s.state === 'running' ? 'amber' : 'dark'}>{s.state === 'met' ? `${s.minutes} min — within SLA` : s.state === 'breached' ? `${s.minutes} min — over SLA` : s.state === 'running' ? `Due on scene by ${s.dueBy}` : 'No response time'}</Tag>}>
         <ul className="list" data-testid="callout-timeline">
           {mark('Signal received', received, `${label(SIGNALS, str(c, 'signal'))}${str(c, 'zone') ? ` · ${str(c, 'zone')}` : ''}`)}
           {mark('Vehicle dispatched', str(c, 'dispatchedAt'), str(c, 'dispatchedAt') ? `${minutesFromTo(received, str(c, 'dispatchedAt'))} min after the signal · ${equipmentLabel(rec(data, 'equipment', c.values.vehicle))}` : undefined)}
           {mark('On scene', str(c, 'onSceneAt'), resp !== null ? `Response time ${duration(resp)}` : undefined)}
           {mark('Stood down', str(c, 'stoodDownAt'), str(c, 'outcome') ? label(OUTCOMES, str(c, 'outcome')) : undefined)}
         </ul>
-        {(s.state === 'running' || s.state === 'breached' || s.state === 'met') && (
-          <Meters format={(n) => `${n} min`} items={[{ label: resp !== null ? 'Response time vs SLA' : 'Elapsed vs SLA', value: Math.min(s.minutes, s.sla * 3), max: s.sla, tone: s.state === 'breached' ? 'red' : s.state === 'met' ? 'green' : 'amber' }]} />
+        {resp !== null && (
+          <Meters format={(n) => `${n} min`} items={[{ label: 'Response time vs SLA', value: Math.min(s.minutes, s.sla * 3), max: s.sla, tone: s.state === 'breached' ? 'red' : 'green' }]} />
         )}
       </Panel>
       {can('callouts.dispatch') && c.status === 'received' && (
@@ -74,7 +75,7 @@ function Response({ callout: c }: { callout: DemoRecord }) {
                 })}
               </select>
             </Field>
-            <Field label="Dispatch time" hint="Defaults to now.">
+            <Field label="Dispatch time" hint="Suggested: 2 minutes after the signal. Type the actual time.">
               <input className="input" type="time" aria-label="Dispatch time" value={t} onChange={(e) => setAt(e.target.value)} />
             </Field>
           </div>
@@ -86,14 +87,14 @@ function Response({ callout: c }: { callout: DemoRecord }) {
         </Panel>
       )}
       {can('callouts.dispatch') && c.status === 'dispatched' && (
-        <Panel title="Arrival on scene" meta={`${duration(elapsedMinutes(c, today, time))} since the signal`}>
+        <Panel title="Arrival on scene" meta={`Signal ${received} · dispatched ${str(c, 'dispatchedAt')} · due on scene by ${s.dueBy}`}>
           <div className="form-grid">
-            <Field label="On-scene time" hint="Defaults to now. Must not be before the dispatch time.">
+            <Field label="On-scene time" hint="Suggested: 8 minutes after dispatch. Type the actual time — it cannot be before the dispatch time.">
               <input className="input" type="time" aria-label="On-scene time" value={t} onChange={(e) => setAt(e.target.value)} />
             </Field>
           </div>
           <div className="btns" style={{ marginTop: 12 }}>
-            <button className="btn primary" data-testid="on-scene" onClick={() => step('onscene', { onSceneAt: t }, onSceneProblem({ ...c, values: { ...c.values, onSceneAt: t } }, time), `${c.ref}: on scene at ${t}`)}>Mark on scene</button>
+            <button className="btn primary" data-testid="on-scene" onClick={() => step('onscene', { onSceneAt: t }, onSceneProblem({ ...c, values: { ...c.values, onSceneAt: t } }), `${c.ref}: on scene at ${t}`)}>Mark on scene</button>
           </div>
         </Panel>
       )}
@@ -106,7 +107,7 @@ function Response({ callout: c }: { callout: DemoRecord }) {
                 {OUTCOMES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </Field>
-            <Field label="Stand-down time" hint="Defaults to now.">
+            <Field label="Stand-down time" hint="Suggested: 15 minutes after arrival.">
               <input className="input" type="time" aria-label="Stand-down time" value={t} onChange={(e) => setAt(e.target.value)} />
             </Field>
             <div className="span-2">
@@ -114,7 +115,7 @@ function Response({ callout: c }: { callout: DemoRecord }) {
             </div>
           </div>
           <div className="btns" style={{ marginTop: 12 }}>
-            <button className="btn primary" data-testid="stand-down" onClick={() => step('stooddown', { outcome, notes, stoodDownAt: t }, standDownProblem({ ...c, values: { ...c.values, outcome, stoodDownAt: t } }, time), `${c.ref}: vehicle stood down`)}>Stand down</button>
+            <button className="btn primary" data-testid="stand-down" onClick={() => step('stooddown', { outcome, notes, stoodDownAt: t }, standDownProblem({ ...c, values: { ...c.values, outcome, stoodDownAt: t } }), `${c.ref}: vehicle stood down`)}>Stand down</button>
           </div>
         </Panel>
       )}
@@ -128,12 +129,12 @@ function Aside({ callout: c }: { callout: DemoRecord }) {
   const act = useActions();
   const navigate = useNavigate();
   const { can, hasModule } = useUser();
-  const { today, time } = useClock();
+  const { today } = useClock();
   const site = rec(data, 'sites', c.values.site);
   const contract = contractOfSite(data, c.values.site);
   const raise = () => {
     const r = act.create('incidents', {
-      site: str(c, 'site'), date: str(c, 'date') || today, time: str(c, 'receivedAt') || time, type: 'breakin', severity: 'medium',
+      site: str(c, 'site'), date: str(c, 'date') || today, time: str(c, 'receivedAt') || '00:00', type: 'breakin', severity: 'medium',
       title: `${label(SIGNALS, str(c, 'signal'))} call-out ${c.ref}`, description: `Raised from armed response call-out ${c.ref}. ${str(c, 'notes')}`.trim(), reportedBy: 'Armed response officer',
     }, 'reported', `Incident raised from ${c.ref}`);
     act.toast(`Incident ${r.ref} raised from ${c.ref}`);

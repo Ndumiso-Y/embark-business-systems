@@ -78,7 +78,7 @@ function Body({ contract: c }: { contract: DemoRecord }) {
 
 function Aside({ contract: c }: { contract: DemoRecord }) {
   const data = useData();
-  const { today, time } = useClock();
+  const { today } = useClock();
   const left = daysBetween(today, str(c, 'endDate'));
   const period = today.slice(0, 7);
   const sites = contractSites(data, c.id);
@@ -86,7 +86,7 @@ function Aside({ contract: c }: { contract: DemoRecord }) {
   const count = all.reduce((n, s) => n + s.count, 0);
   const within = all.reduce((n, s) => n + s.within, 0);
   const extras = calloutExtras(data, c, period);
-  const unfilled = unfilledShifts(data, c.id, period, today, time).length;
+  const unfilled = unfilledShifts(data, c.id, period, today).length;
   return (
     <>
       <Panel title="Contract term" meta={`Flagged when ${CONTRACT_WINDOW_DAYS} days or fewer remain`} right={<Tag tone={left < 0 ? 'red' : left <= CONTRACT_WINDOW_DAYS ? 'amber' : 'green'}>{left < 0 ? 'Ended' : `${left} days left`}</Tag>}>

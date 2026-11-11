@@ -1,16 +1,13 @@
-// Formatting helpers and the shared clock hook for the security pages.
-import { useEffect, useState } from 'react';
+// Formatting helpers and the shared date hook for the security pages.
 import type { Tone } from '../../../core/types';
 import { monthShort } from '../../../core/lib/dates';
 import { nowTime, todayStr } from '../helpers';
 
-/** Today's date and the wall-clock time, refreshed every 30 seconds so elapsed timers keep moving. */
+/**
+ * Today's date for rules and flags, plus the clock time. The time is only ever used to
+ * pre-fill a time box when the user records something — no rule or flag reads it.
+ */
 export function useClock() {
-  const [, tick] = useState(0);
-  useEffect(() => {
-    const t = setInterval(() => tick((n) => n + 1), 30_000);
-    return () => clearInterval(t);
-  }, []);
   return { today: todayStr(), time: nowTime() };
 }
 

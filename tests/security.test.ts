@@ -2,7 +2,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import config, {
   SEED, absenteeism, activeShiftFor, availableVehicles, bookOffProblem, buildInvoiceValues, contractMonthly, coverage, coverageNow, currentSlot, dailyCoverage,
   deployability, entrySlot, handoverEntry, inspectionOverdue, inspectionScore, invoiceTotals, issueProblems, kindOf, minutesFromTo, notReturned, officerExpiries,
-  patrolLateBy, patrolMissed, postOf, postingProblems, rec, responseMinutes, responseStats, setTodayForTests, siteOfShift, slaState, slotPhase, unfilledShifts,
+  patrolLateBy, patrolMissed, postOf, postingProblems, rec, responseMinutes, responseStats, setTodayForTests, siteOfShift, slaState, slotPhase, suggestedTime,
+  unfilledShifts,
   workingOfficerId,
 } from '../src/industries/security';
 import { applyTransition, records, str, validateConfig } from '../src/core/engine';
@@ -75,32 +76,47 @@ describe('security configuration', () => {
     for (const i of records(data, 'incidents')) if (str(i, 'sapsCase')) expect(str(i, 'sapsCase')).toMatch(/^DEMO-CAS /);
   });
 
-  it('seeds a roster that obeys its own rules at any time of day', () => {
-    for (const time of ['03:15', '06:05', '12:00', '18:01', '23:40']) {
+  it('seeds from the date only — the time of day never changes anything', () => {
+    const snapshot = (d: IndustryData) => JSON.stringify(config.collections.map((c) => records(d, c.key).map((r) => [r.id, r.status, r.values])));
+    for (const time of ['00:20', '03:15', '07:30', '18:01', '23:40']) {
       setTodayForTests(TODAY, time);
-      const d = buildIndustryData(config, TODAY);
-      expect(validateConfig(config)).toEqual([]);
-      const live = records(d, 'roster').filter((r) => ['posted', 'relief', 'onduty'].includes(r.status ?? '') && slotPhase(str(r, 'date'), kindOf(d, r), TODAY, time) !== 'past');
+      expect(snapshot(buildIndustryData(config, TODAY))).toBe(snapshot(data));
+      expect(coverageNow(data, TODAY)).toMatchObject({ covered: 24, posts: 26, slot: { date: TODAY, kind: 'day' } });
+    }
+    setTodayForTests(TODAY, NOW);
+    expect(slotPhase(addDays(TODAY, -1), 'night', TODAY)).toBe('past');
+    expect(slotPhase(TODAY, 'day', TODAY)).toBe('current');
+    expect(slotPhase(TODAY, 'night', TODAY)).toBe('future');
+  });
+
+  it('seeds a roster that obeys its own rules, with everything the walkthrough needs, on every day of the week', () => {
+    for (let i = 0; i < 7; i++) {
+      const day = addDays(TODAY, i);
+      setTodayForTests(day, NOW);
+      const d = buildIndustryData(config, day);
+      const live = records(d, 'roster').filter((r) => ['posted', 'relief', 'onduty'].includes(r.status ?? '') && slotPhase(str(r, 'date'), kindOf(d, r), day) !== 'past');
       expect(live.length).toBeGreaterThan(150);
       expect(live.filter((r) => postingProblems(d, r, workingOfficerId(r)).length)).toEqual([]);
-      // The shift running now has officers on duty, an absence and an unfilled post.
-      const now = coverageNow(d, TODAY, time);
+      // Today's day shift has officers on duty, an absence and an unfilled post.
+      const now = coverageNow(d, day);
       expect(now.onDuty).toBeGreaterThan(15);
       expect(now.unfilled.map((u) => u.reason).sort()).toEqual(['No officer posted', 'Officer absent — no relief']);
-      // Every walkthrough step has what it needs.
       const guide = rec(d, 'roster', SEED.guideShift)!;
       expect(guide.status).toBe('open');
-      expect(slotPhase(str(guide, 'date'), kindOf(d, guide), TODAY, time)).toBe('future');
+      expect(str(guide, 'date')).toBe(addDays(day, 1));
       const candidates = records(d, 'officers').map((o) => postingProblems(d, guide, o.id).length);
       expect(candidates.filter((n) => n === 0).length).toBeGreaterThanOrEqual(2);
       expect(candidates.filter((n) => n > 0).length).toBeGreaterThan(40);
       expect(rec(d, 'callouts', SEED.guideCallout)!.status).toBe('received');
-      expect(availableVehicles(d, SEED.guideCallout, TODAY).length).toBeGreaterThanOrEqual(2);
+      expect(availableVehicles(d, SEED.guideCallout, day).length).toBeGreaterThanOrEqual(2);
       const firearm = rec(d, 'equipment', SEED.guideFirearm)!;
       expect(firearm.status).toBe('instore');
-      const onShift = records(d, 'officers').filter((o) => activeShiftFor(d, o.id, TODAY, time));
-      expect(onShift.filter((o) => !issueProblems(d, firearm, o.id, TODAY, time).length).length).toBeGreaterThanOrEqual(1);
-      expect(onShift.filter((o) => issueProblems(d, firearm, o.id, TODAY, time).length).length).toBeGreaterThan(20);
+      const onShift = records(d, 'officers').filter((o) => activeShiftFor(d, o.id, day));
+      expect(onShift.filter((o) => !issueProblems(d, firearm, o.id, day).length).length).toBeGreaterThanOrEqual(1);
+      expect(onShift.filter((o) => issueProblems(d, firearm, o.id, day).length).length).toBeGreaterThan(20);
+      expect(records(d, 'roster').filter((r) => r.status === 'onduty').length).toBeGreaterThan(15);
+      expect(rec(d, 'inspections', SEED.guideInspection)).toMatchObject({ status: 'draft', values: { date: day } });
+      expect(rec(d, 'incidents', SEED.guideIncident)!.status).toBe('investigating');
     }
     setTodayForTests(TODAY, NOW);
   });
@@ -175,9 +191,11 @@ describe('duty roster — posting rules', () => {
 });
 
 describe('book on, handover and book off', () => {
-  it('only books on once the shift has started', () => {
+  it('only books on on the day of the shift', () => {
     const future = records(data, 'roster').find((r) => r.status === 'posted' && str(r, 'date') === addDays(TODAY, 1))!;
     expect(reason(move('roster', future, 'onduty', 'u_ctl'))).toMatch(/only starts at/);
+    const tonight = records(data, 'roster').find((r) => r.status === 'posted' && str(r, 'date') === TODAY && kindOf(data, r) === 'night')!;
+    expect(move('roster', tonight, 'onduty', 'u_ctl')).toMatchObject({ ok: true });
     const late = records(data, 'roster').find((r) => r.status === 'posted' && str(r, 'date') === TODAY && kindOf(data, r) === 'day')!;
     expect(move('roster', late, 'onduty', 'u_sup')).toMatchObject({ ok: true });
   });
@@ -198,7 +216,9 @@ describe('book on, handover and book off', () => {
     expect(e('2026-11-11', '05:55', 'night')).toEqual({ date: '2026-11-10', kind: 'night' });
     expect(e('2026-11-11', '22:10', 'night')).toEqual({ date: '2026-11-11', kind: 'night' });
     expect(e('2026-11-11', '17:55', 'day')).toEqual({ date: '2026-11-11', kind: 'day' });
-    expect(currentSlot(TODAY, '03:00')).toEqual({ date: '2026-11-10', kind: 'night' });
+    // An entry tied to its shift by an explicit shift date counts for that shift whenever it is written.
+    expect(entrySlot({ id: 'x', ref: 'x', history: [], createdAt: '', updatedAt: '', values: { date: '2026-11-12', time: '09:30', shift: 'day', shiftDate: '2026-11-11' } })).toEqual({ date: '2026-11-11', kind: 'day' });
+    expect(currentSlot(TODAY)).toEqual({ date: TODAY, kind: 'day' });
     // Every site handed over the shift that ended at 06:00 this morning.
     for (const s of records(data, 'sites')) expect(handoverEntry(data, s.id, '2026-11-10', 'night')).toBeTruthy();
   });
@@ -220,8 +240,7 @@ describe('coverage helpers', () => {
     const day = coverage(data, TODAY, 'day');
     expect(day).toMatchObject({ posts: 26, covered: 24, onDuty: 23, pct: 92 });
     expect(day.unfilled).toHaveLength(2);
-    expect(coverageNow(data, TODAY, NOW)).toMatchObject({ covered: 24, posts: 26, slot: { date: TODAY, kind: 'day' } });
-    expect(coverageNow(data, TODAY, '19:30').slot).toEqual({ date: TODAY, kind: 'night' });
+    expect(coverageNow(data, TODAY)).toMatchObject({ covered: 24, posts: 26, slot: { date: TODAY, kind: 'day' } });
     const night = coverage(data, TODAY, 'night');
     expect(night.posts).toBe(22);
     expect(night.onDuty).toBe(0);
@@ -272,10 +291,11 @@ describe('armed response call-outs', () => {
 
   it('will not record an on-scene time before the dispatch time', () => {
     const dispatched = records(data, 'callouts').find((c) => c.status === 'dispatched')!;
-    expect(str(dispatched, 'dispatchedAt')).toBe('11:53');
-    expect(reason(move('callouts', withValues(dispatched, { onSceneAt: '11:50' }), 'onscene', 'u_ctl'))).toMatch(/On-scene time 11:50 is before the dispatch time 11:53/);
-    expect(move('callouts', withValues(dispatched, { onSceneAt: '11:58' }), 'onscene', 'u_ctl')).toMatchObject({ ok: true });
-    // With no time typed the step uses the clock (12:00).
+    expect(str(dispatched, 'dispatchedAt')).toBe('07:33');
+    expect(reason(move('callouts', withValues(dispatched, { onSceneAt: '07:30' }), 'onscene', 'u_ctl'))).toMatch(/On-scene time 07:30 is before the dispatch time 07:33/);
+    expect(move('callouts', withValues(dispatched, { onSceneAt: '07:40' }), 'onscene', 'u_ctl')).toMatchObject({ ok: true });
+    // With no time typed the step uses a suggestion derived from the dispatch time, never the clock.
+    expect(suggestedTime(dispatched, 'onscene')).toBe('07:41');
     expect(move('callouts', dispatched, 'onscene', 'u_ctl')).toMatchObject({ ok: true });
     expect(minutesFromTo('23:55', '00:06')).toBe(11);
   });
@@ -292,14 +312,14 @@ describe('armed response call-outs', () => {
     expect(responseMinutes(c({ receivedAt: '10:00', onSceneAt: '10:12' }))).toBe(12);
     expect(responseMinutes(c({ receivedAt: '23:52', onSceneAt: '00:05' }))).toBe(13);
     expect(responseMinutes(c({ receivedAt: '10:00' }))).toBeNull();
-    expect(slaState(data, c({ receivedAt: '10:00', onSceneAt: '10:15' }), TODAY, NOW)).toEqual({ state: 'met', minutes: 15, sla: 15 });
-    expect(slaState(data, c({ receivedAt: '10:00', onSceneAt: '10:16' }), TODAY, NOW)).toEqual({ state: 'breached', minutes: 16, sla: 15 });
+    expect(slaState(data, c({ receivedAt: '10:00', onSceneAt: '10:15' }))).toEqual({ state: 'met', minutes: 15, sla: 15, dueBy: '10:15' });
+    expect(slaState(data, c({ receivedAt: '10:00', onSceneAt: '10:16' }))).toEqual({ state: 'breached', minutes: 16, sla: 15, dueBy: '10:15' });
     // The hospital contract has a 10-minute SLA.
     const hospital = records(data, 'sites').find((s) => s.values.code === 'HPH')!;
-    expect(slaState(data, c({ site: hospital.id, receivedAt: '10:00', onSceneAt: '10:12' }), TODAY, NOW)).toMatchObject({ state: 'breached', sla: 10 });
-    // While en route the clock keeps running.
-    expect(slaState(data, c({ receivedAt: '11:50' }, 'dispatched'), TODAY, NOW)).toEqual({ state: 'running', minutes: 10, sla: 15 });
-    expect(slaState(data, c({ receivedAt: '11:40' }, 'received'), TODAY, NOW)).toEqual({ state: 'breached', minutes: 20, sla: 15 });
+    expect(slaState(data, c({ site: hospital.id, receivedAt: '10:00', onSceneAt: '10:12' }))).toMatchObject({ state: 'breached', sla: 10 });
+    // Until the vehicle arrives the call-out is running against a due-by time (signal + SLA), worked out from the record alone.
+    expect(slaState(data, c({ receivedAt: '11:50' }, 'dispatched'))).toEqual({ state: 'running', minutes: 0, sla: 15, dueBy: '12:05' });
+    expect(slaState(data, c({ receivedAt: '23:50' }, 'received'))).toMatchObject({ state: 'running', dueBy: '00:05' });
   });
 
   it('averages response times for the dashboard', () => {
@@ -327,9 +347,9 @@ describe('incidents', () => {
   it('logs the client report as a side effect without sending anything', () => {
     const t = wf('incidents').transitions.find((x) => x.to === 'clientreport')!;
     const api = mockApi();
-    const record = withValues(get('incidents', SEED.guideIncident), { clientNotifiedAt: '' });
+    const record = get('incidents', SEED.guideIncident);
     t.after!({ record, data, api, today: TODAY, user: user('u_ctl') });
-    expect(api.update).toHaveBeenCalledWith('incidents', record.id, { clientReportSent: true, clientReportOn: TODAY, clientNotifiedAt: NOW });
+    expect(api.update).toHaveBeenCalledWith('incidents', record.id, { clientReportSent: true, clientReportOn: TODAY });
     expect(api.toast).toHaveBeenCalledWith(expect.stringMatching(/nothing is actually sent/), 'info');
   });
 
@@ -351,21 +371,21 @@ describe('equipment & armoury', () => {
   const firearm = () => get('equipment', SEED.guideFirearm);
   const issue = (item: DemoRecord, officer: string, who = 'u_arm') => move('equipment', withValues(item, { issuedTo: officer }), 'issued', who);
   const onShift = (armed: boolean) => records(data, 'officers').filter((o) => {
-    const s = activeShiftFor(data, o.id, TODAY, NOW);
+    const s = activeShiftFor(data, o.id, TODAY);
     return s && (postOf(data, s)?.values.armed === true) === armed;
   });
 
   it('issues a firearm only to a competent officer posted on an armed post this shift', () => {
     expect(reason(move('equipment', firearm(), 'issued', 'u_arm'))).toMatch(/Choose the officer/);
     const unarmedPost = onShift(false).find((o) => !str(o, 'competencyExpiry'))!;
-    expect(issueProblems(data, firearm(), unarmedPost.id, TODAY, NOW).join(' ')).toMatch(/no firearm competency on record.*not an armed post/);
+    expect(issueProblems(data, firearm(), unarmedPost.id, TODAY).join(' ')).toMatch(/no firearm competency on record.*not an armed post/);
     expect(issue(firearm(), unarmedPost.id)).toMatchObject({ ok: false });
     // Competent, but not posted anywhere: refused.
-    expect(reason(issue(firearm(), SEED.standby))).toMatch(/not posted on the current or next shift/);
+    expect(reason(issue(firearm(), SEED.standby))).toMatch(/not posted on today’s day or night shift/);
     // Competent, but posted on an unarmed post: refused.
     const competentUnarmed = onShift(false).find((o) => str(o, 'competencyExpiry') >= TODAY);
     if (competentUnarmed) expect(reason(issue(firearm(), competentUnarmed.id))).toMatch(/not an armed post/);
-    const armedPost = onShift(true).find((o) => !issueProblems(data, firearm(), o.id, TODAY, NOW).length)!;
+    const armedPost = onShift(true).find((o) => !issueProblems(data, firearm(), o.id, TODAY).length)!;
     expect(issue(firearm(), armedPost.id)).toMatchObject({ ok: true });
     expect(issue(firearm(), armedPost.id, 'u_ctl')).toMatchObject({ ok: false });
     // One firearm per officer.
@@ -375,7 +395,7 @@ describe('equipment & armoury', () => {
 
   it('never issues a firearm with an expired licence', () => {
     const expired = get('equipment', SEED.expiredFirearm);
-    const armedPost = onShift(true).find((o) => !issueProblems(data, firearm(), o.id, TODAY, NOW).length)!;
+    const armedPost = onShift(true).find((o) => !issueProblems(data, firearm(), o.id, TODAY).length)!;
     expect(reason(issue(expired, armedPost.id))).toMatch(/Firearm licence expired on .* cannot be issued/);
   });
 
@@ -387,14 +407,17 @@ describe('equipment & armoury', () => {
     const t = wf('equipment').transitions.find((x) => x.to === 'issued')!;
     const api = mockApi();
     t.after!({ record: withValues(radio, { issuedTo: anyone.id }), data, api, today: TODAY, user: user('u_arm') });
-    expect(api.update).toHaveBeenCalledWith('equipment', radio.id, { issuedShift: activeShiftFor(data, anyone.id, TODAY, NOW)!.id, issuedOn: TODAY });
+    expect(api.update).toHaveBeenCalledWith('equipment', radio.id, { issuedShift: activeShiftFor(data, anyone.id, TODAY)!.id, issuedOn: TODAY });
   });
 
   it('flags items not returned after the shift they were issued for has ended', () => {
-    const late = records(data, 'equipment').filter((e) => notReturned(data, e, TODAY, NOW));
+    const late = records(data, 'equipment').filter((e) => notReturned(data, e, TODAY));
     expect(late.map((e) => e.values.assetNo).sort()).toEqual(['BC-08', 'RAD-17']);
-    const current = records(data, 'equipment').find((e) => e.status === 'issued' && !notReturned(data, e, TODAY, NOW))!;
-    expect(notReturned(data, current, TODAY, '18:30')).toBe(true);
+    const current = records(data, 'equipment').find((e) => e.status === 'issued' && !notReturned(data, e, TODAY))!;
+    expect(notReturned(data, current, addDays(TODAY, 1))).toBe(true);
+    // Booking the officer off also makes an unreturned item overdue, the same day.
+    const bookedOff: IndustryData = { ...data, collections: { ...data.collections, roster: records(data, 'roster').map((r) => (r.id === current.values.issuedShift ? { ...r, status: 'off' } : r)) } };
+    expect(notReturned(bookedOff, current, TODAY)).toBe(true);
     const flags = config.collections.find((c) => c.key === 'equipment')!.flags!(late[0], data, TODAY, user('u_arm'));
     expect(flags.map((f) => f.label)).toContain('Not returned after shift end');
     expect(move('equipment', late[0], 'instore', 'u_arm')).toMatchObject({ ok: true });
@@ -446,7 +469,7 @@ describe('officers, patrols and inspections', () => {
 describe('contracts & invoicing', () => {
   it('builds a monthly invoice from posts × rate, less unfilled-shift penalties, plus call-out extras', () => {
     const contract = records(data, 'contracts')[0];
-    const values = buildInvoiceValues(data, contract, TODAY.slice(0, 7), TODAY, NOW, { unfilled: 2, billable: 3 });
+    const values = buildInvoiceValues(data, contract, TODAY.slice(0, 7), TODAY, { unfilled: 2, billable: 3 });
     const inv: DemoRecord = { id: 'i', ref: 'INV-X', status: 'draft', history: [], createdAt: '', updatedAt: '', values };
     const t = invoiceTotals(inv);
     const guarding = contractMonthly(data, contract.id);
@@ -462,11 +485,11 @@ describe('contracts & invoicing', () => {
   it('counts unfilled shifts from the live roster, ignoring shifts that have not ended', () => {
     const contract = records(data, 'contracts')[0];
     const period = TODAY.slice(0, 7);
-    const live = unfilledShifts(data, contract.id, period, TODAY, NOW);
+    const live = unfilledShifts(data, contract.id, period, TODAY);
     expect(live.every((r) => (r.status === 'open' || r.status === 'absent') && str(r, 'date') < TODAY)).toBe(true);
-    // Today's absence and tomorrow's unfilled post are not penalised yet; after tonight the absence is.
-    expect(unfilledShifts(data, contract.id, period, TODAY, '19:00').length).toBe(live.length + 1);
-    expect(buildInvoiceValues(data, contract, period, TODAY, NOW).unfilledShifts).toBe(live.length);
+    // Today's absence and tomorrow's unfilled post are not penalised yet; from tomorrow the absence is.
+    expect(unfilledShifts(data, contract.id, period, addDays(TODAY, 1)).length).toBe(live.length + 1);
+    expect(buildInvoiceValues(data, contract, period, TODAY).unfilledShifts).toBe(live.length);
   });
 
   it('flags contracts ending within 60 days and overdue invoices', () => {
@@ -526,9 +549,9 @@ describe('guided walkthrough, end to end through the store', () => {
     expect(act('callouts', id, 'dispatched')).toMatchObject({ ok: true });
     expect(act('callouts', id, 'onscene')).toMatchObject({ ok: true });
     const c = rec(live(), 'callouts', id)!;
-    expect(c.values).toMatchObject({ dispatchedAt: NOW, onSceneAt: NOW });
-    expect(responseMinutes(c)).toBe(3);
-    expect(slaState(live(), c, TODAY, NOW).state).toBe('met');
+    expect(c.values).toMatchObject({ receivedAt: '07:42', dispatchedAt: '07:44', onSceneAt: '07:52' });
+    expect(responseMinutes(c)).toBe(10);
+    expect(slaState(live(), c).state).toBe('met');
     // The vehicle is now committed and cannot be sent to a second call-out.
     expect(availableVehicles(live(), 'other', TODAY).some((v) => v.id === c.values.vehicle)).toBe(false);
     expect(act('callouts', id, 'stooddown')).toMatchObject({ ok: false });
@@ -553,14 +576,14 @@ describe('guided walkthrough, end to end through the store', () => {
     signIn('u_arm');
     const id = SEED.guideFirearm;
     const item = rec(live(), 'equipment', id)!;
-    const candidates = records(live(), 'officers').filter((o) => activeShiftFor(live(), o.id, TODAY, NOW));
-    const bad = candidates.find((o) => issueProblems(live(), item, o.id, TODAY, NOW).length)!;
-    const good = candidates.find((o) => !issueProblems(live(), item, o.id, TODAY, NOW).length)!;
+    const candidates = records(live(), 'officers').filter((o) => activeShiftFor(live(), o.id, TODAY));
+    const bad = candidates.find((o) => issueProblems(live(), item, o.id, TODAY).length)!;
+    const good = candidates.find((o) => !issueProblems(live(), item, o.id, TODAY).length)!;
     store().updateRecord(config, 'equipment', id, { issuedTo: bad.id });
     expect(act('equipment', id, 'issued')).toMatchObject({ ok: false });
     store().updateRecord(config, 'equipment', id, { issuedTo: good.id });
     expect(act('equipment', id, 'issued')).toMatchObject({ ok: true });
-    expect(rec(live(), 'equipment', id)).toMatchObject({ status: 'issued', values: { issuedTo: good.id, issuedShift: activeShiftFor(live(), good.id, TODAY, NOW)!.id } });
+    expect(rec(live(), 'equipment', id)).toMatchObject({ status: 'issued', values: { issuedTo: good.id, issuedShift: activeShiftFor(live(), good.id, TODAY)!.id } });
     expect(act('equipment', id, 'instore')).toMatchObject({ ok: true });
     expect(rec(live(), 'equipment', id)!.values).toMatchObject({ issuedTo: '', issuedShift: '' });
   });
@@ -592,10 +615,10 @@ describe('screens', () => {
       h(Route, { path: '/security/:module/:id', element: h(ModuleDetailView) })))),
   );
 
-  it('every module page and a record of every status renders for every simulated user, day and night', () => {
+  it('every module page and a record of every status renders for every simulated user', () => {
     const errors: string[] = [];
     const spy = vi.spyOn(console, 'error').mockImplementation((...a) => { errors.push(a.map(String).join(' ').slice(0, 300)); });
-    for (const time of ['12:00', '21:15']) {
+    for (const time of ['12:00']) {
       setTodayForTests(TODAY, time);
       const seeded = buildIndustryData(config, TODAY);
       for (const u of seeded.users) {

@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import config, {
-  assignmentProblem, attendance, budgetState, checklistState, chemTrainedAt, complaintClock, consumablesUsed, contractInvoiceValues, dayStaffing, hoursBetween,
-  inspectionFailed, inspectionScore, invoiceFigures, lowStock, quoteApprovalReasons, quoteFigures, rosterProblems, setTodayForTests, shiftCleaners, siteBelowSla,
+  assignmentProblem, attendance, budgetState, checklistState, chemTrainedAt, clockInTime, complaintClock, consumablesUsed, contractInvoiceValues, dayStaffing, hoursBetween,
+  inspectionFailed, inspectionProblems, inspectionScore, invoiceFigures, issueProblems, lowStock, quoteApprovalReasons, quoteFigures, rosterProblems, setTodayForTests, shiftCleaners, siteBelowSla,
   sitesOverBudget, sitesToInvoice, staffByRef, staffing, staffingPct, unstaffedCredit,
 } from '../src/industries/cleaning';
 import { applyTransition, findRecord, findTransition, hasModule, num, records, str, validateConfig } from '../src/core/engine';
@@ -386,6 +386,58 @@ describe('commercial rules', () => {
 
 // The walkthrough on the dashboard must work on a fresh seed, whatever the real date is.
 // These run through the real store (transition + side effects) with the real clock.
+describe('the demo on any day and at any time', () => {
+  it('keeps every guided record the same scenario on each day of the week and across a month end', () => {
+    for (const day of ['2026-11-09', '2026-11-10', '2026-11-11', '2026-11-12', '2026-11-13', '2026-11-14', '2026-11-15', '2026-12-01', '2027-01-31', '2028-02-29']) {
+      setTodayForTests(day);
+      const d = buildIndustryData(config, day);
+      const one = (c: string, id: string) => findRecord(d, c, id)!;
+      // Guide 2: the clinic is one short, and exactly one relief cleaner can cover it.
+      const shift = one('shifts', 'shifts_1');
+      expect([str(findRecord(d, 'sites', str(shift, 'site')), 'name'), str(shift, 'date'), shift.status], day).toEqual(['Umthombo Day Clinic', day, 'short']);
+      const relief = records(d, 'staff').filter((p) => str(p, 'role') === 'relief');
+      const reasons = relief.map((p) => assignmentProblem(p, shift, d));
+      expect(reasons.filter((r) => r === null), day).toHaveLength(1);
+      expect(reasons.join(' '), day).toMatch(/overlapping shift/);
+      expect(reasons.join(' '), day).toMatch(/site induction/);
+      expect(reasons.join(' '), day).toMatch(/infection-control/);
+      // Guide 1: a shift that has not started, so there is somebody to clock in.
+      expect(one('shifts', 'shifts_3').status, day).toBe('scheduled');
+      expect(records(d, 'shifts').filter((x) => str(x, 'date') === day), day).toHaveLength(16);
+      // Guide 3: a draft below SLA that only lacks its corrective action.
+      const insp = one('inspections', 'inspections_1');
+      expect(inspectionProblems(insp, d), day).toHaveLength(1);
+      expect(inspectionFailed(insp, d), day).toBe(true);
+      // Guide 4: hazardous to an untrained site, more than is in store, and one that goes through.
+      expect(issueProblems(one('issues', 'issues_1'), d, day).join(' '), day).toMatch(/chemical-handling training/);
+      expect(issueProblems(one('issues', 'issues_2'), d, day).join(' '), day).toMatch(/Only 18/);
+      expect(issueProblems(one('issues', 'issues_3'), d, day), day).toEqual([]);
+      // Guide 5: a draft above the approval threshold. Guide 6: nothing invoiced yet this month.
+      expect(quoteApprovalReasons(one('quotes', 'quotes_1')), day).toHaveLength(1);
+      expect(sitesToInvoice(d, day.slice(0, 7)), day).toHaveLength(16);
+      // Inspection scores do not move with the weekday.
+      expect(records(d, 'inspections').map((i) => inspectionScore(i)).join(','), day).toBe(records(data, 'inspections').map((i) => inspectionScore(i)).join(','));
+    }
+    setTodayForTests(TODAY);
+  });
+
+  it('stamps a clock-in with the wall clock during the shift and with the shift start outside its hours', () => {
+    const shift = get('shifts', 'shifts_3'); // 15:00–19:00
+    expect(clockInTime(shift, '14:10')).toEqual({ time: '14:10', adjusted: false });
+    expect(clockInTime(shift, '15:25')).toEqual({ time: '15:25', adjusted: false });
+    expect(clockInTime(shift, '22:34')).toEqual({ time: '15:00', adjusted: true });
+    expect(clockInTime(shift, '03:00')).toEqual({ time: '15:00', adjusted: true });
+  });
+
+  it('prefills the “New …” forms with today, so nothing has to be typed to log a complaint or request stock', () => {
+    const defaults = (k: string) => config.collections.find((c) => c.key === k)!.createDefaults!(TODAY, data);
+    expect(defaults('complaints')).toMatchObject({ date: TODAY, time: '12:00', priority: 'normal' });
+    expect(defaults('issues')).toMatchObject({ date: TODAY });
+    expect(defaults('inspections')).toMatchObject({ date: TODAY });
+    expect(defaults('invoices')).toMatchObject({ date: TODAY, dueDate: addDays(TODAY, 30), period: TODAY.slice(0, 7) });
+  });
+});
+
 describe('guide steps on a fresh seed, through the store', () => {
   const store = () => useStore.getState();
   const live = () => store().data.cleaning!;

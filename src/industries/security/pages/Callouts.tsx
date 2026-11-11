@@ -8,7 +8,7 @@ import { RecordBoard, RecordTable, WorkflowActions } from '../../../core/compone
 import { RecordFormModal } from '../../../core/components/fields';
 import { IcoPlus } from '../../../core/components/Icons';
 import { DEFAULT_SLA_MIN, SIGNALS, label } from '../data';
-import { ACTIVE_CALLOUT, availableVehicles, duration, elapsedMinutes, equipmentLabel, rec, responseStats, siteName, slaState } from '../helpers';
+import { ACTIVE_CALLOUT, availableVehicles, equipmentLabel, rec, responseStats, siteName, slaState } from '../helpers';
 import { useClock } from './format';
 
 export default function Callouts() {
@@ -33,25 +33,25 @@ export default function Callouts() {
       <PageHeader kicker={`${config.businessName} / Control room`} title="Armed response call-outs" subtitle="Alarm signal received → vehicle dispatched → on scene → stood down. Response time runs from the signal to arrival and is compared with the contract SLA. Signals are typed in — no alarm panel is connected."
         actions={can('callouts.dispatch') ? <button className="btn primary" onClick={() => setCreating(true)} data-testid="new-record"><IcoPlus /> Log alarm signal</button> : undefined} />
       <div className="stat-grid">
-        <Stat label="Active call-outs" value={active.length} tone={active.some((c) => slaState(data, c, today, time).state === 'breached') ? 'red' : undefined} sub={`${active.filter((c) => c.status === 'received').length} awaiting dispatch`} />
+        <Stat label="Active call-outs" value={active.length} tone={active.some((c) => c.status === 'received') ? 'red' : undefined} sub={`${active.filter((c) => c.status === 'received').length} awaiting dispatch`} />
         <Stat label="Avg response (30 days)" value={stats.count ? `${stats.avg} min` : '—'} tone={stats.avg > DEFAULT_SLA_MIN ? 'red' : 'accent'} sub={`${stats.count} completed call-outs`} />
         <Stat label="Within SLA" value={`${stats.pct}%`} tone={stats.breaches ? 'red' : 'accent'} sub={`${stats.breaches} over the SLA · demo target ${DEFAULT_SLA_MIN} min`} />
         <Stat label="Vehicles available" value={`${free.length}/${vehicles.length}`} tone={free.length ? undefined : 'red'} sub="not committed, in repair or unlicensed" />
       </div>
       <div className="section-gap" />
-      <Panel title="Active now" meta="Elapsed time since the signal was received">
+      <Panel title="Active now" meta="Signal time and the time the vehicle is due on scene under the contract SLA">
         {active.length ? (
           <ul className="list" data-testid="active-callouts">
             {active.map((c) => {
-              const s = slaState(data, c, today, time);
+              const s = slaState(data, c);
               return (
                 <li key={c.id}>
-                  <span className="time-chip">{duration(elapsedMinutes(c, today, time))}</span>
+                  <span className="time-chip">{str(c, 'receivedAt')}</span>
                   <div className="grow">
                     <Link to={`${base}/callouts/${c.id}`}><b>{siteName(data, c.values.site)} — {label(SIGNALS, str(c, 'signal'))}</b></Link>
                     <small>{c.ref} · received {str(c, 'receivedAt')}{str(c, 'zone') ? ` · ${str(c, 'zone')}` : ''}{str(c, 'vehicle') ? ` · ${equipmentLabel(rec(data, 'equipment', c.values.vehicle))}` : ''}</small>
                   </div>
-                  <Tag tone={s.state === 'breached' ? 'red' : s.state === 'met' ? 'green' : 'amber'}>{s.state === 'met' ? `On scene in ${s.minutes} min` : s.state === 'breached' ? `Over ${s.sla}-min SLA` : `${s.minutes}/${s.sla} min`}</Tag>
+                  <Tag tone={s.state === 'breached' ? 'red' : s.state === 'met' ? 'green' : 'amber'}>{s.state === 'met' ? `On scene in ${s.minutes} min` : s.state === 'breached' ? `${s.minutes} min — over ${s.sla}-min SLA` : `Due on scene by ${s.dueBy}`}</Tag>
                   <StatusTag workflow={def.workflow} status={c.status} />
                   <WorkflowActions def={def} record={c} compact />
                 </li>

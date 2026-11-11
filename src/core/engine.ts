@@ -219,13 +219,13 @@ export function validateConfig(config: IndustryConfig): string[] {
     for (const p of u.permissions) if (!perms.has(p)) problems.push(`User ${u.id} → unknown permission ${p}`);
   }
   for (const g of config.guide ?? []) {
-    const mod = g.to.split('/')[0];
+    const mod = g.to.split('?')[0].split('/')[0];
     if (mod && !moduleKeys.has(mod) && !['admin', 'settings'].includes(mod)) problems.push(`Guide step "${g.title}" → unknown module ${mod}`);
     if (g.as && !seed.users.some((u) => u.id === g.as)) problems.push(`Guide step "${g.title}" → unknown user ${g.as}`);
   }
   // Guide links to a specific record must point at the same kind of record on every day of the week
   // (seeds that skip weekends shift sequential ids).
-  const guided = (config.guide ?? []).filter((g) => g.to.includes('/'));
+  const guided = (config.guide ?? []).map((g) => ({ ...g, to: g.to.split('?')[0] })).filter((g) => g.to.includes('/'));
   if (guided.length) {
     const seen = new Map<string, Set<string>>();
     for (let d = 15; d < 22; d++) {

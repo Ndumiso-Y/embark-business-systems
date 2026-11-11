@@ -99,7 +99,7 @@ export default function ProductionLog() {
                       <Link to={`${base}/production/${s.id}`}><b>{def.title(s, data)}</b></Link>
                       <small>{formatDate(str(s, 'date'))} · {num(s, 'tonnesHoisted')} / {num(s, 'targetTonnes')} t · delay {num(s, 'delayMinutes')} min{str(s, 'delayReason') ? ` (${label(DELAY_REASONS, str(s, 'delayReason'))})` : ''}</small>
                     </div>
-                    <WorkflowActions def={def} record={s} compact />
+                    {can('production.verify') && <WorkflowActions def={def} record={s} compact />}
                   </li>
                 ))}
               </ul>

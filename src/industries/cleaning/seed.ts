@@ -378,6 +378,8 @@ export function buildCleaningSeed(today: string) {
       const days = FREQUENCIES.find((f) => f.value === frequency)!.days;
       let [status, dueIn, doneAgo] = PERIODIC_PLAN[k % PERIODIC_PLAN.length];
       if (si === S.meridianA && task === 'windows') { status = 'planned'; dueIn = 2; doneAgo = undefined; }
+      // A weekly or monthly task is never planned further out than one cycle.
+      if (doneAgo === undefined && dueIn > days) dueIn = days - 1;
       const lastDone = doneAgo !== undefined ? thisMonth(doneAgo) : day(dueIn - days);
       const nextDue = doneAgo !== undefined ? addDays(lastDone, days) : day(dueIn);
       const unassigned = status === 'planned' && k % 6 === 5;
@@ -391,12 +393,15 @@ export function buildCleaningSeed(today: string) {
   });
 
   /* ---------- Inspections ---------- */
+  // Its own generator: the shift history above draws a different number of values depending on
+  // the weekday, and inspection scores must not change with the day the demo is opened.
+  const rndScore = prng(20261112);
   const scoreValues = (points: number, fixed?: number[]): Values => {
     const s = fixed ?? Array.from({ length: 6 }, (_, i) => Math.floor(points / 6) + (i < points % 6 ? 1 : 0));
     if (!fixed) {
       for (let n = 0; n < 2; n++) {
-        const a = Math.floor(rnd() * 6);
-        const b = Math.floor(rnd() * 6);
+        const a = Math.floor(rndScore() * 6);
+        const b = Math.floor(rndScore() * 6);
         if (a !== b && s[a] < 5 && s[b] > 1) { s[a]++; s[b]--; }
       }
     }

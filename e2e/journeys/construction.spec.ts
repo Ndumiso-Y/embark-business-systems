@@ -286,6 +286,7 @@ test.describe('Construction journeys', () => {
     await expect(status(page)).toHaveText('Requested');
     await expect(kv(page.getByTestId('req-panel'), 'Value excl. VAT')).toHaveText('R18,000.00');
     await expect(kv(page.getByTestId('req-panel'), 'Incl. VAT')).toHaveText('R20,700.00');
+    await expect(kv(page.locator('.panel', { hasText: 'Details' }).first(), 'Requested by')).toHaveText('Sizwe Ndlovu'); // filled in from the signed-in user
     await expect(step(page, 'Approve requisition')).toBeDisabled();
     await expect(page.getByTestId('req-panel')).toContainText('Waiting for approval by');
 

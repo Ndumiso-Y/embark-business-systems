@@ -14,8 +14,6 @@ export const CONTRACT_WINDOW_DAYS = 60;
 export const INSPECTION_INTERVAL_DAYS = 14;
 /** A patrol round that starts more than this many minutes after its due time is "late". */
 export const PATROL_GRACE_MIN = 15;
-/** A posted officer who has not booked on this long after shift start is flagged. */
-export const BOOK_ON_GRACE_MIN = 20;
 export const VAT_RATE = 15;
 
 /* ---------------- Shifts ---------------- */

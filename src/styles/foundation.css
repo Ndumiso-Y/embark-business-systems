@@ -246,3 +246,28 @@ body { background: var(--bg-app); }
 .wf-who { display: block; font-size: 10.5px; color: var(--muted-2); line-height: 1.35; margin-top: 4px; }
 .ref-filter { margin-bottom: 6px; }
 @media (max-width: 900px) { .toasts .toast:nth-last-child(n+3) { display: none; } }
+
+/* Phone top bar: long business names truncate instead of running into the demo pill. */
+.breadcrumb { min-width: 0; }
+.breadcrumb b { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.topbar { gap: 10px; }
+.topbar-right { flex: none; }
+@media (max-width: 480px) {
+  .breadcrumb > span { display: none; }
+  .demo-pill { font-size: 0; gap: 5px; }
+  .demo-pill::after { content: "DEMO"; font-size: 8px; }
+}
+
+/* Toasts never block clicks on what is underneath (only their close button is clickable). */
+.toasts { pointer-events: none; }
+.toasts .toast button { pointer-events: auto; }
+/* Register toolbar on phones: filter and view switch take a full row instead of being squeezed. */
+@media (max-width: 600px) {
+  .toolbar .search-box { width: 100%; }
+  .toolbar .select { flex: 1 1 150px; min-width: 140px; }
+  .toolbar > div:last-child { margin-left: 0 !important; width: 100%; }
+  .toolbar .segmented { display: flex; width: 100%; }
+  .toolbar .segmented button { flex: 1; }
+}
+.list li .wf-who { display: none; }
+.stale-banner { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; background: var(--warn-bg); border: 1px solid #efe0c4; color: #7d5a26; border-radius: 12px; padding: 10px 14px; font-size: 12.5px; margin-bottom: 16px; }

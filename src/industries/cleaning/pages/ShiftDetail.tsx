@@ -44,7 +44,12 @@ export default function ShiftDetail() {
   const rosterOpen = ['draft', 'scheduled'].includes(shift.status ?? '') && can('schedule.manage');
   const onShift = shiftCleaners(shift);
   const candidates = records(data, 'staff').filter((p) => isRosterable(p) && !onShift.includes(p.ref)).sort((a, b) => fullName(a).localeCompare(fullName(b)));
+  // Relief cleaners with the reason each one can or cannot cover this shift; eligible first.
   const reliefStaff = candidates.filter((p) => str(p, 'role') === 'relief');
+  const reliefOptions = reliefStaff.map((p) => ({ p, problem: assignmentProblem(p, shift, data) })).sort((a, b) => Number(!!a.problem) - Number(!!b.problem));
+  // Absences and relief cover are handled next to the names below, so the generic step buttons are left out here.
+  const stepsDef = { ...def, workflow: { ...def.workflow!, transitions: def.workflow!.transitions.filter((t) => t.to !== 'short' && t.to !== 'relief') } };
+  const canCover = can('schedule.manage');
   const check = checklistState(shift, data);
   const canTick = started && shift.status !== 'completed' && can('attendance');
   const problems = shift.status === 'draft' ? rosterProblems(shift, data) : [];
@@ -95,39 +100,41 @@ export default function ShiftDetail() {
                 return <li key={s.key} className={s.key === shift.status ? 'current' : idx < cur ? 'done' : ''}><span>{s.label}</span></li>;
               })}
             </ol>
-            <WorkflowActions def={def} record={shift} />
+            <WorkflowActions def={stepsDef} record={shift} />
             {problems.length > 1 && <ul className="problem-list muted-note">{problems.slice(1).map((p) => <li key={p}>{p}</li>)}</ul>}
+            {shift.status === 'short' && (
+              <div style={{ marginTop: 12 }} data-testid="relief-pointer">
+                <Notice tone="amber">{st.absent} cleaner{st.absent === 1 ? ' is' : 's are'} absent — relief cover is needed. {canCover ? 'Choose a relief cleaner under “Relief cover” below — the list shows who is eligible and why the others are not.' : 'Arranging relief cover needs “Manage roster” (area supervisor or operations manager).'}</Notice>
+              </div>
+            )}
+            {live && shift.status === 'scheduled' && <p className="muted-note" style={{ marginTop: 10 }}>Clocking the first cleaner in starts the shift.</p>}
           </Panel>
 
           <Panel title="Roster & attendance" meta={`${st.contracted} cleaner${st.contracted === 1 ? '' : 's'} contracted per shift at this site`} right={<StaffingTag st={st} started={started} />}>
-            <div className="table-wrap">
-              <table className="table" data-testid="roster-table">
-                <thead><tr><th>Cleaner</th><th>Attendance</th><th /></tr></thead>
-                <tbody>
-                  {onShift.map((ref) => {
-                    const p = staffByRef(data, ref);
-                    const cs = cleanerState(shift, ref);
-                    return (
-                      <tr key={ref}>
-                        <td>
-                          <strong>{p && hasModule('staff') ? <Link to={`${base}/staff/${p.id}`}>{fullName(p)}</Link> : fullName(p)}</strong>
-                          <small>{ref} · {label(STAFF_ROLES, str(p, 'role'))}{isRelief(shift, ref) ? ' · relief cover on this shift' : ''}</small>
-                        </td>
-                        <td><Tag tone={cs.tone}>{cs.label}</Tag></td>
-                        <td>
-                          <span className="btns" style={{ justifyContent: 'flex-end' }}>
-                            {p && cs.key === 'waiting' && live && can('attendance') && <button className="btn xs primary" onClick={() => { const e = shiftActions.clockIn(shift, p); if (e) fail(e); }}>Clock in</button>}
-                            {p && cs.key === 'waiting' && live && can('attendance') && <button className="btn xs" onClick={() => { setAbsent(p); setAbsentNote(''); }}>Absent</button>}
-                            {p && rosterOpen && <button className="btn xs" onClick={() => remove(p)}>Remove</button>}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {Array.from({ length: st.unfilled }, (_, i) => <tr key={`u${i}`}><td><strong style={{ color: 'var(--muted-2)' }}>Unfilled place</strong></td><td><Tag tone="red">No cleaner</Tag></td><td /></tr>)}
-                </tbody>
-              </table>
-            </div>
+            <ul className="list" data-testid="roster-table">
+              {onShift.map((ref) => {
+                const p = staffByRef(data, ref);
+                const cs = cleanerState(shift, ref);
+                const waiting = !!p && cs.key === 'waiting' && live && can('attendance');
+                return (
+                  <li key={ref} style={{ flexWrap: 'wrap' }} data-testid={`roster-${ref}`}>
+                    <div className="grow" style={{ minWidth: 150 }}>
+                      <b>{p && hasModule('staff') ? <Link to={`${base}/staff/${p.id}`}>{fullName(p)}</Link> : fullName(p)}</b>
+                      <small>{ref} · {label(STAFF_ROLES, str(p, 'role'))}{isRelief(shift, ref) ? ' · relief cover on this shift' : ''}</small>
+                    </div>
+                    {!waiting && <Tag tone={cs.tone}>{cs.label}</Tag>}
+                    {(waiting || (p && rosterOpen)) && (
+                      <span className="btns" style={{ gap: 6 }}>
+                        {waiting && p && <button className="btn xs primary" onClick={() => { const e = shiftActions.clockIn(shift, p); if (e) fail(e); else setMessage(null); }} aria-label={`Clock in ${fullName(p)}`}>Clock in</button>}
+                        {waiting && p && <button className="btn xs" onClick={() => { setAbsent(p); setAbsentNote(''); }} aria-label={`Mark ${fullName(p)} absent`}>Absent</button>}
+                        {p && rosterOpen && <button className="btn xs" onClick={() => remove(p)} aria-label={`Remove ${fullName(p)} from the roster`}>Remove</button>}
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
+              {Array.from({ length: st.unfilled }, (_, i) => <li key={`u${i}`}><div className="grow"><b style={{ color: 'var(--muted-2)' }}>Unfilled place</b></div><Tag tone="red">No cleaner</Tag></li>)}
+            </ul>
             {absent && (
               <div style={{ marginTop: 12 }}>
                 <Field label={`Why is ${fullName(absent)} absent? (required)`}><textarea className="textarea" aria-label="Absence note" value={absentNote} onChange={(e) => setAbsentNote(e.target.value)} placeholder="e.g. Phoned in sick at 05:40; client informed" /></Field>
@@ -136,23 +143,30 @@ export default function ShiftDetail() {
             )}
             {message && <div style={{ marginTop: 12 }}><Notice tone={message.tone}>{message.text}</Notice></div>}
 
-            {shift.status === 'short' && can('schedule.manage') && (
+            {shift.status === 'short' && canCover && (
               <div style={{ marginTop: 16 }} data-testid="relief-picker">
-                <div className="panel-meta" style={{ marginBottom: 6 }}>Relief cover — each cleaner is checked for a site induction, {str(site, 'siteType') === 'clinic' ? 'in-date infection-control training, ' : ''}and overlapping shifts</div>
+                <h3 style={{ margin: '0 0 2px', fontSize: 13 }}>Relief cover</h3>
+                <div className="panel-meta" style={{ marginBottom: 6 }}>Every relief cleaner is checked for a site induction, {str(site, 'siteType') === 'clinic' ? 'in-date infection-control training (healthcare site), ' : ''}leave and overlapping shifts. {reliefOptions.filter((o) => !o.problem).length} of {reliefOptions.length} can cover this shift.</div>
                 <ul className="list">
-                  {reliefStaff.map((p) => (
-                    <li key={p.id} style={{ padding: '8px 0' }}>
-                      <div className="grow"><b>{fullName(p)}</b><small>{p.ref} · relief cleaner · inducted at {csv(str(p, 'inductions')).length} sites</small></div>
-                      <button className="btn xs primary" onClick={() => tryRelief(p)} aria-label={`Assign ${fullName(p)} as relief`}>Assign</button>
+                  {reliefOptions.map(({ p, problem }) => (
+                    <li key={p.id} style={{ padding: '9px 0', flexWrap: 'wrap' }} data-testid={`relief-${p.ref}`}>
+                      <div className="grow" style={{ minWidth: 180 }}>
+                        <b>{fullName(p)}</b>
+                        <small>{p.ref} · relief cleaner · inducted at {csv(str(p, 'inductions')).length} sites</small>
+                        {problem && <small style={{ color: 'var(--danger)' }}>{problem}</small>}
+                      </div>
+                      {problem
+                        ? <Tag tone="red">Not eligible</Tag>
+                        : <><Tag tone="green">Eligible</Tag><button className="btn xs primary" onClick={() => tryRelief(p)} aria-label={`Assign ${fullName(p)} as relief`}>Assign</button></>}
                     </li>
                   ))}
                 </ul>
               </div>
             )}
-            {(rosterOpen || (shift.status === 'short' && can('schedule.manage'))) && (
+            {(rosterOpen || (shift.status === 'short' && canCover)) && (
               <div className="toolbar" style={{ marginTop: 14, marginBottom: 0 }}>
                 <select className="select" aria-label="Choose a cleaner" value={pick} onChange={(e) => setPick(e.target.value)}>
-                  <option value="">{shift.status === 'short' ? 'Or choose any other cleaner…' : 'Add a cleaner to the roster…'}</option>
+                  <option value="">{shift.status === 'short' ? 'Or try any other cleaner (same checks)…' : 'Add a cleaner to the roster…'}</option>
                   {candidates.filter((p) => shift.status !== 'short' || !reliefStaff.includes(p)).map((p) => <option key={p.id} value={p.id}>{fullName(p)} · {label(STAFF_ROLES, str(p, 'role'))}</option>)}
                 </select>
                 <button className="btn sm" disabled={!pick} onClick={() => { const p = findRecord(data, 'staff', pick); if (!p) return; if (shift.status === 'short') tryRelief(p); else addCleaner(); }}>{shift.status === 'short' ? 'Assign as relief' : 'Add to roster'}</button>

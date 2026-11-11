@@ -38,6 +38,16 @@ describe('mining configuration', () => {
     }
   });
 
+  it('pre-fills new records so a fresh permit is never already expired', () => {
+    const def = (k: string) => config.collections.find((c) => c.key === k)!;
+    const permit = def('permits').createDefaults!(TODAY, data);
+    expect(permit).toEqual({ validFrom: TODAY, validTo: '2026-11-12', expiresAt: '16:00' });
+    // Still inside its validity one minute before midnight on the day it is requested.
+    expect(permitExpired({ id: 'x', ref: 'PTW-X', values: permit, history: [], createdAt: '', updatedAt: '' }, TODAY, '23:59')).toBe(false);
+    expect(def('incidents').createDefaults!(TODAY, data)).toMatchObject({ date: TODAY, reportedBy: 'Zodwa Mthethwa' });
+    expect(def('envreadings').createDefaults!(TODAY, { ...data, currentUserId: 'u_eo' })).toEqual({ date: TODAY, recordedBy: 'Fikile Shabalala' });
+  });
+
   it('holders() names who can do a step, for roles that cannot', () => {
     expect(holders(data, 'production.verify')).toBe('Zodwa Mthethwa (Mine manager)');
     expect(holders(data, 'production.verify', 'u_mm')).toMatch(/nobody yet/);

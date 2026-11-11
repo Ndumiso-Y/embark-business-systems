@@ -40,6 +40,7 @@ export default function Dashboard() {
   const belowSla = sites.filter((s) => { const last = latestInspection(data, s.id); return !!last && inspectionFailed(last, data); });
   const reinspections = records(data, 'inspections').filter((i) => i.status === 'draft' && str(i, 'kind') === 'reinspection' && daysBetween(today, str(i, 'date')) <= 3);
   const overdueInvoices = records(data, 'invoices').filter((i) => invoiceOverdue(i, today));
+  const requests = records(data, 'issues').filter((i) => i.status === 'requested').length;
   const trainingExpired = records(data, 'staff').filter((s) => staffFlags(s, today).some((f) => f.tone === 'red'));
 
   // Attendance % for the last seven days that had completed shifts.
@@ -71,7 +72,9 @@ export default function Dashboard() {
           <h2>{onSite} of {dueOnSite} contracted cleaners on site · {staffingPct(onSite, dueOnSite)}% staffed</h2>
           <p>{started.length} shifts running across {sites.length} sites, {toStart} still to start. {todayS.late} late clock-in{todayS.late === 1 ? '' : 's'} and {todayS.unfilled} unfilled place{todayS.unfilled === 1 ? '' : 's'} so far.</p>
         </div>
-        {hasModule('complaints') && <Link className="btn" to={`${base}/complaints`}>{open.length} open complaints →</Link>}
+        {hasModule('complaints') ? <Link className="btn" to={`${base}/complaints`}>{open.length} open complaints →</Link>
+          : hasModule('issues') ? <Link className="btn" to={`${base}/issues`}>{requests} stock request{requests === 1 ? '' : 's'} waiting →</Link>
+          : hasModule('invoices') ? <Link className="btn" to={`${base}/invoices`}>{overdueInvoices.length} invoice{overdueInvoices.length === 1 ? '' : 's'} overdue →</Link> : null}
       </div>
       <div className="stat-grid">
         <Stat label="Staffing now" value={`${staffingPct(onSite, dueOnSite)}%`} sub={`${onSite}/${dueOnSite} cleaners on shifts that have started`} />

@@ -123,9 +123,10 @@ test.describe('Mining journeys', () => {
     await page.locator('#f_description').fill('Clean out sump 3 (journey test)');
     await page.locator('#f_holder').fill('Karabo Seleka');
     await page.locator('#f_contractor').selectOption('contractors_7'); // Karabo Seleka: induction and medical expired
-    await page.locator('#f_validFrom').fill(await isoDay(page));
-    await page.locator('#f_validTo').fill(await isoDay(page, 1));
-    await page.locator('#f_expiresAt').fill('16:00');
+    // The form starts valid from today until tomorrow 16:00, so a new permit is never already expired.
+    await expect(page.locator('#f_validFrom')).toHaveValue(await isoDay(page));
+    await expect(page.locator('#f_validTo')).toHaveValue(await isoDay(page, 1));
+    await expect(page.locator('#f_expiresAt')).toHaveValue('16:00');
     await page.getByTestId('save-record').click();
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Clean out sump 3 (journey test)');
     await expect(status(page)).toHaveText('Requested');
@@ -183,13 +184,13 @@ test.describe('Mining journeys', () => {
     await page.goto('#/mining/incidents');
     await signInAs(page, 'u_pc'); // a supervisor reports
     await page.getByTestId('new-record').click();
-    await page.locator('#f_date').fill(await isoDay(page));
+    await expect(page.locator('#f_date')).toHaveValue(await isoDay(page)); // today, with the reporter filled in
+    await expect(page.locator('#f_reportedBy')).toHaveValue('Pieter-Jan Coetzee');
     await page.locator('#f_title').fill('Loose rock at travelling way (journey test)');
     await page.locator('#f_type').selectOption('nearmiss');
     await page.locator('#f_category').selectOption('fog');
     await page.locator('#f_severity').selectOption('medium');
     await page.locator('#f_location').selectOption('l7e');
-    await page.locator('#f_reportedBy').fill('Pieter-Jan Coetzee');
     await page.getByTestId('save-record').click();
     await expect(status(page)).toHaveText('Reported');
     await expect(step(page, 'Start investigation')).toBeDisabled();
@@ -278,11 +279,11 @@ test.describe('Mining journeys', () => {
     // A new reading must be taken at a point where that parameter is monitored.
     await page.goto('#/mining/environment');
     await page.getByTestId('new-record').click();
-    await page.locator('#f_date').fill(await isoDay(page));
+    await expect(page.locator('#f_date')).toHaveValue(await isoDay(page));
+    await expect(page.locator('#f_recordedBy')).toHaveValue('Fikile Shabalala');
     await page.locator('#f_point').selectOption('rwd');
     await page.locator('#f_parameter').selectOption('dust');
     await page.locator('#f_value').fill('0.8');
-    await page.locator('#f_recordedBy').fill('Fikile Shabalala');
     await page.getByTestId('save-record').click();
     await expect(page.locator('.modal')).toContainText('not monitored at Return water dam');
     await page.locator('#f_parameter').selectOption('ph');
@@ -303,7 +304,7 @@ test.describe('Mining journeys', () => {
     await expect(page.getByTestId('new-record')).toHaveCount(0);
     await expect(page.getByRole('note').filter({ hasText: 'You can follow work orders here' })).toContainText('Ruan Visagie');
     await page.goto('#/mining/production');
-    await expect(page.getByTestId('verify-list').getByRole('button', { name: 'Verify shift' }).first()).toBeDisabled();
+    await expect(page.getByTestId('verify-list').getByRole('button', { name: 'Verify shift' })).toHaveCount(0);
     await expect(page.locator('.panel', { hasText: 'Awaiting verification' })).toContainText('Verification is done by Zodwa Mthethwa');
   });
 

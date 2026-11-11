@@ -52,6 +52,8 @@ type State = {
 };
 
 const nowIso = () => new Date().toISOString();
+/** Local calendar day (YYYY-MM-DD) of an ISO timestamp. */
+export const isoDay = (ts: string) => { const d = new Date(ts); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
 function roleLabel(config: IndustryConfig, u: DemoUser) {
   return config.roles.find((r) => r.key === u.role)?.label ?? u.role;
@@ -83,7 +85,10 @@ export const useStore = create<State>()(
 
         ensure: (config) => {
           const d = get().data[config.id];
-          if (!d || d.version !== SCHEMA_VERSION) set((s) => ({ data: { ...s.data, [config.id]: buildIndustryData(config, todayIso()) } }));
+          // Sample data is dated relative to the day it was created. If the visitor comes back on a
+          // later day and has not changed anything, refresh it so "today" really is today.
+          const stale = !!d && isoDay(d.seededAt) !== todayIso();
+          if (!d || d.version !== SCHEMA_VERSION || (stale && d.activity.length === 0)) set((s) => ({ data: { ...s.data, [config.id]: buildIndustryData(config, todayIso()) } }));
         },
 
         reset: (config) => set((s) => ({ data: { ...s.data, [config.id]: buildIndustryData(config, todayIso()) } })),
@@ -209,7 +214,7 @@ export const useStore = create<State>()(
 
         toast: (text, tone = 'ok') => {
           const t = { id: newId('t'), text, tone };
-          set((s) => ({ toasts: [...s.toasts, t].slice(-4) }));
+          set((s) => ({ toasts: [...s.toasts, t].slice(-2) }));
           setTimeout(() => get().dismissToast(t.id), 4200);
         },
         dismissToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),

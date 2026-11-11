@@ -3,13 +3,13 @@ import { Link, useParams } from 'react-router-dom';
 import type { DemoRecord } from '../../../core/types';
 import { useActions, useBase, useData, useUser } from '../../../core/context';
 import { records, str } from '../../../core/engine';
-import { addDays, formatDate } from '../../../core/lib/dates';
+import { formatDate } from '../../../core/lib/dates';
 import { Empty, Field, KeyValues, Notice, Panel, Tag } from '../../../core/components/ui';
 import { RecordDetail } from '../../../core/components/records';
 import { SHIFT_END, SHIFT_KINDS, SHIFT_START, label } from '../data';
 import {
   deployability, equipmentLabel, fullName, handoverEntry, hasCompetency, kindOf, officerExpiries, officerName, postOf, postingProblems, rec, siteOfShift,
-  slotPhase, workingOfficerId,
+  workingOfficerId,
 } from '../helpers';
 import { Check } from './shared';
 import { useClock } from './format';
@@ -146,10 +146,8 @@ function Handover({ shift }: { shift: DemoRecord }) {
   if (!site) return null;
   const write = () => {
     if (!text.trim()) { act.toast('Write the handover entry first.', 'err'); return; }
-    // A late handover for a shift that has already ended is recorded at the shift's end time.
-    const ended = slotPhase(date, kind, today, time) === 'past';
-    const when = ended ? { date: kind === 'night' ? addDays(date, 1) : date, time: SHIFT_END[kind] } : { date: today, time };
-    const r = act.create('ob', { site: site.id, date: when.date, time: when.time, shift: kind, type: 'handover', entry: text.trim(), by: officerName(data, workingOfficerId(shift)) }, 'draft', 'Handover entry written');
+    // The entry is stamped when it is written and tied to its shift by the shift date, so it counts whenever it is captured.
+    const r = act.create('ob', { site: site.id, date: today, time, shift: kind, shiftDate: date, type: 'handover', entry: text.trim(), by: officerName(data, workingOfficerId(shift)) }, 'draft', 'Handover entry written');
     const res = act.transition('ob', r.id, 'signed');
     act.toast(res.ok ? `${r.ref} signed — the officers on this shift can now book off.` : res.reason, res.ok ? 'ok' : 'err');
   };

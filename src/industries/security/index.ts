@@ -17,7 +17,7 @@ import {
   activeShiftFor, fullName, incidentCloseProblems, incidentReportProblem, inspectionOverdue, inspectionScore, inspectionSubmitProblem, invoiceOverdue,
   isSerious, issueProblems, issuedTo, kindOf, lateBookOn, notReturned, nowTime, obSignProblem, officerExpiries, officerName, onSceneProblem,
   patrolCompleteProblem, patrolLateBy, patrolMissed, permitExpired, postProblem, postingProblems, reliefProblem, responseMinutes, sapsProblem,
-  shiftTitle, siteName, siteOfPost, slaState, slotPhase, standDownProblem, todayStr, workingOfficerId, minutesBetween,
+  shiftTitle, siteName, siteOfPost, slaState, slotPhase, standDownProblem, suggestedTime, todayStr, workingOfficerId,
 } from './helpers';
 export * from './helpers';
 export { SEED, DAYS_BACK, DAYS_AHEAD } from './seed';
@@ -55,10 +55,10 @@ const rosterWorkflow: WorkflowDef = {
     { from: 'open', to: 'posted', label: 'Post officer', permission: 'roster.manage', intent: 'primary', guard: ({ record, data }) => postProblem(data, record) },
     {
       from: ['posted', 'relief'], to: 'onduty', label: 'Book on', permission: 'roster.book', intent: 'primary',
-      guard: ({ record, data }) => bookOnProblem(data, record, todayStr(), nowTime()),
+      guard: ({ record, data }) => bookOnProblem(data, record, todayStr()),
       after: ({ record, api }) => { if (!str(record, 'bookedOn')) api.update('roster', record.id, { bookedOn: nowTime() }); },
     },
-    { from: 'posted', to: 'absent', label: 'Mark absent', permission: 'roster.book', requiresNote: true, intent: 'danger' },
+    { from: 'posted', to: 'absent', label: 'Mark absent', permission: 'roster.book', requiresNote: true, noteHint: 'why the officer is absent and who reported it', intent: 'danger' },
     { from: 'absent', to: 'relief', label: 'Assign relief', permission: 'roster.manage', intent: 'primary', guard: ({ record, data }) => reliefProblem(data, record) },
     {
       from: 'onduty', to: 'off', label: 'Book off', permission: 'roster.book', intent: 'primary',
@@ -70,7 +70,7 @@ const rosterWorkflow: WorkflowDef = {
       },
     },
     {
-      from: ['posted', 'relief'], to: 'open', label: 'Withdraw officer', permission: 'roster.manage', requiresNote: true,
+      from: ['posted', 'relief'], to: 'open', label: 'Withdraw officer', permission: 'roster.manage', requiresNote: true, noteHint: 'why the officer is taken off this shift',
       after: ({ record, api }) => api.update('roster', record.id, { officer: '', reliefOfficer: '' }),
     },
   ],
@@ -103,11 +103,11 @@ const incidentWorkflow: WorkflowDef = {
       from: 'investigating', to: 'clientreport', label: 'Log client report', permission: 'incidents.manage', intent: 'primary',
       guard: ({ record }) => incidentReportProblem(record),
       after: ({ record, api, today }) => {
-        api.update('incidents', record.id, { clientReportSent: true, clientReportOn: today, clientNotifiedAt: str(record, 'clientNotifiedAt') || nowTime() });
+        api.update('incidents', record.id, { clientReportSent: true, clientReportOn: today });
         api.toast(`${record.ref}: client report logged — nothing is actually sent in this demo.`, 'info');
       },
     },
-    { from: 'clientreport', to: 'investigating', label: 'Reopen investigation', permission: 'incidents.manage', requiresNote: true },
+    { from: 'clientreport', to: 'investigating', label: 'Reopen investigation', permission: 'incidents.manage', requiresNote: true, noteHint: 'what the client or new evidence has raised' },
     { from: 'clientreport', to: 'closed', label: 'Close incident', permission: 'incidents.close', intent: 'primary', guard: ({ record }) => incidentCloseProblems(record)[0] ?? null },
   ],
 };
@@ -125,13 +125,13 @@ const calloutWorkflow: WorkflowDef = {
     {
       from: 'received', to: 'dispatched', label: 'Dispatch vehicle', permission: 'callouts.dispatch', intent: 'primary',
       guard: ({ record, data }) => dispatchProblem(data, record, todayStr()),
-      after: ({ record, api }) => { if (!str(record, 'dispatchedAt')) api.update('callouts', record.id, { dispatchedAt: nowTime() }); },
+      after: ({ record, api }) => { if (!str(record, 'dispatchedAt')) api.update('callouts', record.id, { dispatchedAt: suggestedTime(record, 'dispatched') }); },
     },
     {
       from: 'dispatched', to: 'onscene', label: 'Arrived on scene', permission: 'callouts.dispatch', intent: 'primary',
-      guard: ({ record }) => onSceneProblem(record, nowTime()),
+      guard: ({ record }) => onSceneProblem(record),
       after: ({ record, data, api }) => {
-        const at = str(record, 'onSceneAt') || nowTime();
+        const at = str(record, 'onSceneAt') || suggestedTime(record, 'onscene');
         if (!str(record, 'onSceneAt')) api.update('callouts', record.id, { onSceneAt: at });
         const mins = responseMinutes({ ...record, values: { ...record.values, onSceneAt: at } }) ?? 0;
         const sla = calloutSla(data, record);
@@ -140,10 +140,10 @@ const calloutWorkflow: WorkflowDef = {
     },
     {
       from: 'onscene', to: 'stooddown', label: 'Stand down', permission: 'callouts.dispatch', intent: 'primary',
-      guard: ({ record }) => standDownProblem(record, nowTime()),
-      after: ({ record, api }) => { if (!str(record, 'stoodDownAt')) api.update('callouts', record.id, { stoodDownAt: nowTime() }); },
+      guard: ({ record }) => standDownProblem(record),
+      after: ({ record, api }) => { if (!str(record, 'stoodDownAt')) api.update('callouts', record.id, { stoodDownAt: suggestedTime(record, 'stooddown') }); },
     },
-    { from: ['received', 'dispatched'], to: 'cancelled', label: 'Cancel call-out', permission: 'callouts.dispatch', requiresNote: true },
+    { from: ['received', 'dispatched'], to: 'cancelled', label: 'Cancel call-out', permission: 'callouts.dispatch', requiresNote: true, noteHint: 'who cancelled and how they were verified (e.g. password)' },
   ],
 };
 
@@ -191,7 +191,7 @@ const actionWorkflow: WorkflowDef = {
     { key: 'open', label: 'Open', tone: 'amber' },
     { key: 'done', label: 'Done', tone: 'green', terminal: true },
   ],
-  transitions: [{ from: 'open', to: 'done', label: 'Mark done', permission: 'inspections', requiresNote: true, intent: 'primary' }],
+  transitions: [{ from: 'open', to: 'done', label: 'Mark done', permission: 'inspections', requiresNote: true, noteHint: 'what was done to close the finding', intent: 'primary' }],
 };
 
 const clearIssue = { issuedTo: '', issuedShift: '', issuedOn: '' };
@@ -206,16 +206,16 @@ const equipmentWorkflow: WorkflowDef = {
   transitions: [
     {
       from: 'instore', to: 'issued', label: 'Issue to officer', permission: 'equipment.issue', intent: 'primary',
-      guard: ({ record, data }) => issueProblems(data, record, str(record, 'issuedTo'), todayStr(), nowTime())[0] ?? null,
+      guard: ({ record, data }) => issueProblems(data, record, str(record, 'issuedTo'), todayStr())[0] ?? null,
       after: ({ record, data, api, today }) => {
-        const shift = activeShiftFor(data, str(record, 'issuedTo'), todayStr(), nowTime());
+        const shift = activeShiftFor(data, str(record, 'issuedTo'), todayStr());
         api.update('equipment', record.id, { issuedShift: shift?.id ?? '', issuedOn: today });
       },
     },
     { from: 'issued', to: 'instore', label: 'Return to store', permission: 'equipment.issue', intent: 'primary', after: ({ record, api }) => api.update('equipment', record.id, clearIssue) },
     { from: 'repair', to: 'instore', label: 'Back from repair', permission: 'equipment.issue' },
-    { from: ['instore', 'issued'], to: 'repair', label: 'Send for repair', permission: 'equipment.issue', requiresNote: true, after: ({ record, api }) => api.update('equipment', record.id, clearIssue) },
-    { from: ['instore', 'issued', 'repair'], to: 'lost', label: 'Report lost', permission: 'equipment.issue', requiresNote: true, intent: 'danger' },
+    { from: ['instore', 'issued'], to: 'repair', label: 'Send for repair', permission: 'equipment.issue', requiresNote: true, noteHint: 'the fault and where the item is going', after: ({ record, api }) => api.update('equipment', record.id, clearIssue) },
+    { from: ['instore', 'issued', 'repair'], to: 'lost', label: 'Report lost', permission: 'equipment.issue', requiresNote: true, noteHint: 'when it was last seen and what was done to find it', intent: 'danger' },
   ],
 };
 
@@ -235,7 +235,7 @@ const invoiceWorkflow: WorkflowDef = {
         api.toast(`${record.ref} issued — logged only, nothing is sent to the client in this demo.`, 'info');
       },
     },
-    { from: 'issued', to: 'draft', label: 'Withdraw to draft', permission: 'invoicing', requiresNote: true },
+    { from: 'issued', to: 'draft', label: 'Withdraw to draft', permission: 'invoicing', requiresNote: true, noteHint: 'why the invoice is being withdrawn' },
     { from: 'issued', to: 'paid', label: 'Record payment', permission: 'invoicing', intent: 'primary', after: ({ record, api, today }) => api.update('invoices', record.id, { paidOn: today }) },
   ],
 };
@@ -255,11 +255,11 @@ const collections: CollectionDef[] = [
     createFields: ['date', 'post', 'officer'],
     flags: (r, data, today) => {
       const f: Flag[] = [];
-      const phase = slotPhase(str(r, 'date'), kindOf(data, r), today, nowTime());
+      const phase = slotPhase(str(r, 'date'), kindOf(data, r), today);
       if (r.status === 'open') f.push({ tone: 'red', label: 'Unfilled post' });
       if (r.status === 'absent') f.push({ tone: 'red', label: 'Absent — no relief' });
       if (str(r, 'reliefOfficer') && r.status !== 'absent') f.push({ tone: 'blue', label: 'Relief officer' });
-      if (lateBookOn(data, r, today, nowTime())) f.push({ tone: 'amber', label: 'Not booked on' });
+      if (lateBookOn(data, r, today)) f.push({ tone: 'amber', label: 'Not booked on' });
       if (r.status === 'onduty' && phase === 'past') f.push({ tone: 'amber', label: 'Not booked off' });
       if ((r.status === 'posted' || r.status === 'relief') && phase !== 'past' && postingProblems(data, r, workingOfficerId(r)).length) f.push({ tone: 'red', label: 'Posting breaks a rule' });
       return f;
@@ -289,6 +289,7 @@ const collections: CollectionDef[] = [
       { key: 'entry', label: 'Entry', type: 'textarea', required: true },
       { key: 'by', label: 'Entered by', type: 'text', required: true },
       { key: 'followsUp', label: 'Follows up entry', type: 'ref', ref: 'ob' },
+      { key: 'shiftDate', label: 'Shift date', type: 'date', hidden: true },
     ],
   },
   {
@@ -297,6 +298,7 @@ const collections: CollectionDef[] = [
     subtitle: (r, d) => `${label(INCIDENT_TYPES, str(r, 'type'))} · ${siteName(d, r.values.site)} · ${formatDate(str(r, 'date'))} ${str(r, 'time')}`,
     sort: byDateTime('date', 'time'),
     createFields: ['site', 'date', 'time', 'type', 'severity', 'title', 'description', 'reportedBy', 'clientNotifiedAt'],
+    createDefaults: (today) => ({ date: today, severity: 'medium' }),
     flags: (r, _d, today) => {
       const f: Flag[] = [];
       if (r.status !== 'closed' && isSerious(r)) f.push({ tone: 'red', label: 'Serious incident' });
@@ -329,11 +331,11 @@ const collections: CollectionDef[] = [
     subtitle: (r) => `${formatDate(str(r, 'date'))} ${str(r, 'receivedAt')}${str(r, 'zone') ? ` · ${str(r, 'zone')}` : ''}`,
     sort: byDateTime('date', 'receivedAt'),
     createFields: ['site', 'date', 'receivedAt', 'signal', 'zone'],
-    flags: (r, data, today) => {
-      const s = slaState(data, r, today, nowTime());
-      if (s.state === 'breached') return [{ tone: 'red', label: r.status === 'received' || r.status === 'dispatched' ? `SLA breached — ${duration(s.minutes)} and counting` : `Response ${s.minutes} min — over ${s.sla}-min SLA` }];
+    flags: (r, data) => {
+      const s = slaState(data, r);
+      if (s.state === 'breached') return [{ tone: 'red', label: `Response ${s.minutes} min — over ${s.sla}-min SLA` }];
       if (s.state === 'met') return [{ tone: 'green', label: `Response ${s.minutes} min` }];
-      if (s.state === 'running') return [{ tone: 'amber', label: `${s.minutes} of ${s.sla} min used` }];
+      if (s.state === 'running') return [{ tone: 'amber', label: `On scene due by ${s.dueBy}` }];
       return [];
     },
     fields: [
@@ -361,7 +363,7 @@ const collections: CollectionDef[] = [
       if (missed) f.push({ tone: 'red', label: `${missed} checkpoint${missed === 1 ? '' : 's'} missed` });
       const late = patrolLateBy(r);
       if (late) f.push({ tone: 'amber', label: `Started ${late} min late` });
-      if (r.status === 'started' && (str(r, 'date') < today || minutesBetween(str(r, 'date'), str(r, 'startedAt') || '00:00', today, nowTime()) > 90)) f.push({ tone: 'red', label: 'Round not completed' });
+      if (r.status === 'started' && str(r, 'date') < today) f.push({ tone: 'red', label: 'Round not completed' });
       return f;
     },
     fields: [
@@ -415,6 +417,7 @@ const collections: CollectionDef[] = [
     title: (r) => fullName(r),
     subtitle: (r) => `Grade ${str(r, 'grade')} · ${str(r, 'psiraNo')} · ${str(r, 'employeeNo')}`,
     sort: (a, b) => str(a, 'lastName').localeCompare(str(b, 'lastName')) || str(a, 'firstName').localeCompare(str(b, 'firstName')),
+    createDefaults: () => ({ employment: 'active', grade: 'E' }),
     flags: (r, _d, today) => {
       const f: Flag[] = [];
       const dep = deployability(r, today);
@@ -452,7 +455,7 @@ const collections: CollectionDef[] = [
     flags: (r, data, today) => {
       const f: Flag[] = [];
       const what = PERMIT_LABEL[str(r, 'category')] ?? 'Permit';
-      if (notReturned(data, r, today, nowTime())) f.push({ tone: 'red', label: 'Not returned after shift end' });
+      if (notReturned(data, r, today)) f.push({ tone: 'red', label: 'Not returned after shift end' });
       if (r.status !== 'lost' && permitExpired(r, today)) f.push({ tone: 'red', label: `${what} expired` });
       else if (r.status !== 'lost' && str(r, 'permitExpiry') && daysBetween(today, str(r, 'permitExpiry')) <= 30) f.push({ tone: 'amber', label: `${what} ${daysBetween(today, str(r, 'permitExpiry'))} d left` });
       return f;
@@ -474,6 +477,7 @@ const collections: CollectionDef[] = [
     title: (r) => str(r, 'client'),
     subtitle: (r, d) => `R${contractMonthly(d, r.id).toLocaleString('en-ZA')} per month · ends ${formatDate(str(r, 'endDate'))}`,
     sort: (a, b) => str(a, 'endDate').localeCompare(str(b, 'endDate')),
+    createDefaults: (today) => ({ startDate: today, endDate: addDays(today, 365), slaMinutes: 15, includedCallouts: 3 }),
     flags: (r, _d, today) => {
       const left = daysBetween(today, str(r, 'endDate'));
       if (!str(r, 'endDate')) return [];
@@ -487,7 +491,7 @@ const collections: CollectionDef[] = [
       { key: 'email', label: 'Email', type: 'text', validate: emailRule },
       { key: 'startDate', label: 'Contract start', type: 'date', required: true },
       { key: 'endDate', label: 'Contract end', type: 'date', required: true, table: true, validate: (v, all) => (all.startDate && String(v) < String(all.startDate) ? 'Must be after the start date.' : null) },
-      { key: 'slaMinutes', label: 'Armed response SLA (minutes)', type: 'number', min: 1, max: 120, required: true, table: true },
+      { key: 'slaMinutes', label: 'Armed response SLA', type: 'number', unit: 'min', min: 1, max: 120, required: true, table: true },
       { key: 'includedCallouts', label: 'Call-outs included per month', type: 'number', min: 0 },
       { key: 'calloutFee', label: 'Fee per extra call-out', type: 'money', min: 0 },
       { key: 'penaltyPerShift', label: 'Penalty per unfilled shift (demo rule)', type: 'money', min: 0 },
@@ -604,6 +608,7 @@ const config: IndustryConfig = {
   boundaries: [
     'Not a PSIRA or Firearms Control Act compliance system. Grades, registration, competency and licence checks are demo rules on invented data and prove nothing about a real officer or firearm.',
     'No connection to alarm panels, CCTV, guard-tour (checkpoint) hardware, panic buttons or vehicle tracking — signals, scans and times are typed in or simulated.',
+    'No live clock: today’s day shift is always shown as the shift on duty and tonight’s as upcoming, and response times come from the times typed on the call-out, not from a timer.',
     'No link to SAPS. Case numbers are fictional and use a DEMO-CAS format.',
     'No payroll, overtime or Sectoral Determination 6 calculations. The rest rule on the roster is a simple demo rule, not labour-law advice.',
     'Client reports, invoices and messages are logged and previewed only — nothing is sent.',
@@ -611,9 +616,9 @@ const config: IndustryConfig = {
   ],
   guide: [
     { title: 'Fill an unfilled post', detail: 'Tomorrow’s armed cash-office post has nobody on it. Try posting an officer with a lapsed PSIRA registration, too low a grade or no firearm competency — each is refused with the reason — then post an eligible one.', to: 'roster/roster_1', as: 'u_ctl' },
-    { title: 'Book an officer off', detail: 'Switch the roster to the list view and press “Book off” on an on-duty officer. It is refused until the site’s shift handover entry is written and signed in the occurrence book — the shift page has a shortcut.', to: 'roster', as: 'u_ctl' },
-    { title: 'Dispatch armed response', detail: 'A panic signal has just come in. Pick an available vehicle (one is in repair, two are committed), dispatch it, then mark it on scene to see the response time against the SLA.', to: 'callouts/callouts_1', as: 'u_ctl' },
-    { title: 'Close an incident properly', detail: 'This break-in cannot go to the client without a root cause and a SAPS case number (or the reason there is none), and cannot be closed without an outcome. Edit it, log the client report, then close it.', to: 'incidents/incidents_1', as: 'u_dir' },
+    { title: 'Book an officer off', detail: 'Open any on-duty shift from the grid and press “Book off”. It is refused until the site’s shift handover entry is written and signed in the occurrence book — the “Shift handover” panel on the same page does both.', to: 'roster', as: 'u_ctl' },
+    { title: 'Dispatch armed response', detail: 'A panic signal is waiting for a vehicle. Pick one in the dispatch form — vehicles in repair, unlicensed or already committed are refused — then mark it on scene to see the response time against the SLA.', to: 'callouts/callouts_1', as: 'u_ctl' },
+    { title: 'Close an incident properly', detail: 'This break-in cannot go to the client without a root cause and a SAPS case number (or the reason there is none), and cannot be closed without an outcome. Try the steps, fill in the close-out form on the page, log the client report, then close it.', to: 'incidents/incidents_1', as: 'u_dir' },
     { title: 'Issue a firearm', detail: 'Use the issue form: an officer on an unarmed post or without firearm competency is refused; an officer on an armed post this shift is accepted. Nothing leaves a real armoury.', to: 'equipment/equipment_1', as: 'u_arm' },
     { title: 'Submit a site inspection', detail: 'Two checklist items are below satisfactory. Submit the inspection and a corrective action is raised for each; the site drops off the “overdue for inspection” list.', to: 'inspections/inspections_1', as: 'u_sup' },
   ],

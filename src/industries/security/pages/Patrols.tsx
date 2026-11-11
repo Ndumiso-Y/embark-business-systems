@@ -7,7 +7,7 @@ import { addDays, formatDate } from '../../../core/lib/dates';
 import { Empty, Field, Notice, PageHeader, Panel, Stat, Tag } from '../../../core/components/ui';
 import { RecordTable } from '../../../core/components/records';
 import { PATROL_GRACE_MIN, SHIFT_SHORT, checkpointList } from '../data';
-import { currentSlot, minutesBetween, officerName, patrolCompleteProblem, patrolLateBy, patrolMissed, shiftsIn, siteName, siteOfShift, workingOfficerId, duration } from '../helpers';
+import { currentSlot, kindOfTime, officerName, patrolCompleteProblem, patrolLateBy, patrolMissed, shiftsIn, siteName, siteOfShift, workingOfficerId } from '../helpers';
 import { useClock } from './format';
 
 export default function Patrols() {
@@ -17,7 +17,7 @@ export default function Patrols() {
   const { can } = useUser();
   const { today, time } = useClock();
   const def = act.def('patrols');
-  const cur = currentSlot(today, time);
+  const cur = currentSlot(today);
   const sites = records(data, 'sites');
   const all = [...records(data, 'patrols')].sort(def.sort);
   const running = all.filter((p) => p.status === 'started');
@@ -37,7 +37,7 @@ export default function Patrols() {
     if (!s) { act.toast('Choose the site for the patrol round.', 'err'); return; }
     if (!(num(s, 'checkpoints') > 0)) { act.toast(`${str(s, 'name')} has no patrol checkpoints set up.`, 'err'); return; }
     const who = officer || (onDuty[0] ? workingOfficerId(onDuty[0]) : '');
-    const r = act.create('patrols', { site, date: today, shift: currentSlot(today, time).kind, dueAt: due || time, startedAt: time, officer: who, checkpoints: num(s, 'checkpoints') }, 'started', 'Patrol round started');
+    const r = act.create('patrols', { site, date: today, shift: kindOfTime(time), dueAt: due || time, startedAt: time, officer: who, checkpoints: num(s, 'checkpoints') }, 'started', 'Patrol round started');
     act.toast(`${r.ref} started at ${str(s, 'name')} — scan the checkpoints below`);
     setDue('');
   };
@@ -93,7 +93,7 @@ function Round({ patrol: p }: { patrol: DemoRecord }) {
   const base = useBase();
   const act = useActions();
   const { can } = useUser();
-  const { today, time } = useClock();
+  const { time } = useClock();
   const points = checkpointList(num(p, 'checkpoints'));
   const [done, setDone] = useState<boolean[]>(() => points.map(() => false));
   const [reason, setReason] = useState('');
@@ -112,7 +112,7 @@ function Round({ patrol: p }: { patrol: DemoRecord }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
         <div>
           <Link to={`${base}/patrols/${p.id}`}><b>{siteName(data, p.values.site)}</b></Link>
-          <div className="muted-note">{p.ref} · started {str(p, 'startedAt')} ({duration(Math.max(0, minutesBetween(str(p, 'date'), str(p, 'startedAt') || time, today, time)))} ago) · {officerName(data, p.values.officer)}</div>
+          <div className="muted-note">{p.ref} · {formatDate(str(p, 'date'))} · due {str(p, 'dueAt') || '—'} · started {str(p, 'startedAt')} · {officerName(data, p.values.officer)}</div>
         </div>
         <span className="flags">
           {late > 0 && <Tag tone="amber">Started {late} min late</Tag>}

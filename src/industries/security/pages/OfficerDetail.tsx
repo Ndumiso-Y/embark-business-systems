@@ -29,14 +29,14 @@ function Compliance({ officer: o }: { officer: DemoRecord }) {
   const base = useBase();
   const act = useActions();
   const { hasModule } = useUser();
-  const { today, time } = useClock();
+  const { today } = useClock();
   const dep = deployability(o, today);
   const rosterDef = act.def('roster');
   const mine = records(data, 'roster')
     .filter((r) => str(r, 'officer') === o.id || str(r, 'reliefOfficer') === o.id)
     .map((r) => ({ r, key: slotKey(str(r, 'date'), kindOf(data, r)) }))
     .sort((a, b) => a.key.localeCompare(b.key));
-  const cur = currentSlot(today, time);
+  const cur = currentSlot(today);
   const now = slotKey(cur.date, cur.kind);
   const upcoming = mine.filter((x) => x.key >= now || x.r.status === 'onduty').slice(0, 5);
   const past = mine.filter((x) => x.key < now && x.r.status !== 'onduty').slice(-5).reverse();
@@ -80,7 +80,7 @@ function Aside({ officer: o }: { officer: DemoRecord }) {
   const data = useData();
   const base = useBase();
   const { hasModule } = useUser();
-  const { today, time } = useClock();
+  const { today } = useClock();
   const items = issuedTo(data, o.id);
   return (
     <Panel title="Equipment on issue" meta="Issued at book-on, returned at book-off">
@@ -89,7 +89,7 @@ function Aside({ officer: o }: { officer: DemoRecord }) {
           {items.map((e) => (
             <li key={e.id}>
               <div className="grow">{hasModule('equipment') ? <Link to={`${base}/equipment/${e.id}`}><b>{equipmentLabel(e)}</b></Link> : <b>{equipmentLabel(e)}</b>}<small>Issued {formatDate(str(e, 'issuedOn'))}</small></div>
-              {notReturned(data, e, today, time) && <Tag tone="red">Not returned</Tag>}
+              {notReturned(data, e, today) && <Tag tone="red">Not returned</Tag>}
             </li>
           ))}
         </ul>

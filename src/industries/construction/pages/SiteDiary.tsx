@@ -104,7 +104,7 @@ export default function SiteDiary() {
                       <Link to={`${base}/diary/${d.id}`}><b>{projectName(data, d.values.project)}</b></Link>
                       <small>{formatDate(str(d, 'date'))} · {diaryLabour(d)} people{num(d, 'delayHours') ? ` · ${num(d, 'delayHours')} h delay${str(d, 'delayCause') ? '' : ' — cause missing'}` : ''}</small>
                     </div>
-                    <WorkflowActions def={def} record={d} compact />
+                    {can('diary.sign') && <WorkflowActions def={def} record={d} compact />}
                   </li>
                 ))}
               </ul>

@@ -7,7 +7,7 @@ import RoleBar from '../../../core/components/RoleBar';
 import type { Tone } from '../../../core/types';
 import { DEFAULT_SLA_MIN, INSPECTION_INTERVAL_DAYS, SEVERITIES, SHIFT_SHORT, SIGNALS, label } from '../data';
 import {
-  ACTIVE_CALLOUT, coverageNow, dailyCoverage, daysSinceInspection, duration, elapsedMinutes, equipmentLabel, fullName, inspectionOverdue, invoiceOverdue, lateBookOn,
+  ACTIVE_CALLOUT, coverageNow, dailyCoverage, daysSinceInspection, equipmentLabel, fullName, inspectionOverdue, invoiceOverdue, lateBookOn,
   notReturned, officerExpiries, officerName, permitExpired, postLabel, responseStats, sapsProblem, shiftTitle, siteName, slaState,
 } from '../helpers';
 import { pctTone, shortDate, useClock } from './format';
@@ -17,16 +17,17 @@ export default function Dashboard() {
   const data = useData();
   const base = useBase();
   const { user, hasModule } = useUser();
-  const { today, time } = useClock();
+  const { today } = useClock();
 
-  const cover = coverageNow(data, today, time);
+  const cover = coverageNow(data, today);
   const roster = records(data, 'roster');
-  const late = roster.filter((r) => lateBookOn(data, r, today, time) && daysBetween(str(r, 'date'), today) <= 1);
+  const late = roster.filter((r) => lateBookOn(data, r, today) && daysBetween(str(r, 'date'), today) <= 1);
   const incidents = records(data, 'incidents');
   const open = incidents.filter((i) => i.status !== 'closed');
   const sev = (s: string) => open.filter((i) => str(i, 'severity') === s).length;
   const callouts = records(data, 'callouts');
   const active = callouts.filter((c) => ACTIVE_CALLOUT.includes(c.status ?? ''));
+  const awaiting = active.filter((c) => c.status === 'received');
   const stats = responseStats(data, addDays(today, -30), today);
   const officers = records(data, 'officers');
   const expiring = officers.flatMap((o) => officerExpiries(o, today).filter((e) => (e.key === 'psiraExpiry' || e.key === 'competencyExpiry') && (e.state === 'overdue' || e.state === 'due-soon')).map((e) => ({ o, e })));
@@ -34,7 +35,7 @@ export default function Dashboard() {
   const sites = records(data, 'sites');
   const overdueSites = sites.filter((s) => inspectionOverdue(data, s.id, today));
   const equipment = records(data, 'equipment');
-  const outstanding = equipment.filter((e) => notReturned(data, e, today, time));
+  const outstanding = equipment.filter((e) => notReturned(data, e, today));
   const permits = equipment.filter((e) => e.status !== 'lost' && permitExpired(e, today));
   const actionsOverdue = records(data, 'actions').filter((a) => a.status === 'open' && str(a, 'due') < today);
   const invoicesOverdue = records(data, 'invoices').filter((i) => invoiceOverdue(i, today));
@@ -48,7 +49,8 @@ export default function Dashboard() {
 
   type Item = { to: string; title: string; sub: string; tone: Tone; mod: string };
   const attention: Item[] = [
-    ...active.filter((c) => slaState(data, c, today, time).state === 'breached').map((c) => ({ to: `callouts/${c.id}`, title: `${c.ref} past the response SLA`, sub: `${siteName(data, c.values.site)} · ${label(SIGNALS, str(c, 'signal'))} · ${duration(elapsedMinutes(c, today, time))} since the signal`, tone: 'red' as const, mod: 'callouts' })),
+    ...awaiting.map((c) => ({ to: `callouts/${c.id}`, title: `${c.ref} awaiting dispatch`, sub: `${siteName(data, c.values.site)} · ${label(SIGNALS, str(c, 'signal'))} received ${str(c, 'receivedAt')} · due on scene by ${slaState(data, c).dueBy}`, tone: 'red' as const, mod: 'callouts' })),
+    ...active.filter((c) => slaState(data, c).state === 'breached').map((c) => ({ to: `callouts/${c.id}`, title: `${c.ref} arrived outside the response SLA`, sub: `${siteName(data, c.values.site)} · ${slaState(data, c).minutes} min against ${slaState(data, c).sla}`, tone: 'red' as const, mod: 'callouts' })),
     ...cover.unfilled.slice(0, 4).map((u) => ({ to: u.shift ? `roster/${u.shift.id}` : 'roster', title: `Unfilled now: ${postLabel(data, u.post)}`, sub: `${u.reason} · ${SHIFT_SHORT[cover.slot.kind]} shift`, tone: 'red' as const, mod: 'roster' })),
     ...late.map((r) => ({ to: `roster/${r.id}`, title: `${officerName(data, r.values.reliefOfficer || r.values.officer)} has not booked on`, sub: shiftTitle(data, r), tone: 'amber' as const, mod: 'roster' })),
     ...open.filter((i) => sapsProblem(i)).map((i) => ({ to: `incidents/${i.id}`, title: `${i.ref} serious incident without a SAPS case number`, sub: `${str(i, 'title')} · ${siteName(data, i.values.site)}`, tone: 'red' as const, mod: 'incidents' })),
@@ -63,7 +65,7 @@ export default function Dashboard() {
 
   return (
     <>
-      <PageHeader kicker={`${config.businessName} / Control room`} title={`Good day, ${user.name.split(' ')[0]}`} subtitle={`${formatDate(today)} ${time} · control room overview built from the live demo records.`}
+      <PageHeader kicker={`${config.businessName} / Control room`} title={`Good day, ${user.name.split(' ')[0]}`} subtitle={`${formatDate(today)} · control room overview built from the live demo records.`}
         actions={hasModule('roster') ? <Link className="btn primary" to={`${base}/roster`}>Open duty roster</Link> : undefined} />
       {cover.covered === 0 && cover.posts > 0 && (
         <Notice tone="amber">The demo roster only runs three days ahead of the day it was seeded, so nobody is rostered for the shift running now. Open <Link to={`${base}/settings`}>Settings &amp; reset</Link> to re-seed the demo around today.</Notice>
@@ -83,8 +85,8 @@ export default function Dashboard() {
         <Stat label="Posts covered now" value={`${cover.covered}/${cover.posts}`} tone={cover.unfilled.length ? 'red' : 'accent'} sub={`${cover.pct}% coverage · ${cover.unfilled.length} unfilled`} />
         <Stat label="Officers on duty" value={cover.onDuty} sub={`${late.length} posted but not booked on`} />
         <Stat label="Open incidents" value={open.length} tone={sev('high') ? 'red' : undefined} sub={SEVERITIES.map((s) => `${sev(s.value)} ${s.value}`).join(' · ')} />
-        <Stat label="Active call-outs" value={active.length} tone={active.some((c) => slaState(data, c, today, time).state === 'breached') ? 'red' : undefined}
-          sub={active.length ? `longest running ${duration(Math.max(...active.map((c) => elapsedMinutes(c, today, time))))}` : 'no vehicle committed'} />
+        <Stat label="Active call-outs" value={active.length} tone={awaiting.length ? 'red' : undefined}
+          sub={active.length ? `${awaiting.length} awaiting dispatch · ${active.filter((c) => c.status === 'dispatched').length} en route · ${active.filter((c) => c.status === 'onscene').length} on scene` : 'no vehicle committed'} />
       </div>
       <div className="section-gap" />
       <div className="stat-grid">
@@ -127,17 +129,17 @@ export default function Dashboard() {
           {attention.length > 12 && <p className="muted-note" style={{ marginTop: 10 }}>+ {attention.length - 12} more items</p>}
         </Panel>
         <div className="stack">
-          <Panel title="Active call-outs" meta="Elapsed time since the alarm signal" right={hasModule('callouts') ? <Link className="btn sm" to={`${base}/callouts`}>Armed response</Link> : undefined}>
+          <Panel title="Active call-outs" meta="Signal time, progress and the time the vehicle is due on scene" right={hasModule('callouts') ? <Link className="btn sm" to={`${base}/callouts`}>Armed response</Link> : undefined}>
             {active.length ? (
               <ul className="list" data-testid="active-callouts">
                 {active.map((c) => {
-                  const s = slaState(data, c, today, time);
+                  const s = slaState(data, c);
                   return (
                     <li key={c.id}>
-                      <span className="time-chip">{duration(elapsedMinutes(c, today, time))}</span>
+                      <span className="time-chip">{str(c, 'receivedAt')}</span>
                       <div className="grow">
                         {hasModule('callouts') ? <Link to={`${base}/callouts/${c.id}`}><b>{siteName(data, c.values.site)}</b></Link> : <b>{siteName(data, c.values.site)}</b>}
-                        <small>{label(SIGNALS, str(c, 'signal'))} · received {str(c, 'receivedAt')}</small>
+                        <small>{label(SIGNALS, str(c, 'signal'))} · {c.status === 'onscene' ? `dispatched ${str(c, 'dispatchedAt')}, on scene ${str(c, 'onSceneAt')}` : `due on scene by ${s.dueBy} (${s.sla}-min SLA)`}</small>
                       </div>
                       <Tag tone={s.state === 'breached' ? 'red' : c.status === 'onscene' ? 'blue' : 'amber'}>{c.status === 'onscene' ? `On scene in ${s.minutes} min` : c.status === 'dispatched' ? 'En route' : 'Awaiting dispatch'}</Tag>
                     </li>

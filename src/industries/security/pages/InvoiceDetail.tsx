@@ -57,10 +57,10 @@ function Aside({ invoice: r }: { invoice: DemoRecord }) {
   const data = useData();
   const base = useBase();
   const { hasModule } = useUser();
-  const { today, time } = useClock();
+  const { today } = useClock();
   const contract = rec(data, 'contracts', r.values.contract);
   const period = str(r, 'period');
-  const live = contract ? unfilledShifts(data, contract.id, period, today, time) : [];
+  const live = contract ? unfilledShifts(data, contract.id, period, today) : [];
   const extras = contract ? calloutExtras(data, contract, period) : null;
   return (
     <>

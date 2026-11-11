@@ -61,7 +61,7 @@ function ScoreSheet({ id }: { id: string }) {
       </div>
       {(low.length > 0 || str(r, 'correctiveAction')) && (
         <div style={{ marginTop: 14 }}>
-          {low.length > 0 && <Notice tone="amber">{low.map((a) => a.label).join(' and ')} scored 2 or below. A corrective action with a due date is required before this inspection can be submitted.</Notice>}
+          {low.length > 0 && r.status === 'draft' && <Notice tone="amber">{low.map((a) => a.label).join(' and ')} scored 2 or below. A corrective action with a due date is required before this inspection can be submitted.</Notice>}
           <div className="form-grid" style={{ marginTop: 12 }}>
             <div className="span-2">
               <Field label="Corrective action"><textarea className="textarea" aria-label="Corrective action" disabled={!editable} value={String(v.correctiveAction ?? '')} onChange={(e) => setDraft({ ...(draft ?? {}), correctiveAction: e.target.value })} placeholder="What will be done, and by whom" /></Field>

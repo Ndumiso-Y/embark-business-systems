@@ -5,7 +5,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import type { CollectionDef, DemoRecord, ModuleDef, Transition } from '../types';
 import { availableTransitions, can, PERMISSION_REFUSED, permissionHint, searchText } from '../engine';
 import { useActions, useBase, useData, useIndustry, useUser } from '../context';
-import { formatDateTime, todayIso } from '../lib/dates';
+import { formatDate, formatDateTime, todayIso } from '../lib/dates';
 import { Confirm, Empty, Flags, KeyValues, Modal, PageHeader, Panel, Segmented, StatusTag, Field } from './ui';
 import { formatValue, RecordFormModal, useVisibleFields } from './fields';
 import { IcoBack, IcoEdit, IcoPlus, IcoSearch, IcoTrash } from './Icons';
@@ -20,7 +20,7 @@ export function useModule(): ModuleDef {
 }
 
 /* ---------------- Workflow action buttons ---------------- */
-export function WorkflowActions({ def, record, compact, onDone }: { def: CollectionDef; record: DemoRecord; compact?: boolean; onDone?: (to: string) => void }) {
+export function WorkflowActions({ def, record, compact, onDone, hide }: { def: CollectionDef; record: DemoRecord; compact?: boolean; onDone?: (to: string) => void; /** Target states whose buttons a custom page renders itself. */ hide?: string[] }) {
   const config = useIndustry();
   const data = useData();
   const { user } = useUser();
@@ -30,6 +30,7 @@ export function WorkflowActions({ def, record, compact, onDone }: { def: Collect
   const [err, setErr] = useState('');
   if (!def.workflow) return null;
   const options = availableTransitions(def.workflow, record, user, data)
+    .filter((o) => !hide?.includes(o.transition.to))
     .map((o) => (o.blocked === PERMISSION_REFUSED ? { ...o, blocked: permissionHint(config, data, o.transition.permission), byPermission: true } : { ...o, byPermission: false }));
   if (!options.length) return compact ? null : <span className="muted-note">No further steps — this is a final state.</span>;
 
@@ -47,7 +48,13 @@ export function WorkflowActions({ def, record, compact, onDone }: { def: Collect
           <button key={t.label + t.to} type="button" title={blocked ?? undefined}
             className={`btn ${compact ? 'xs' : 'sm'} ${t.intent === 'primary' ? 'primary' : t.intent === 'danger' ? 'danger' : ''}`}
             disabled={byPermission}
-            onClick={() => (t.requiresNote ? setPending(t) : blocked ? act.toast(blocked, 'err') : run(t))}>
+            onClick={() => {
+              if (!t.requiresNote) return blocked ? act.toast(blocked, 'err') : run(t);
+              // Don't ask for a note when the step is blocked for a reason no note can fix.
+              const withNote = t.guard?.({ record, data, user, note: '(note)' }) ?? null;
+              if (blocked && blocked === withNote) return act.toast(blocked, 'err');
+              setPending(t);
+            }}>
             {t.label}
           </button>
         ))}
@@ -73,7 +80,7 @@ export function History({ record }: { record: DemoRecord }) {
         <li key={i}>
           <div>
             <b>{h.action}</b>
-            <small>{h.by} · {h.role} · {formatDateTime(h.at)}</small>
+            <small>{h.by} · {h.role} · {new Date(h.at).getTime() > Date.now() ? formatDate(h.at.slice(0, 10)) : formatDateTime(h.at)}</small>
             {h.note && <div className="note">{h.note}</div>}
           </div>
         </li>
@@ -214,7 +221,7 @@ export function RegisterPage({ collection, intro, children }: { collection?: str
 }
 
 /* ---------------- Generic record detail ---------------- */
-export function RecordDetail({ collection, aside, children, backLabel }: { collection?: string; aside?: ReactNode; children?: ReactNode; backLabel?: string }) {
+export function RecordDetail({ collection, aside, children, backLabel, hideTransitions }: { collection?: string; aside?: ReactNode; children?: ReactNode; backLabel?: string; /** Target states handled by controls on the custom page. */ hideTransitions?: string[] }) {
   const config = useIndustry();
   const data = useData();
   const m = useModule();
@@ -236,8 +243,10 @@ export function RecordDetail({ collection, aside, children, backLabel }: { colle
       </>
     );
   }
-  const hidden = def.fields.length - fields.length;
-  const editable = can(user, def.editPermission);
+  const hidden = def.fields.filter((f) => !f.hidden).length - fields.length;
+  // Finished records (paid, closed, verified …) are locked: a real system would not let them be edited or deleted.
+  const locked = !!def.workflow?.states.find((st) => st.key === record.status)?.terminal;
+  const editable = can(user, def.editPermission) && !locked;
   return (
     <>
       <Link className="back-link" to={`${base}/${m.key}`}><IcoBack /> {backLabel ?? m.label}</Link>
@@ -247,7 +256,7 @@ export function RecordDetail({ collection, aside, children, backLabel }: { colle
             <button className="btn" onClick={() => setEditing(true)} data-testid="edit-record"><IcoEdit /> Edit</button>
             <button className="btn danger" onClick={() => setDeleting(true)}><IcoTrash /> Delete</button>
           </>
-        ) : undefined} />
+        ) : locked && can(user, def.editPermission) ? <span className="tag dark" title="Records in a final state cannot be edited or deleted">Final · locked</span> : undefined} />
       <div className="doc-grid">
         <div className="stack">
           {def.workflow && (
@@ -259,7 +268,7 @@ export function RecordDetail({ collection, aside, children, backLabel }: { colle
                   return <li key={s.key} className={s.key === record.status ? 'current' : idx < cur ? 'done' : ''}><span>{s.label}</span></li>;
                 })}
               </ol>
-              <WorkflowActions def={def} record={record} />
+              <WorkflowActions def={def} record={record} hide={hideTransitions} />
             </Panel>
           )}
           {children}

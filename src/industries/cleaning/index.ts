@@ -14,7 +14,7 @@ import { buildCleaningSeed } from './seed';
 import {
   allocationProblem, budgetState, clientName, complaintClock, completionProblem, equipmentFlags, freqDays, fullName, inspectionFailed, inspectionProblems,
   inspectionScore, invoiceFigures, invoiceOverdue, issueProblems, issueValue, jobScheduleProblem, nowStamp, periodicDue, periodicLabel, periodicStartProblem,
-  quoteApprovalReasons, quoteFigures, quoteSendProblem, rand, reliefProblem, rosterProblems, shiftAbsent, shiftCleaners, shiftReliefs, siteFlags, siteName,
+  nowTime, quoteApprovalReasons, quoteFigures, quoteSendProblem, rand, reliefProblem, rosterProblems, shiftAbsent, shiftCleaners, shiftReliefs, siteFlags, siteName,
   siteOf, slaTarget, staffFlags, staffing, toCsv, todayStr, clockIns,
 } from './helpers';
 export * from './helpers';
@@ -45,7 +45,7 @@ const siteWorkflow: WorkflowDef = {
     { key: 'ended', label: 'Contract ended', tone: 'dark', terminal: true },
   ],
   transitions: [
-    { from: 'active', to: 'notice', label: 'Record notice of termination', permission: 'sites.manage', requiresNote: true, intent: 'danger' },
+    { from: 'active', to: 'notice', label: 'Record notice of termination', permission: 'sites.manage', requiresNote: true, noteHint: 'who gave notice, when and why', intent: 'danger' },
     { from: 'notice', to: 'active', label: 'Renew contract', permission: 'sites.manage', intent: 'primary',
       guard: ({ record }) => (str(record, 'contractEnd') > addDays(todayStr(), 60) ? null : 'Update the contract end date first (Edit) — a renewed contract must run for more than 60 days.') },
     { from: 'notice', to: 'ended', label: 'Close contract', permission: 'sites.manage', requiresNote: true },
@@ -69,12 +69,12 @@ const shiftWorkflow: WorkflowDef = {
     { from: 'scheduled', to: 'clockedin', label: 'Start shift', permission: 'attendance', intent: 'primary',
       guard: ({ record }) => {
         if (str(record, 'date') !== todayStr()) return 'A shift can only be started on its own day.';
-        return Object.keys(clockIns(record)).length ? null : 'Clock in at least one cleaner first (attendance panel).';
+        return Object.keys(clockIns(record)).length ? null : 'Clock in at least one cleaner first (“Clock in” next to a name under Roster & attendance).';
       } },
-    { from: ['scheduled', 'clockedin', 'relief'], to: 'short', label: 'Log absence', permission: 'attendance', requiresNote: true, intent: 'danger',
+    { from: ['scheduled', 'clockedin', 'relief'], to: 'short', label: 'Log absence', permission: 'attendance', requiresNote: true, intent: 'danger', noteHint: 'say why the cleaner is absent and who was told',
       guard: ({ record }) => {
         if (str(record, 'date') > todayStr()) return 'An absence can only be logged on or after the day of the shift.';
-        return shiftAbsent(record).some((r) => shiftCleaners(record).includes(r)) ? null : 'Mark who is absent first (attendance panel on the shift).';
+        return shiftAbsent(record).some((r) => shiftCleaners(record).includes(r)) ? null : 'Mark who is absent first (“Absent” next to a name under Roster & attendance).';
       } },
     { from: 'short', to: 'relief', label: 'Assign relief cleaner', permission: 'schedule.manage', intent: 'primary',
       guard: ({ record, data }) => reliefProblem(record, data),
@@ -107,7 +107,7 @@ const periodicWorkflow: WorkflowDef = {
         api.update('periodic', record.id, { lastDone: today, nextDue: next }, `Done ${formatDate(today)} — next due ${formatDate(next)}`);
         api.toast(`${periodicLabel(record)} done — next due ${formatDate(next)}`);
       } },
-    { from: 'done', to: 'signedoff', label: 'Log client sign-off (simulated)', permission: 'inspections.signoff', requiresNote: true },
+    { from: 'done', to: 'signedoff', label: 'Log client sign-off (simulated)', permission: 'inspections.signoff', requiresNote: true, noteHint: 'who at the client signed off, and how (walk-through, email, phone)' },
     { from: 'signedoff', to: 'planned', label: 'Plan next occurrence', permission: 'periodic' },
   ],
 };
@@ -135,7 +135,7 @@ const inspectionWorkflow: WorkflowDef = {
         api.toast(`Below SLA — re-inspection ${again.ref} scheduled for ${formatDate(due)}`, 'info');
       },
     },
-    { from: 'submitted', to: 'signedoff', label: 'Log client sign-off (simulated)', permission: 'inspections.signoff', requiresNote: true, intent: 'primary' },
+    { from: 'submitted', to: 'signedoff', label: 'Log client sign-off (simulated)', permission: 'inspections.signoff', requiresNote: true, intent: 'primary', noteHint: 'who at the client signed off, and how (walk-through, email, phone)' },
     { from: 'submitted', to: 'draft', label: 'Reopen for correction', permission: 'inspections', requiresNote: true },
   ],
 };
@@ -154,12 +154,12 @@ const complaintWorkflow: WorkflowDef = {
     { from: 'logged', to: 'acknowledged', label: 'Acknowledge', permission: 'complaints', intent: 'primary',
       after: ({ record, api }) => api.update('complaints', record.id, { ackAt: nowStamp() }) },
     { from: 'acknowledged', to: 'inprogress', label: 'Start work', permission: 'complaints',
-      guard: ({ record }) => (str(record, 'assignedTo') ? null : 'Assign a supervisor or team leader first (Edit → Assigned to).') },
+      guard: ({ record }) => (str(record, 'assignedTo') ? null : 'Assign a supervisor or team leader first (“Assign & resolve” panel on the record).') },
     { from: ['acknowledged', 'inprogress'], to: 'resolved', label: 'Mark resolved', permission: 'complaints', intent: 'primary',
-      guard: ({ record }) => (str(record, 'resolution').trim() ? null : 'Record what was done to resolve it before closing (resolution).'),
+      guard: ({ record }) => (str(record, 'resolution').trim() ? null : 'Record what was done to resolve it before closing (“Assign & resolve” panel on the record).'),
       after: ({ record, api, today }) => api.update('complaints', record.id, { resolvedOn: today }) },
     { from: 'resolved', to: 'confirmed', label: 'Client confirmed (simulated)', permission: 'complaints', intent: 'primary' },
-    { from: 'resolved', to: 'inprogress', label: 'Reopen', permission: 'complaints', requiresNote: true, intent: 'danger',
+    { from: 'resolved', to: 'inprogress', label: 'Reopen', permission: 'complaints', requiresNote: true, intent: 'danger', noteHint: 'why the client is not satisfied',
       after: ({ record, api }) => api.update('complaints', record.id, { resolvedOn: '' }) },
   ],
 };
@@ -183,12 +183,13 @@ const issueWorkflow: WorkflowDef = {
         const left = num(item, 'qty') - num(record, 'qty');
         api.update('stock', item.id, { qty: left }, `${num(record, 'qty')} issued to ${siteName(data, record.values.site)} (${record.ref})`);
         const site = siteOf(data, record);
+        api.toast(`${num(record, 'qty')} × ${str(item, 'name')} issued to ${siteName(data, record.values.site)} — ${left} left in store`);
         if (site && budgetState(data, site, today.slice(0, 7)).over) api.toast(`${str(site, 'name')} is now over its monthly consumables budget`, 'info');
-        else if (left <= num(item, 'reorderLevel')) api.toast(`${str(item, 'name')} is at or below its reorder level (${left} left)`, 'info');
+        else if (left <= num(item, 'reorderLevel')) api.toast(`${str(item, 'name')} is at or below its reorder level (${num(item, 'reorderLevel')}) — raise a purchase order`, 'info');
       },
     },
     { from: 'issued', to: 'received', label: 'Confirm received on site', intent: 'primary' },
-    { from: 'requested', to: 'declined', label: 'Decline request', permission: 'stores.issue', requiresNote: true, intent: 'danger' },
+    { from: 'requested', to: 'declined', label: 'Decline request', permission: 'stores.issue', requiresNote: true, noteHint: 'tell the site why the request is declined', intent: 'danger' },
   ],
 };
 
@@ -250,7 +251,7 @@ const quoteWorkflow: WorkflowDef = {
       guard: ({ record, user }) => quoteSendProblem(record, user),
       after: ({ record, api, today, user }) => api.update('quotes', record.id, { sentOn: today, approvedBy: quoteApprovalReasons(record).length ? user.name : '' }) },
     { from: 'sent', to: 'accepted', label: 'Client accepted', permission: 'quotes', intent: 'primary' },
-    { from: 'sent', to: 'declined', label: 'Client declined', permission: 'quotes', requiresNote: true, intent: 'danger' },
+    { from: 'sent', to: 'declined', label: 'Client declined', permission: 'quotes', requiresNote: true, noteHint: 'why the client declined', intent: 'danger' },
     { from: 'accepted', to: 'scheduled', label: 'Schedule job', permission: 'quotes', intent: 'primary',
       guard: ({ record }) => jobScheduleProblem(record, todayStr()) },
     { from: 'scheduled', to: 'completed', label: 'Job completed', permission: 'quotes', intent: 'primary',
@@ -285,7 +286,7 @@ const invoiceWorkflow: WorkflowDef = {
       } },
     { from: 'issued', to: 'paid', label: 'Record payment', permission: 'invoicing', intent: 'primary',
       after: ({ record, api, today }) => api.update('invoices', record.id, { paidOn: today }) },
-    { from: ['draft', 'issued'], to: 'void', label: 'Void invoice', permission: 'invoicing', requiresNote: true, intent: 'danger' },
+    { from: ['draft', 'issued'], to: 'void', label: 'Void invoice', permission: 'invoicing', requiresNote: true, noteHint: 'why the invoice is void', intent: 'danger' },
   ],
 };
 
@@ -371,13 +372,14 @@ const collections: CollectionDef[] = [
       { key: 'date', label: 'Date', type: 'date', required: true, table: true },
       { key: 'start', label: 'Starts', type: 'time', required: true, table: true },
       { key: 'end', label: 'Ends', type: 'time', required: true, table: true, validate: (v, all) => (String(v) <= String(all.start ?? '') ? 'The shift must end after it starts.' : null) },
-      { key: 'cleaners', label: 'Rostered cleaners (staff refs)', type: 'text', hint: 'Managed from the roster panel on the shift.' },
-      { key: 'clockIns', label: 'Clock-ins', type: 'text' },
-      { key: 'absentees', label: 'Absent', type: 'text' },
-      { key: 'reliefs', label: 'Relief cleaners', type: 'text' },
-      { key: 'reliefPick', label: 'Relief cleaner chosen', type: 'ref', ref: 'staff' },
-      { key: 'checklist', label: 'Daily checklist (ticked lines)', type: 'text' },
-      { key: 'missedNote', label: 'Tasks missed and why', type: 'textarea' },
+      // Managed from the roster, attendance and checklist panels on the shift, so kept out of the generic form.
+      { key: 'cleaners', label: 'Rostered cleaners (staff refs)', type: 'text', hidden: true },
+      { key: 'clockIns', label: 'Clock-ins', type: 'text', hidden: true },
+      { key: 'absentees', label: 'Absent', type: 'text', hidden: true },
+      { key: 'reliefs', label: 'Relief cleaners', type: 'text', hidden: true },
+      { key: 'reliefPick', label: 'Relief cleaner chosen', type: 'ref', ref: 'staff', hidden: true },
+      { key: 'checklist', label: 'Daily checklist (ticked lines)', type: 'text', hidden: true },
+      { key: 'missedNote', label: 'Tasks missed and why', type: 'textarea', hidden: true },
     ],
   },
   {
@@ -385,6 +387,7 @@ const collections: CollectionDef[] = [
     title: (r, d) => `${periodicLabel(r)} — ${siteName(d, r.values.site)}`,
     subtitle: (r) => `${label(FREQUENCIES, str(r, 'frequency'))} · next due ${formatDate(str(r, 'nextDue'))}`,
     sort: (a, b) => str(a, 'nextDue').localeCompare(str(b, 'nextDue')),
+    createDefaults: (today) => ({ frequency: 'monthly', nextDue: addDays(today, 7), chargeExtra: 0 }),
     flags: (r, _d, today) => {
       const s = periodicDue(r, today);
       const out: Flag[] = s === 'overdue' ? [{ tone: 'red', label: `Overdue ${daysBetween(str(r, 'nextDue'), today)} days` }] : s === 'due-soon' ? [{ tone: 'amber', label: 'Due this week' }] : [];
@@ -412,6 +415,7 @@ const collections: CollectionDef[] = [
     },
     sort: (a, b) => str(b, 'date').localeCompare(str(a, 'date')),
     createFields: ['site', 'date', 'kind', 'inspector'],
+    createDefaults: (today) => ({ date: today, kind: 'routine' }),
     flags: (r, d, today) => {
       const out: Flag[] = [];
       if (r.status === 'draft' && str(r, 'kind') === 'reinspection') out.push(str(r, 'date') < today ? { tone: 'red', label: 'Re-inspection overdue' } : { tone: 'amber', label: 'Re-inspection due' });
@@ -424,7 +428,8 @@ const collections: CollectionDef[] = [
       { key: 'date', label: 'Inspection date', type: 'date', required: true, table: true },
       { key: 'kind', label: 'Type', type: 'select', options: INSPECTION_KINDS, required: true, table: true },
       { key: 'inspector', label: 'Inspected by', type: 'ref', ref: 'staff', required: true, table: true },
-      ...INSPECTION_AREAS.map((a) => ({ key: a.key, label: `${a.label} (1–5)`, type: 'number' as const, min: 1, max: 5 })),
+      // Scored on the inspection's own score sheet, so kept out of the generic form and details.
+      ...INSPECTION_AREAS.map((a) => ({ key: a.key, label: `${a.label} (1–5)`, type: 'number' as const, min: 1, max: 5, hidden: true })),
       { key: 'notes', label: 'Findings', type: 'textarea' },
       { key: 'correctiveAction', label: 'Corrective action', type: 'textarea' },
       { key: 'correctiveDue', label: 'Corrective action due', type: 'date' },
@@ -438,6 +443,7 @@ const collections: CollectionDef[] = [
     subtitle: (r) => `${label(COMPLAINT_KINDS, str(r, 'kind'))} · ${label(PRIORITIES, str(r, 'priority'))} · ${formatDate(str(r, 'date'))} ${str(r, 'time')}`,
     sort: (a, b) => (str(b, 'date') + str(b, 'time')).localeCompare(str(a, 'date') + str(a, 'time')),
     createFields: ['site', 'kind', 'category', 'priority', 'date', 'time', 'reportedBy', 'description'],
+    createDefaults: (today) => ({ kind: 'complaint', priority: 'normal', date: today, time: nowTime() }),
     flags: (r) => {
       const c = complaintClock(r);
       const out: Flag[] = [];
@@ -455,9 +461,9 @@ const collections: CollectionDef[] = [
       { key: 'reportedBy', label: 'Reported by', type: 'text', required: true, table: true },
       { key: 'description', label: 'What the client reported', type: 'textarea', required: true },
       { key: 'assignedTo', label: 'Assigned to', type: 'ref', ref: 'staff' },
-      { key: 'ackAt', label: 'Acknowledged at', type: 'text' },
+      { key: 'ackAt', label: 'Acknowledged at', type: 'text', hidden: true },
       { key: 'resolution', label: 'Resolution — what was done', type: 'textarea' },
-      { key: 'resolvedOn', label: 'Resolved on', type: 'date' },
+      { key: 'resolvedOn', label: 'Resolved on', type: 'date', hidden: true },
     ],
   },
   {
@@ -487,6 +493,7 @@ const collections: CollectionDef[] = [
     title: (r, d) => `${str(findRecord(d, 'stock', str(r, 'item')), 'name') || 'Item'} → ${siteName(d, r.values.site)}`,
     subtitle: (r, d) => `${num(r, 'qty')} × ${str(findRecord(d, 'stock', str(r, 'item')), 'unit')} · ${formatDate(str(r, 'date'))}`,
     sort: (a, b) => str(b, 'date').localeCompare(str(a, 'date')),
+    createDefaults: (today) => ({ date: today, qty: 1 }),
     flags: (r, d, today) => {
       if (r.status !== 'requested') return [];
       const out: Flag[] = [];
@@ -566,9 +573,10 @@ const collections: CollectionDef[] = [
       { key: 'jobDate', label: 'Job date', type: 'date', table: true },
       { key: 'teamSize', label: 'Team size', type: 'number', min: 1, max: 40, table: true },
       { key: 'teamLeader', label: 'Team leader', type: 'ref', ref: 'staff' },
-      { key: 'sentOn', label: 'Sent on', type: 'date' },
-      { key: 'approvedBy', label: 'Approved by', type: 'text' },
-      { key: 'invoice', label: 'Invoice', type: 'ref', ref: 'invoices' },
+      // Stamped by the workflow and shown in the quote's own panels.
+      { key: 'sentOn', label: 'Sent on', type: 'date', hidden: true },
+      { key: 'approvedBy', label: 'Approved by', type: 'text', hidden: true },
+      { key: 'invoice', label: 'Invoice', type: 'ref', ref: 'invoices', hidden: true },
       { key: 'lines', label: 'Quote lines (hours × rate, consumables, equipment)', type: 'lines', wide: true },
     ],
   },
@@ -577,6 +585,7 @@ const collections: CollectionDef[] = [
     title: (r) => str(r, 'billTo'),
     subtitle: (r, d) => `${str(r, 'site') ? siteName(d, r.values.site) : label(INVOICE_KINDS, str(r, 'kind'))} · ${str(r, 'period') ? monthLabel(str(r, 'period')) : ''} · ${rand(invoiceFigures(r).total)}`,
     sort: (a, b) => str(b, 'date').localeCompare(str(a, 'date')) || str(a, 'billTo').localeCompare(str(b, 'billTo')),
+    createDefaults: (today) => ({ kind: 'onceoff', period: today.slice(0, 7), date: today, dueDate: addDays(today, 30), credit: 0 }),
     flags: (r, _d, today) => {
       const out: Flag[] = [];
       if (invoiceOverdue(r, today)) out.push({ tone: 'red', label: `Overdue ${daysBetween(str(r, 'dueDate'), today)} days` });
@@ -594,7 +603,7 @@ const collections: CollectionDef[] = [
       { key: 'dueDate', label: 'Due date', type: 'date', required: true, table: true },
       { key: 'credit', label: 'Credit — shifts not staffed (excl. VAT)', type: 'money', min: 0 },
       { key: 'creditNote', label: 'Credit basis', type: 'text' },
-      { key: 'paidOn', label: 'Paid on', type: 'date', table: true },
+      { key: 'paidOn', label: 'Paid on', type: 'date', table: true, hint: 'Stamped by “Record payment”.' },
       { key: 'lines', label: 'Invoice lines', type: 'lines', wide: true },
     ],
   },
@@ -604,6 +613,7 @@ const collections: CollectionDef[] = [
     subtitle: (r, d) => `${label(STAFF_ROLES, str(r, 'role'))}${str(r, 'homeSite') ? ` · ${siteName(d, r.values.homeSite)}` : ''}`,
     sort: (a, b) => str(a, 'lastName').localeCompare(str(b, 'lastName')) || str(a, 'firstName').localeCompare(str(b, 'firstName')),
     createFields: ['firstName', 'lastName', 'role', 'phone', 'employmentStart', 'homeSite'],
+    createDefaults: (today) => ({ role: 'cleaner', employmentStart: today }),
     flags: (r, _d, today) => staffFlags(r, today),
     fields: [
       { key: 'firstName', label: 'First name', type: 'text', required: true },
@@ -612,7 +622,8 @@ const collections: CollectionDef[] = [
       { key: 'phone', label: 'Mobile (fictional)', type: 'text', table: true, validate: phoneRule },
       { key: 'employmentStart', label: 'Employment start', type: 'date', required: true },
       { key: 'homeSite', label: 'Based at', type: 'ref', ref: 'sites', table: true },
-      { key: 'inductions', label: 'Site inductions (site refs)', type: 'text', hint: 'Comma-separated site references, e.g. ST-0001, ST-0004. Easier to manage from the staff profile.' },
+      // Ticked per site in the “Site inductions” panel on the staff profile.
+      { key: 'inductions', label: 'Site inductions (site refs)', type: 'text', hidden: true },
       { key: 'icExpiry', label: 'Infection control — valid until', type: 'date', table: true },
       { key: 'chemExpiry', label: 'Chemical handling — valid until', type: 'date', table: true },
       { key: 'heightsExpiry', label: 'Working at heights — valid until', type: 'date' },
@@ -687,12 +698,12 @@ const config: IndustryConfig = {
     'All clients, sites, people, suppliers, chemicals, asset numbers and amounts are fictional.',
   ],
   guide: [
-    { title: 'Take attendance for today', detail: 'On today’s board, clock a cleaner in and watch the site’s staffing level change. Late clock-ins and unfilled places are flagged per site.', to: 'schedule', as: 'u_sup' },
-    { title: 'Cover an absence at a clinic', detail: 'A cleaner is absent at the day clinic. Try the relief cleaners in turn: they are refused for an overlapping shift, a missing site induction or expired infection-control training — only one is eligible.', to: 'schedule/shifts_1', as: 'u_sup' },
-    { title: 'Submit a failed inspection', detail: 'Press “Submit inspection”: it is refused because an area scored 2 has no corrective action. Add one with a due date and submit — the score is below SLA, so a re-inspection is scheduled.', to: 'inspections/inspections_1', as: 'u_sup' },
-    { title: 'Issue stock to sites', detail: 'Issue the three requests. One is refused because there is not enough in store, one because a hazardous chemical is going to a site with no trained cleaner. The third goes through and deducts stock.', to: 'issues', as: 'u_stores' },
-    { title: 'Send a quote that needs approval', detail: 'This post-construction quote is above the approval threshold, so the client liaison cannot send it. Switch to the operations manager in the top bar and it goes.', to: 'quotes/quotes_1', as: 'u_liaison' },
-    { title: 'Draft the month’s invoices', detail: 'Press “Draft contract invoices”. Each site gets its fee plus billable extras, less a credit for every contracted cleaner missing from a completed shift.', to: 'invoices', as: 'u_acc' },
+    { title: 'Take attendance for today', detail: 'On today’s board, press “Clock in” next to a cleaner at a site that has not started yet. The shift starts and the site’s staffing level changes; late clock-ins and unfilled places are flagged per site.', to: 'schedule', as: 'u_sup' },
+    { title: 'Cover an absence at a clinic', detail: 'A cleaner is absent at the day clinic. “Relief cover” lists every relief cleaner with the reason they can or cannot step in — an overlapping shift, no site induction, expired infection-control training. Assign the one who is eligible, clock them in, tick the checklist and complete the shift.', to: 'schedule/shifts_1', as: 'u_sup' },
+    { title: 'Submit a failed inspection', detail: 'Press “Submit inspection”: it is refused because an area scored 2 has no corrective action. Add one with a due date, save and submit — the score is below SLA, so a re-inspection is scheduled by itself.', to: 'inspections/inspections_1', as: 'u_sup' },
+    { title: 'Issue stock to sites', detail: 'Press “Issue from store” on the three requests. One is refused because there is not enough in store, one because a hazardous chemical is going to a site with no trained cleaner. The third goes through and the store count drops.', to: 'issues', as: 'u_stores' },
+    { title: 'Send a quote that needs approval', detail: 'This post-construction quote is above the approval threshold, so the client liaison cannot send it. Switch to the operations manager in the top bar and it goes — then accept it, schedule the job and complete it.', to: 'quotes/quotes_1', as: 'u_liaison' },
+    { title: 'Draft the month’s invoices', detail: 'Press “Draft contract invoices”. Each site gets its fee plus billable extras, less a credit for every contracted cleaner missing from a completed shift. Open a draft to see the sum, then issue it and record the payment.', to: 'invoices', as: 'u_acc' },
   ],
   highlights: [
     'Today’s board by site: staffing level, late clock-ins, absences and relief cover',

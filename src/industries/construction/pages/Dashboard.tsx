@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useBase, useData, useIndustry, useUser } from '../../../core/context';
 import { num, records, str } from '../../../core/engine';
-import { addDays, daysBetween, formatDate, monthKeys, monthShort, relativeWhen } from '../../../core/lib/dates';
+import { daysBetween, formatDate, monthKeys, monthShort, relativeWhen } from '../../../core/lib/dates';
 import { BarChart, Empty, Meters, PageHeader, Panel, Pipeline, Stat } from '../../../core/components/ui';
 import RoleBar from '../../../core/components/RoleBar';
 import type { Tone } from '../../../core/types';

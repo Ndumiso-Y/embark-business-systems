@@ -30,9 +30,9 @@ function Body({ site: s }: { site: DemoRecord }) {
   const base = useBase();
   const act = useActions();
   const { can, hasModule } = useUser();
-  const { today, time } = useClock();
+  const { today } = useClock();
   const [adding, setAdding] = useState(false);
-  const cur = currentSlot(today, time);
+  const cur = currentSlot(today);
   const rosterDef = act.def('roster');
   const incidentDef = act.def('incidents');
   const posts = records(data, 'posts').filter((p) => str(p, 'site') === s.id);
@@ -46,7 +46,7 @@ function Body({ site: s }: { site: DemoRecord }) {
   const ob = records(data, 'ob').filter((e) => str(e, 'site') === s.id).sort(act.def('ob').sort).slice(0, 5);
   return (
     <>
-      <Panel title="Today’s coverage" meta={`${formatDate(today)} · day and night posts · ${SHIFT_SHORT[cur.kind].toLowerCase()} shift running now`} right={<Tag tone={pctTone(p)}>{covered}/{total} posts · {p}%</Tag>}>
+      <Panel title="Today’s coverage" meta={`${formatDate(today)} · day and night posts · ${SHIFT_SHORT[cur.kind].toLowerCase()} shift on duty`} right={<Tag tone={pctTone(p)}>{covered}/{total} posts · {p}%</Tag>}>
         {posts.length ? (
           <div className="table-wrap">
             <table className="table" data-testid="site-coverage">

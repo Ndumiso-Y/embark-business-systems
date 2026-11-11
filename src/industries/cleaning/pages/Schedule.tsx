@@ -37,6 +37,7 @@ export default function Schedule() {
   const s = dayStaffing(data, date);
   const dayLabel = (o: string) => (o === '0' ? 'Today' : o === '-1' ? 'Yesterday' : o === '1' ? 'Tomorrow' : `${DOW[parseIso(addDays(today, Number(o))).getDay()]} ${addDays(today, Number(o)).slice(8)}`);
   const toConfirm = s.shifts.filter((x) => x.status === 'draft').length;
+  const toStart = s.shifts.filter((x) => ['draft', 'scheduled'].includes(x.status ?? '')).length;
 
   const confirmAbsence = () => {
     if (!absence) return;
@@ -54,7 +55,7 @@ export default function Schedule() {
         <span className="toolbar-count">{formatDate(date)} · {s.shifts.length} shifts</span>
       </div>
       <div className="stat-grid">
-        <Stat label={isToday ? 'Cleaners clocked in' : 'Cleaners present'} value={`${s.present}/${s.contracted}`} sub={`${s.pct}% of contracted cleaners`} tone={s.pct >= 95 ? 'accent' : undefined} />
+        <Stat label={isToday ? 'Cleaners clocked in' : 'Cleaners present'} value={`${s.present}/${s.contracted}`} sub={isToday && toStart ? `${s.pct}% of the day’s contracted cleaners · ${toStart} shift${toStart === 1 ? '' : 's'} still to start` : `${s.pct}% of contracted cleaners`} tone={s.pct >= 95 ? 'accent' : undefined} />
         <Stat label="Sites short-staffed" value={s.short.length} tone={s.short.length ? 'red' : undefined} sub={s.short.slice(0, 2).map((x) => siteName(data, x.values.site)).join(' · ') || 'every site fully rostered'} />
         <Stat label="Late clock-ins" value={s.late} sub="more than 10 minutes after the start" />
         <Stat label="Unfilled places" value={s.unfilled} tone={s.unfilled ? 'red' : undefined} sub={toConfirm ? `${toConfirm} roster${toConfirm === 1 ? '' : 's'} still to confirm` : 'all rosters confirmed'} />

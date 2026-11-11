@@ -26,6 +26,8 @@ export function nowTime() {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 export const nowStamp = () => `${todayStr()} ${nowTime()}`;
+/** "2026-11-11 22:36" → "11 Nov 2026, 22:36". */
+export const formatStamp = (stamp: string) => { const [d, t = ''] = stamp.trim().split(/[ T]/); return d ? `${formatDate(d)}${t ? `, ${t}` : ''}` : ''; };
 
 /* ---------------- Small utilities ---------------- */
 export const csv = (v: unknown): string[] => String(v ?? '').split(/[,\n]/).map((s) => s.trim()).filter(Boolean);
@@ -92,6 +94,17 @@ export function clockIns(shift: DemoRecord | undefined): Record<string, string> 
   }
   return out;
 }
+/**
+ * Time stamped by the "Clock in" button. The wall clock is used while it is plausibly shift time
+ * (from two hours before the start until the end). Outside those hours — a demo opened in the
+ * evening, say — the scheduled start is stamped instead, so the board does not show every
+ * clock-in as hours late; `adjusted` lets the screen say so.
+ */
+export function clockInTime(shift: DemoRecord, now = nowTime()): { time: string; adjusted: boolean } {
+  const n = minutes(now);
+  if (n >= minutes(str(shift, 'start')) - 120 && n <= minutes(str(shift, 'end'))) return { time: now, adjusted: false };
+  return { time: str(shift, 'start'), adjusted: true };
+}
 export const withClockIn = (shift: DemoRecord, ref: string, time: string) =>
   Object.entries({ ...clockIns(shift), [ref]: time }).map(([r, t]) => `${r}=${t}`).join(',');
 
@@ -137,7 +150,7 @@ export function rosterProblems(shift: DemoRecord, data: IndustryData): string[] 
 /** Rule for the relief cleaner chosen to cover an absence. */
 export function reliefProblem(shift: DemoRecord, data: IndustryData): string | null {
   const pick = findRecord(data, 'staff', str(shift, 'reliefPick'));
-  if (!pick) return 'Choose a relief cleaner first (attendance panel on the shift).';
+  if (!pick) return 'Choose a relief cleaner first — the “Relief cover” list under Roster & attendance on the shift shows who is eligible.';
   if (shiftCleaners(shift).includes(pick.ref)) return `${fullName(pick)} is already on this shift.`;
   return assignmentProblem(pick, shift, data);
 }
@@ -219,10 +232,10 @@ export const overduePeriodic = (data: IndustryData, today: string) => records(da
 
 export function periodicStartProblem(r: DemoRecord, data: IndustryData, today: string): string | null {
   const lead = findRecord(data, 'staff', str(r, 'assignedTo'));
-  if (!lead) return 'Assign a team leader before starting the task.';
+  if (!lead) return 'Assign a team leader before starting the task (Edit → Team leader).';
   if (lead.status !== 'active') return `${fullName(lead)} is not available — assign someone else.`;
   if (r.values.atHeight === true && !trainingValid(lead, 'heightsExpiry', today)) {
-    return `${fullName(lead)} does not hold in-date working-at-heights training, which this task needs.`;
+    return `${fullName(lead)} does not hold in-date working-at-heights training, which this task needs — assign another team leader (Edit → Team leader) or update the training on the staff record.`;
   }
   return null;
 }
@@ -373,7 +386,7 @@ export function equipmentFlags(r: DemoRecord, today: string): Flag[] {
 
 /** Equipment goes to a site only with a site chosen and an in-date electrical test (demo rule). */
 export function allocationProblem(r: DemoRecord, data: IndustryData, today: string): string | null {
-  if (!siteOf(data, r)) return 'Choose the site this equipment is going to (Edit → Site located).';
+  if (!siteOf(data, r)) return 'Choose the site this equipment is going to first (Edit → Site located).';
   if (isElectrical(r)) {
     const due = str(r, 'electricalTestDue');
     if (!due) return 'No electrical safety test is on record — test the appliance before it goes to a site.';
@@ -408,9 +421,9 @@ export function quoteSendProblem(r: DemoRecord, user: DemoUser): string | null {
 }
 
 export function jobScheduleProblem(r: DemoRecord, today: string): string | null {
-  if (!str(r, 'jobDate')) return 'Set the job date before scheduling.';
-  if (str(r, 'jobDate') < today) return 'The job date is in the past — choose a new date.';
-  if (!(num(r, 'teamSize') >= 1)) return 'Set the team size (at least one cleaner) before scheduling.';
+  if (!str(r, 'jobDate')) return 'Set the job date before scheduling (“Schedule the job” panel on the quote).';
+  if (str(r, 'jobDate') < today) return 'The job date is in the past — choose a new date (“Schedule the job” panel on the quote).';
+  if (!(num(r, 'teamSize') >= 1)) return 'Set the team size (at least one cleaner) before scheduling (“Schedule the job” panel on the quote).';
   return null;
 }
 

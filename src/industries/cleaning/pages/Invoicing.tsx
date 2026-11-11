@@ -27,6 +27,14 @@ export default function Invoicing() {
     act.toast(`${n} draft contract invoice${n === 1 ? '' : 's'} created for ${monthLabel(month)}`);
   };
 
+  const issueAll = () => {
+    let done = 0;
+    let refused = '';
+    for (const inv of drafts) { const res = act.transition('invoices', inv.id, 'issued'); if (res.ok) done++; else refused = `${inv.ref}: ${res.reason}`; }
+    if (done) act.toast(`${done} invoice${done === 1 ? '' : 's'} issued (simulated — nothing is sent)`);
+    if (refused) act.toast(refused, 'err');
+  };
+
   return (
     <RegisterPage>
       <div className="stat-grid">
@@ -40,6 +48,12 @@ export default function Invoicing() {
         {pending.length
           ? <Notice tone="accent">{pending.length} site{pending.length === 1 ? ' has' : 's have'} no contract invoice for {monthLabel(month)} yet. {credits.length ? `${credits.length} will carry a credit: ${credits.reduce((n, c) => n + c.cleanerShifts, 0)} contracted cleaner-shifts were not staffed so far this month.` : 'No staffing credits are due so far this month.'}</Notice>
           : <Notice tone="grey">Every active site already has a contract invoice for {monthLabel(month)}.</Notice>}
+        {drafts.length > 0 && (
+          <div className="btns" style={{ marginTop: 12, alignItems: 'center' }}>
+            {can('invoicing') && <button className="btn sm" onClick={issueAll} data-testid="issue-drafts">Issue all {drafts.length} draft{drafts.length === 1 ? '' : 's'}</button>}
+            <span className="muted-note">{drafts.length} draft{drafts.length === 1 ? '' : 's'} worth {rand(sum(drafts))} — open one below to see the fee, extras and staffing credit before it is issued.</span>
+          </div>
+        )}
         <p className="muted-note" style={{ marginTop: 10 }}>Demo rule: each contracted cleaner missing from a completed shift is credited at the monthly fee ÷ (contracted cleaners × 22 working days). Invoices here are not tax invoices and are not posted anywhere.</p>
       </Panel>
     </RegisterPage>

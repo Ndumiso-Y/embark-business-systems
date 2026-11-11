@@ -21,7 +21,7 @@ export function formatValue(f: FieldDef, v: Value, data: IndustryData, collectio
     case 'ref': {
       const target = records(data, f.ref!).find((r) => r.id === v);
       const def = collections.find((c) => c.key === f.ref);
-      return target && def ? def.title(target, data) : '—';
+      return target && def ? `${def.title(target, data)} · ${target.ref}` : '—';
     }
     case 'lines': {
       const t = linesTotals(Array.isArray(v) ? v : []);
@@ -70,7 +70,7 @@ export function LinesEditor({ value, onChange, codes }: { value: Line[]; onChang
 }
 
 /* ---------------- Single input ---------------- */
-export function FieldInput({ f, value, onChange, error, data, collections }: { f: FieldDef; value: Value; onChange: (v: Value) => void; error?: string; data: IndustryData; collections: CollectionDef[] }) {
+export function FieldInput({ f, value, onChange, error, data, collections, values }: { f: FieldDef; value: Value; onChange: (v: Value) => void; error?: string; data: IndustryData; collections: CollectionDef[]; /** Other values in the form, for `refFilter`. */ values?: Values }) {
   const id = `f_${f.key}`;
   const common = { id, 'aria-invalid': error ? true : undefined, 'aria-label': f.label } as const;
   let input: ReactNode;
@@ -97,7 +97,7 @@ export function FieldInput({ f, value, onChange, error, data, collections }: { f
       );
       break;
     case 'ref':
-      input = <RefSelect f={f} value={value} onChange={onChange} common={common} data={data} collections={collections} />;
+      input = <RefSelect f={f} value={value} onChange={onChange} common={common} data={data} collections={collections} values={values ?? {}} />;
       break;
     case 'boolean':
       return (
@@ -115,9 +115,9 @@ export function FieldInput({ f, value, onChange, error, data, collections }: { f
 }
 
 /** Record picker. Long lists get a filter box so the right record is quick to find. */
-function RefSelect({ f, value, onChange, common, data, collections }: { f: FieldDef; value: Value; onChange: (v: Value) => void; common: Record<string, unknown>; data: IndustryData; collections: CollectionDef[] }) {
+function RefSelect({ f, value, onChange, common, data, collections, values }: { f: FieldDef; value: Value; onChange: (v: Value) => void; common: Record<string, unknown>; data: IndustryData; collections: CollectionDef[]; values: Values }) {
   const def = collections.find((c) => c.key === f.ref)!;
-  const all = records(data, f.ref!);
+  const all = records(data, f.ref!).filter((r) => r.id === value || !f.refFilter || f.refFilter(r, values, data));
   const [q, setQ] = useState('');
   const needle = q.trim().toLowerCase();
   const text = (r: DemoRecord) => `${def.title(r, data)} · ${r.ref}`;
@@ -175,7 +175,7 @@ export function RecordFormModal({ def, record, initial, open, onClose, onSave, t
         <button type="submit" hidden aria-hidden="true" tabIndex={-1} />
         {fields.map((f) => (
           <div key={f.key} className={f.wide || f.type === 'textarea' || f.type === 'lines' ? 'span-2' : ''}>
-            <FieldInput f={f} value={values[f.key]} error={errors[f.key]} data={data} collections={config.collections} onChange={(v) => setValues((s) => ({ ...s, [f.key]: v }))} />
+            <FieldInput f={f} value={values[f.key]} values={values} error={errors[f.key]} data={data} collections={config.collections} onChange={(v) => setValues((s) => ({ ...s, [f.key]: v }))} />
           </div>
         ))}
         {Object.keys(errors).length > 0 && <div className="span-2 field-error" role="alert">Please correct the highlighted fields.</div>}

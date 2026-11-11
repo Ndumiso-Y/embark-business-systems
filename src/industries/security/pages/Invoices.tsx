@@ -15,7 +15,7 @@ export default function Invoices() {
   const base = useBase();
   const act = useActions();
   const { can } = useUser();
-  const { today, time } = useClock();
+  const { today } = useClock();
   const def = act.def('invoices');
   const period = today.slice(0, 7);
   const all = [...records(data, 'invoices')].sort(def.sort);
@@ -27,7 +27,7 @@ export default function Invoices() {
   const penalties = all.filter((i) => str(i, 'period') >= period.slice(0, 4)).reduce((n, i) => n + invoiceTotals(i).penalty, 0);
 
   const build = () => {
-    for (const c of missing) act.create('invoices', buildInvoiceValues(data, c, period, today, time), 'draft', `Draft built for ${monthLabel(period)}`);
+    for (const c of missing) act.create('invoices', buildInvoiceValues(data, c, period, today), 'draft', `Draft built for ${monthLabel(period)}`);
     act.toast(`${missing.length} draft invoice${missing.length === 1 ? '' : 's'} built for ${monthLabel(period)}`);
   };
 
@@ -54,7 +54,7 @@ export default function Invoices() {
                   <tr key={c.id}>
                     <td><Link to={`${base}/contracts/${c.id}`}><strong>{str(c, 'client')}</strong></Link></td>
                     <td className="num">{money(contractMonthly(data, c.id))}</td>
-                    <td className="num">{unfilledShifts(data, c.id, period, today, time).length}</td>
+                    <td className="num">{unfilledShifts(data, c.id, period, today).length}</td>
                     <td className="num">{ex.count} <small>{ex.billable} billable</small></td>
                     <td>{inv ? <Link to={`${base}/invoices/${inv.id}`}>{inv.ref} · {inv.status}</Link> : 'Not built yet'}</td>
                   </tr>

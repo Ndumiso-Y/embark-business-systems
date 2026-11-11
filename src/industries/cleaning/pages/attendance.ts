@@ -3,7 +3,7 @@ import type { DemoRecord } from '../../../core/types';
 import { useActions } from '../../../core/context';
 import { str } from '../../../core/engine';
 import { LATE_GRACE_MIN } from '../data';
-import { clockIns, fullName, minutes, nowTime, shiftAbsent, shiftReliefs, toCsv, withClockIn } from '../helpers';
+import { clockInTime, clockIns, fullName, minutes, shiftAbsent, shiftReliefs, toCsv, withClockIn } from '../helpers';
 
 /** How one cleaner stands on one shift. */
 export function cleanerState(shift: DemoRecord, ref: string): { key: 'absent' | 'late' | 'in' | 'waiting'; label: string; tone: 'red' | 'amber' | 'green' | 'dark' } {
@@ -24,13 +24,15 @@ export function useShiftActions() {
   const act = useActions();
   return {
     clockIn(shift: DemoRecord, staff: DemoRecord): string | null {
-      const time = nowTime();
+      const { time, adjusted } = clockInTime(shift);
       act.update('shifts', shift.id, { clockIns: withClockIn(shift, staff.ref, time) }, `Clocked in: ${fullName(staff)} at ${time}`);
       if (shift.status === 'scheduled') {
         const res = act.transition('shifts', shift.id, 'clockedin');
         if (!res.ok) return res.reason;
       }
-      act.toast(`${fullName(staff)} clocked in at ${time}`);
+      act.toast(adjusted
+        ? `${fullName(staff)} clocked in at ${time} — the shift start is stamped because it is outside this shift’s hours right now (demo)`
+        : `${fullName(staff)} clocked in at ${time}`);
       return null;
     },
     markAbsent(shift: DemoRecord, staff: DemoRecord, note: string): string | null {

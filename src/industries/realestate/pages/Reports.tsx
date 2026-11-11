@@ -68,7 +68,6 @@ export default function Reports() {
   const rentRoll = records(data, 'leases').filter((l) => ['active', 'notice'].includes(l.status ?? '')).reduce((n, l) => n + toCents(num(l, 'rent')), 0);
 
   // Commission registered per month (last 6 months).
-  const month = today.slice(0, 7);
   const months = monthKeys(today, 6);
   const chart = months.map((m) => ({
     label: monthShort(m),

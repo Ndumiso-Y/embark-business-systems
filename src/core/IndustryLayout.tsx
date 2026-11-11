@@ -3,7 +3,8 @@ import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate, useParams } 
 import { IcoBack, IcoGrid, IcoHome, IcoKey, IcoMenu, IcoSearch, IcoSettings } from './components/Icons';
 import { Toasts } from './components/ui';
 import { IndustryContext } from './context';
-import { useStore } from './store';
+import { isoDay, useStore } from './store';
+import { formatDate, todayIso } from './lib/dates';
 import { currentUser, hasModule } from './engine';
 import { getIndustry, LOCKED_INDUSTRY } from '../industries/registry';
 import { brandedConfig, parseUrlBrand, sanitiseBrand } from './brand';
@@ -151,6 +152,12 @@ function Shell() {
           </div>
         </header>
         <main className="content" id="main" tabIndex={-1}>
+          {isoDay(data.seededAt) !== todayIso() && (
+            <div className="stale-banner" role="status" data-testid="stale-banner">
+              <span>This demo was started on {formatDate(isoDay(data.seededAt))}, so “today” in the sample data means that day. Your changes are still here.</span>
+              <button className="btn sm" onClick={() => { useStore.getState().reset(getIndustry(config.id) ?? config); useStore.getState().toast('Sample data refreshed to today'); }}>Refresh sample data to today</button>
+            </div>
+          )}
           <Outlet />
           <div className="footer-note">{config.brandedFor
             ? `Demonstration prepared for ${config.brandedFor} by Embark Digitals · All people, records and figures shown are fictional sample data`

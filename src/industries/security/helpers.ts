@@ -6,11 +6,15 @@ import type { DemoRecord, IndustryData, Line, Values } from '../../core/types';
 import { lines, linesTotals, num, records, str } from '../../core/engine';
 import { addDays, daysBetween, dueState, formatDate, type DueState } from '../../core/lib/dates';
 import {
-  BOOK_ON_GRACE_MIN, CHECK_ITEMS, DEFAULT_SLA_MIN, EMPLOYMENT, EXPIRY_WINDOW_DAYS, INSPECTION_INTERVAL_DAYS, PATROL_GRACE_MIN, PERMIT_LABEL,
+  CHECK_ITEMS, DEFAULT_SLA_MIN, EMPLOYMENT, EXPIRY_WINDOW_DAYS, INSPECTION_INTERVAL_DAYS, PATROL_GRACE_MIN, PERMIT_LABEL,
   SHIFT_SHORT, SHIFT_START, VAT_RATE, gradeRank, label,
 } from './data';
 
-/* ---------------- "Today" and "now" indirection (tests pin both) ---------------- */
+/* ---------------- "Today" indirection (tests pin it) ----------------
+ * Rules, flags and the seed depend on the DATE only, never on the time of day:
+ * the demo's running shift is always today's day shift and tonight's night shift
+ * is the next one. `nowTime()` exists only to pre-fill time boxes and to stamp
+ * what a user does (book on, write an entry), like the history timestamps. */
 let todayOverride: string | null = null;
 let timeOverride = '12:00';
 export function setTodayForTests(iso: string | null, time = '12:00') { todayOverride = iso; timeOverride = time; }
@@ -20,7 +24,7 @@ export function todayStr() {
   const d = new Date();
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
-/** Current wall-clock time HH:MM (pinned while a test date is set). */
+/** Wall-clock time HH:MM for pre-filling time inputs and stamping user actions only (pinned while a test date is set). */
 export function nowTime() {
   if (todayOverride) return timeOverride;
   const d = new Date();
@@ -42,14 +46,8 @@ export function minutesFromTo(a: string, b: string) {
   if (d < -720) d += 1440;
   return d;
 }
-export function minutesBetween(d1: string, t1: string, d2: string, t2: string) {
-  return daysBetween(d1, d2) * 1440 + toMin(t2) - toMin(t1);
-}
-/** The date and time `n` minutes before the given moment. */
-export function minutesAgo(today: string, time: string, n: number): { date: string; time: string } {
-  const m = toMin(time) - n;
-  return { date: addDays(today, Math.floor(m / 1440)), time: fromMin(m) };
-}
+/** Clock time `m` minutes after `t`, wrapping past midnight. */
+export const plusMin = (t: string, m: number) => fromMin(toMin(t) + m);
 export const duration = (min: number) => (min >= 60 ? `${Math.floor(min / 60)} h ${pad(min % 60)} min` : `${min} min`);
 
 /* ---------------- Shift slots ---------------- */
@@ -58,15 +56,19 @@ export type Slot = { date: string; kind: ShiftKind };
 /** Sortable key: the day shift of a date sorts before its night shift. */
 export const slotKey = (date: string, kind: string) => `${date}${kind === 'night' ? 'N' : 'D'}`;
 
-/** The shift running right now. Before 06:00 that is still last night's shift. */
-export function currentSlot(today = todayStr(), time = nowTime()): Slot {
-  if (time < '06:00') return { date: addDays(today, -1), kind: 'night' };
-  return time < '18:00' ? { date: today, kind: 'day' } : { date: today, kind: 'night' };
+/**
+ * The demo's running shift: always today's day shift, whatever the time of day.
+ * Earlier dates (and last night's shift) are past; tonight and later are upcoming.
+ */
+export function currentSlot(today = todayStr()): Slot {
+  return { date: today, kind: 'day' };
 }
+/** Day or night, from an entry's own recorded time. */
+export const kindOfTime = (time: string): ShiftKind => (time >= '06:00' && time < '18:00' ? 'day' : 'night');
 export const nextSlot = (s: Slot): Slot => (s.kind === 'day' ? { date: s.date, kind: 'night' } : { date: addDays(s.date, 1), kind: 'day' });
 export const prevSlot = (s: Slot): Slot => (s.kind === 'night' ? { date: s.date, kind: 'day' } : { date: addDays(s.date, -1), kind: 'night' });
-export function slotPhase(date: string, kind: string, today = todayStr(), time = nowTime()): 'past' | 'current' | 'future' {
-  const cur = currentSlot(today, time);
+export function slotPhase(date: string, kind: string, today = todayStr()): 'past' | 'current' | 'future' {
+  const cur = currentSlot(today);
   const a = slotKey(date, kind);
   const b = slotKey(cur.date, cur.kind);
   return a < b ? 'past' : a > b ? 'future' : 'current';
@@ -212,10 +214,10 @@ export function reliefProblem(data: IndustryData, r: DemoRecord): string | null 
   return postingProblems(data, r, id)[0] ?? null;
 }
 
-export function bookOnProblem(data: IndustryData, r: DemoRecord, today = todayStr(), time = nowTime()): string | null {
+export function bookOnProblem(data: IndustryData, r: DemoRecord, today = todayStr()): string | null {
   const date = str(r, 'date');
   const kind = kindOf(data, r);
-  if (slotPhase(date, kind, today, time) === 'future') return `This shift only starts at ${SHIFT_START[kind]} on ${formatDate(date)} — officers book on at the start of their shift.`;
+  if (date > today) return `This shift only starts at ${SHIFT_START[kind]} on ${formatDate(date)} — officers book on on the day of their shift.`;
   const o = rec(data, 'officers', workingOfficerId(r));
   if (!o) return 'No officer is posted on this shift.';
   const d = deployability(o, date);
@@ -224,15 +226,15 @@ export function bookOnProblem(data: IndustryData, r: DemoRecord, today = todaySt
 }
 
 /* ---------------- Occurrence book ---------------- */
-/** The shift an OB entry belongs to. Night-shift entries written after midnight belong to the previous date's shift. */
+/**
+ * The shift an OB entry belongs to: its recorded shift date when there is one, otherwise worked out
+ * from the entry itself (night-shift entries timed after midnight belong to the previous date's shift).
+ */
 export function entrySlot(e: DemoRecord): Slot {
   const kind: ShiftKind = str(e, 'shift') === 'night' ? 'night' : 'day';
   const date = str(e, 'date');
+  if (str(e, 'shiftDate')) return { kind, date: str(e, 'shiftDate') };
   return { kind, date: kind === 'night' && str(e, 'time') < '12:00' ? addDays(date, -1) : date };
-}
-/** Which shift an entry written right now would belong to. */
-export function slotForEntry(date: string, time: string): Slot {
-  return currentSlot(date, time);
 }
 /** The signed handover entry for a site's shift, if one exists. */
 export function handoverEntry(data: IndustryData, siteId: string, date: string, kind: string): DemoRecord | undefined {
@@ -247,7 +249,7 @@ export function bookOffProblem(data: IndustryData, r: DemoRecord): string | null
   const kind = kindOf(data, r);
   if (!site) return 'This shift has no site.';
   if (!handoverEntry(data, site.id, str(r, 'date'), kind)) {
-    return `No signed shift handover entry in the ${str(site, 'name')} occurrence book for this ${kind} shift. Write and sign the handover entry before booking off.`;
+    return `No signed shift handover entry in the ${str(site, 'name')} occurrence book for this ${kind} shift. Write and sign it first — the “Shift handover” panel on the shift page does both.`;
   }
   return null;
 }
@@ -290,8 +292,8 @@ export function coverage(data: IndustryData, date: string, kind: string, siteId?
   }
   return { posts: posts.length, covered, onDuty, pct: pct(covered, posts.length), unfilled };
 }
-export function coverageNow(data: IndustryData, today = todayStr(), time = nowTime()): Coverage & { slot: Slot } {
-  const slot = currentSlot(today, time);
+export function coverageNow(data: IndustryData, today = todayStr()): Coverage & { slot: Slot } {
+  const slot = currentSlot(today);
   return { ...coverage(data, slot.date, slot.kind), slot };
 }
 /** Both shifts of one date combined. */
@@ -306,14 +308,10 @@ export function absenteeism(data: IndustryData, from: string, to: string) {
   const absent = list.filter((r) => r.status === 'absent' || !!str(r, 'reliefOfficer'));
   return { shifts: list.length, absent: absent.length, relieved: absent.filter((r) => r.status !== 'absent').length, pct: list.length ? Math.round((absent.length / list.length) * 1000) / 10 : 0, list: absent };
 }
-/** A posted officer who has not booked on well after the shift started. */
-export function lateBookOn(data: IndustryData, r: DemoRecord, today = todayStr(), time = nowTime()): boolean {
+/** A posted officer who has not booked on although the shift is running (or over). */
+export function lateBookOn(data: IndustryData, r: DemoRecord, today = todayStr()): boolean {
   if (r.status !== 'posted' && r.status !== 'relief') return false;
-  const kind = kindOf(data, r);
-  const date = str(r, 'date');
-  const phase = slotPhase(date, kind, today, time);
-  if (phase === 'past') return true;
-  return phase === 'current' && minutesBetween(date, SHIFT_START[kind], today, time) > BOOK_ON_GRACE_MIN;
+  return slotPhase(str(r, 'date'), kindOf(data, r), today) !== 'future';
 }
 
 /* ---------------- Incidents ---------------- */
@@ -323,16 +321,16 @@ export const isSerious = (r: DemoRecord) => str(r, 'severity') === 'high';
 export function sapsProblem(r: DemoRecord): string | null {
   if (!isSerious(r)) return null;
   if (str(r, 'sapsCase') || str(r, 'noSapsReason').trim()) return null;
-  return 'Serious incident: record the SAPS case number (DEMO-CAS …) or the reason no case was opened.';
+  return 'Serious incident: record the SAPS case number (DEMO-CAS …) or the reason no case was opened — use the close-out form on the incident page.';
 }
 export function incidentReportProblem(r: DemoRecord): string | null {
-  if (!str(r, 'rootCause').trim()) return 'Record the root cause before the report goes to the client.';
+  if (!str(r, 'rootCause').trim()) return 'Record the root cause before the report goes to the client — use the close-out form on the incident page.';
   return sapsProblem(r);
 }
 export function incidentCloseProblems(r: DemoRecord): string[] {
   const out: string[] = [];
   if (!str(r, 'rootCause').trim()) out.push('Root cause not recorded.');
-  if (!str(r, 'outcome').trim()) out.push('Outcome not recorded.');
+  if (!str(r, 'outcome').trim()) out.push('Outcome not recorded — use the close-out form on the incident page.');
   if (r.values.clientReportSent !== true) out.push('Client report has not been logged as sent.');
   const s = sapsProblem(r);
   if (s) out.push(s);
@@ -348,25 +346,33 @@ export function responseMinutes(r: DemoRecord): number | null {
   const b = str(r, 'onSceneAt');
   return a && b ? Math.max(0, minutesFromTo(a, b)) : null;
 }
-export const elapsedMinutes = (r: DemoRecord, today = todayStr(), time = nowTime()) => Math.max(0, minutesBetween(str(r, 'date'), str(r, 'receivedAt') || '00:00', today, time));
+/** Demo suggestions for the next time on a call-out, derived from the times already recorded (never from the clock). */
+export function suggestedTime(r: DemoRecord, step: 'dispatched' | 'onscene' | 'stooddown'): string {
+  const received = str(r, 'receivedAt') || '00:00';
+  const dispatched = str(r, 'dispatchedAt') || plusMin(received, 2);
+  if (step === 'dispatched') return plusMin(received, 2);
+  const onScene = str(r, 'onSceneAt') || plusMin(dispatched, 8);
+  return step === 'onscene' ? plusMin(dispatched, 8) : plusMin(onScene, 15);
+}
 
-export type SlaState = { state: 'met' | 'breached' | 'running' | 'none'; minutes: number; sla: number };
-/** Response time against the SLA. While a call-out is still en route the clock keeps running. */
-export function slaState(data: IndustryData, r: DemoRecord, today = todayStr(), time = nowTime()): SlaState {
+export type SlaState = { state: 'met' | 'breached' | 'running' | 'none'; minutes: number; sla: number; dueBy: string };
+/**
+ * Response time against the SLA, from the recorded times only. Until the vehicle is on scene the
+ * call-out is "running" and `dueBy` is the time it must arrive (signal + SLA).
+ */
+export function slaState(data: IndustryData, r: DemoRecord): SlaState {
   const sla = calloutSla(data, r);
+  const dueBy = str(r, 'receivedAt') ? plusMin(str(r, 'receivedAt'), sla) : '';
   const resp = responseMinutes(r);
-  if (resp !== null) return { state: resp <= sla ? 'met' : 'breached', minutes: resp, sla };
-  if (r.status === 'received' || r.status === 'dispatched') {
-    const el = elapsedMinutes(r, today, time);
-    return { state: el > sla ? 'breached' : 'running', minutes: el, sla };
-  }
-  return { state: 'none', minutes: 0, sla };
+  if (resp !== null) return { state: resp <= sla ? 'met' : 'breached', minutes: resp, sla, dueBy };
+  if (r.status === 'received' || r.status === 'dispatched') return { state: 'running', minutes: 0, sla, dueBy };
+  return { state: 'none', minutes: 0, sla, dueBy };
 }
 export const permitExpired = (item: DemoRecord | undefined, today: string) => !!str(item, 'permitExpiry') && str(item, 'permitExpiry') < today;
 
 export function vehicleProblem(data: IndustryData, vehicleId: string, calloutId: string, today = todayStr()): string | null {
   const v = rec(data, 'equipment', vehicleId);
-  if (!v) return 'Choose a response vehicle before dispatching.';
+  if (!v) return 'Choose a response vehicle before dispatching — use the dispatch form on the call-out page.';
   const name = equipmentLabel(v);
   if (str(v, 'category') !== 'vehicle') return `${name} is not a vehicle.`;
   if (v.status === 'repair') return `${name} is in for repair and cannot be dispatched.`;
@@ -384,15 +390,15 @@ export function dispatchProblem(data: IndustryData, r: DemoRecord, today = today
   if (!v && !availableVehicles(data, r.id, today).length) return 'No response vehicle is available — every vehicle is committed, in repair or unlicensed.';
   return vehicleProblem(data, v, r.id, today);
 }
-export function onSceneProblem(r: DemoRecord, time = nowTime()): string | null {
-  const at = str(r, 'onSceneAt') || time;
+export function onSceneProblem(r: DemoRecord): string | null {
+  const at = str(r, 'onSceneAt') || suggestedTime(r, 'onscene');
   const d = str(r, 'dispatchedAt');
   if (d && minutesFromTo(d, at) < 0) return `On-scene time ${at} is before the dispatch time ${d}.`;
   return null;
 }
-export function standDownProblem(r: DemoRecord, time = nowTime()): string | null {
-  if (!str(r, 'outcome')) return 'Select the outcome before standing the vehicle down.';
-  const at = str(r, 'stoodDownAt') || time;
+export function standDownProblem(r: DemoRecord): string | null {
+  if (!str(r, 'outcome')) return 'Select the outcome before standing the vehicle down — use the stand-down form on the call-out page.';
+  const at = str(r, 'stoodDownAt') || suggestedTime(r, 'stooddown');
   const s = str(r, 'onSceneAt');
   if (s && minutesFromTo(s, at) < 0) return `Stand-down time ${at} is before the on-scene time ${s}.`;
   return null;
@@ -406,16 +412,16 @@ export function responseStats(data: IndustryData, from: string, to: string, site
 }
 
 /* ---------------- Equipment & armoury ---------------- */
-/** The roster shift an officer is posted on now or next — equipment is issued at book-on. */
-export function activeShiftFor(data: IndustryData, officerId: string, today = todayStr(), time = nowTime()): DemoRecord | undefined {
-  const cur = currentSlot(today, time);
+/** The roster shift an officer is posted on today (day shift first, then tonight) — equipment is issued at book-on. */
+export function activeShiftFor(data: IndustryData, officerId: string, today = todayStr()): DemoRecord | undefined {
+  const cur = currentSlot(today);
   for (const s of [cur, nextSlot(cur)]) {
     const r = shiftsIn(data, s.date, s.kind).find((x) => ['posted', 'relief', 'onduty'].includes(x.status ?? '') && workingOfficerId(x) === officerId);
     if (r) return r;
   }
   return undefined;
 }
-export function issueProblems(data: IndustryData, item: DemoRecord, officerId: string, today = todayStr(), time = nowTime()): string[] {
+export function issueProblems(data: IndustryData, item: DemoRecord, officerId: string, today = todayStr()): string[] {
   const out: string[] = [];
   const cat = str(item, 'category');
   if (permitExpired(item, today)) out.push(`${PERMIT_LABEL[cat] ?? 'Permit'} expired on ${formatDate(str(item, 'permitExpiry'))} — ${str(item, 'assetNo')} cannot be issued (demo rule).`);
@@ -423,8 +429,8 @@ export function issueProblems(data: IndustryData, item: DemoRecord, officerId: s
   const o = rec(data, 'officers', officerId);
   if (!o) return [...out, 'Officer not found.'];
   const name = fullName(o);
-  const shift = activeShiftFor(data, officerId, today, time);
-  if (!shift) out.push(`${name} is not posted on the current or next shift — equipment is issued at book-on.`);
+  const shift = activeShiftFor(data, officerId, today);
+  if (!shift) out.push(`${name} is not posted on today’s day or night shift — equipment is issued at book-on.`);
   if (cat === 'firearm') {
     const c = str(o, 'competencyExpiry');
     if (!c) out.push(`${name} has no firearm competency on record — a firearm cannot be issued (demo rule).`);
@@ -435,12 +441,12 @@ export function issueProblems(data: IndustryData, item: DemoRecord, officerId: s
   }
   return out;
 }
-/** Issued for a shift that has since ended. */
-export function notReturned(data: IndustryData, item: DemoRecord, today = todayStr(), time = nowTime()): boolean {
+/** Issued for a shift that has since ended: the officer has booked off, or the shift was on an earlier day. */
+export function notReturned(data: IndustryData, item: DemoRecord, today = todayStr()): boolean {
   if (item.status !== 'issued') return false;
   const s = rec(data, 'roster', item.values.issuedShift);
   if (!s) return false;
-  return s.status === 'off' || slotPhase(str(s, 'date'), kindOf(data, s), today, time) === 'past';
+  return s.status === 'off' || slotPhase(str(s, 'date'), kindOf(data, s), today) === 'past';
 }
 export const issuedTo = (data: IndustryData, officerId: string) => records(data, 'equipment').filter((e) => e.status === 'issued' && str(e, 'issuedTo') === officerId);
 
@@ -500,10 +506,10 @@ export function contractPosts(data: IndustryData, contractId: string): DemoRecor
 export const contractMonthly = (data: IndustryData, contractId: string) => contractPosts(data, contractId).reduce((n, p) => n + num(p, 'monthlyRate'), 0);
 
 /** Shifts in a month (YYYY-MM) where a contracted post went uncovered. Only shifts that have ended count. */
-export function unfilledShifts(data: IndustryData, contractId: string, period: string, today = todayStr(), time = nowTime()): DemoRecord[] {
+export function unfilledShifts(data: IndustryData, contractId: string, period: string, today = todayStr()): DemoRecord[] {
   const postIds = new Set(contractPosts(data, contractId).map((p) => p.id));
   return records(data, 'roster').filter((r) => str(r, 'date').startsWith(period) && postIds.has(str(r, 'post')) && (r.status === 'open' || r.status === 'absent')
-    && slotPhase(str(r, 'date'), kindOf(data, r), today, time) === 'past');
+    && slotPhase(str(r, 'date'), kindOf(data, r), today) === 'past');
 }
 /** Armed response call-outs in a month, and how many fall outside the contract's included allowance. */
 export function calloutExtras(data: IndustryData, contract: DemoRecord, period: string) {
@@ -516,7 +522,7 @@ export function calloutExtras(data: IndustryData, contract: DemoRecord, period: 
  * Values for a monthly invoice: one line per contracted post at its monthly rate, plus
  * billable call-outs. Penalties for unfilled shifts are held as a count × rate (demo rule).
  */
-export function buildInvoiceValues(data: IndustryData, contract: DemoRecord, period: string, today = todayStr(), time = nowTime(), override: { unfilled?: number; billable?: number } = {}): Values {
+export function buildInvoiceValues(data: IndustryData, contract: DemoRecord, period: string, today = todayStr(), override: { unfilled?: number; billable?: number } = {}): Values {
   const out: Line[] = contractPosts(data, contract.id).map((p) => ({
     id: `${period}-${p.ref}`,
     description: `${postLabel(data, p)} (${SHIFT_SHORT[str(p, 'shift')] ?? 'Day'}, Grade ${str(p, 'grade')}${p.values.armed === true ? ', armed' : ''})`,
@@ -530,7 +536,7 @@ export function buildInvoiceValues(data: IndustryData, contract: DemoRecord, per
   }
   return {
     contract: contract.id, period, lines: out,
-    unfilledShifts: override.unfilled ?? unfilledShifts(data, contract.id, period, today, time).length,
+    unfilledShifts: override.unfilled ?? unfilledShifts(data, contract.id, period, today).length,
     penaltyPerShift: num(contract, 'penaltyPerShift'),
   };
 }

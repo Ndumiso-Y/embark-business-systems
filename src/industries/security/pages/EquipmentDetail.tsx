@@ -25,19 +25,19 @@ function Issue({ item: e }: { item: DemoRecord }) {
   const data = useData();
   const act = useActions();
   const { can } = useUser();
-  const { today, time } = useClock();
+  const { today } = useClock();
   const [officer, setOfficer] = useState('');
   const [everyone, setEveryone] = useState(false);
   if (e.status !== 'instore') return null;
   if (!can('equipment.issue')) return <Notice tone="grey">Your simulated role cannot issue equipment. Switch to the armoury / equipment controller.</Notice>;
   const firearm = str(e, 'category') === 'firearm';
   const candidates = records(data, 'officers')
-    .map((o) => ({ o, shift: activeShiftFor(data, o.id, today, time) }))
+    .map((o) => ({ o, shift: activeShiftFor(data, o.id, today) }))
     .filter((x) => everyone || x.shift)
     .sort((a, b) => fullName(a.o).localeCompare(fullName(b.o)));
-  const problems = officer ? issueProblems(data, e, officer, today, time) : [];
+  const problems = officer ? issueProblems(data, e, officer, today) : [];
   const issue = () => {
-    const p = issueProblems(data, e, officer, today, time);
+    const p = issueProblems(data, e, officer, today);
     if (p.length) { act.toast(p[0], 'err'); return; }
     act.update('equipment', e.id, { issuedTo: officer });
     const res = act.transition('equipment', e.id, 'issued');
@@ -74,9 +74,9 @@ function Aside({ item: e }: { item: DemoRecord }) {
   const data = useData();
   const base = useBase();
   const { hasModule } = useUser();
-  const { today, time } = useClock();
+  const { today } = useClock();
   const shift = rec(data, 'roster', e.values.issuedShift);
-  const late = notReturned(data, e, today, time);
+  const late = notReturned(data, e, today);
   const permit = str(e, 'permitExpiry');
   const what = PERMIT_LABEL[str(e, 'category')];
   return (

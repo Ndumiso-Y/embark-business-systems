@@ -45,6 +45,8 @@ export type FieldDef = {
   wide?: boolean;
   /** Hidden from users without this permission (simulated, e.g. clinical notes). */
   permission?: string;
+  /** For `ref`: limit which records can be picked (e.g. only frames, only this patient's prescriptions). */
+  refFilter?: (target: DemoRecord, values: Values, data: IndustryData) => boolean;
   /** Internal value: kept on the record but left out of generic forms, details and tables. */
   hidden?: boolean;
   /** Unit shown after a number in details and tables, e.g. "km". */

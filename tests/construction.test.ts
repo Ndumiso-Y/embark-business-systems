@@ -65,6 +65,13 @@ describe('construction configuration', () => {
     expect(diaryEntryFor(data, str(entry, 'project'), '2026-11-08')).toBeUndefined(); // a Sunday
   });
 
+  it('pre-fills new records with today and the signed-in user', () => {
+    const def = (k: string) => config.collections.find((c) => c.key === k)!;
+    expect(def('snags').createDefaults!(TODAY, data)).toEqual({ raisedOn: TODAY, dueBy: '2026-11-25' });
+    expect(def('requisitions').createDefaults!(TODAY, { ...data, currentUserId: 'u_sa' })).toEqual({ requiredBy: '2026-11-18', requestedBy: 'Sizwe Ndlovu' });
+    expect(def('variations').createDefaults!(TODAY, data)).toEqual({ instructedOn: TODAY, timeImpactDays: 0 });
+  });
+
   it('holders() names who can do a step, for roles that cannot', () => {
     expect(holders(data, 'valuations')).toBe('Andile Khumalo (Managing director) or Lindiwe Mahlangu (Quantity surveyor)');
     expect(holders(data, 'procurement', 'u_md')).toBe('Fatima Davids (Procurement & stores)');
