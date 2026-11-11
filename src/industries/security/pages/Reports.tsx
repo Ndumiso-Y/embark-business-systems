@@ -60,8 +60,8 @@ export default function Reports() {
       </div>
       <div className="section-gap" />
       <div className="grid-2">
-        <Panel title="Coverage % per day" meta="Contracted day and night posts with an officer who reported for duty">
-          <BarChart label="Daily coverage percentage" data={days.map((x) => ({ label: shortDate(x.d), value: x.pct }))} format={(n) => `${n}%`} />
+        <Panel title="Unfilled shifts per day" meta={`Contracted day and night posts nobody reported for, last ${DAYS_BACK} days — hover a bar for the figure`}>
+          <BarChart label="Unfilled shifts per day" data={days.map((x) => ({ label: shortDate(x.d), value: x.posts - x.covered }))} format={(n) => `${n} unfilled`} />
         </Panel>
         <Panel title="Coverage by site" meta="Lowest first">
           <Meters format={(n) => `${n}%`} items={bySiteCoverage.slice(0, 7).map((x) => ({ ...x, max: 100 }))} />

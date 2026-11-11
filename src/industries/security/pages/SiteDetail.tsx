@@ -41,6 +41,7 @@ function Body({ site: s }: { site: DemoRecord }) {
   const total = day.posts + night.posts;
   const covered = day.covered + night.covered;
   const p = total ? Math.round((covered / total) * 100) : 0;
+  const who = (r: DemoRecord) => (workingOfficerId(r) ? officerName(data, workingOfficerId(r)) : r.status === 'absent' ? 'Absent — no relief' : 'Unfilled');
   const shiftFor = (post: DemoRecord) => shiftsIn(data, today, str(post, 'shift') === 'night' ? 'night' : 'day').find((r) => str(r, 'post') === post.id);
   const open = records(data, 'incidents').filter((i) => str(i, 'site') === s.id && i.status !== 'closed').sort(incidentDef.sort);
   const ob = records(data, 'ob').filter((e) => str(e, 'site') === s.id).sort(act.def('ob').sort).slice(0, 5);
@@ -58,7 +59,7 @@ function Body({ site: s }: { site: DemoRecord }) {
                     <tr key={post.id}>
                       <td><strong>{str(post, 'name')}</strong><small>{SHIFT_SHORT[str(post, 'shift')] ?? 'Day'} shift</small></td>
                       <td>Grade {str(post, 'grade')}{post.values.armed === true ? ' · armed' : ''}</td>
-                      <td>{r ? (hasModule('roster') ? <Link to={`${base}/roster/${r.id}`}>{workingOfficerId(r) ? officerName(data, workingOfficerId(r)) : r.status === 'absent' ? 'Absent — no relief' : 'Unfilled'}</Link> : officerName(data, workingOfficerId(r))) : 'Not rostered'}</td>
+                      <td>{r ? (hasModule('roster') ? <Link to={`${base}/roster/${r.id}`}>{who(r)}</Link> : who(r)) : 'Not rostered'}</td>
                       <td className="num">{money(num(post, 'monthlyRate'))}</td>
                       <td>{r ? <StatusTag workflow={rosterDef.workflow} status={r.status} /> : <Tag tone="dark">—</Tag>}</td>
                     </tr>

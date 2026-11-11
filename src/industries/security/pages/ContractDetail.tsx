@@ -64,7 +64,7 @@ function Body({ contract: c }: { contract: DemoRecord }) {
               <li key={i.id}>
                 <div className="grow">
                   {hasModule('invoices') ? <Link to={`${base}/invoices/${i.id}`}><b>{invoiceDef.title(i, data)}</b></Link> : <b>{invoiceDef.title(i, data)}</b>}
-                  <small>{i.ref} · {formatRand(invoiceTotals(i).total)} incl. VAT{num(i, 'unfilledShifts') ? ` · ${num(i, 'unfilledShifts')} unfilled-shift penalties` : ''}</small>
+                  <small>{i.ref} · {formatRand(invoiceTotals(i).total)} incl. VAT{num(i, 'unfilledShifts') ? ` · ${num(i, 'unfilledShifts')} unfilled-shift penalt${num(i, 'unfilledShifts') === 1 ? 'y' : 'ies'}` : ''}</small>
                 </div>
                 <StatusTag workflow={invoiceDef.workflow} status={i.status} />
               </li>

@@ -15,9 +15,11 @@ import { useClock } from './format';
 export default function CalloutDetail() {
   const { id } = useParams();
   const data = useData();
+  const { can } = useUser();
   const r = rec(data, 'callouts', id);
   return (
-    <RecordDetail backLabel="Armed response" aside={r ? <Aside callout={r} /> : undefined}>
+    // Dispatch and arrival have their own forms below (vehicle and time), so the generic buttons for those two steps are hidden.
+    <RecordDetail backLabel="Armed response" hideTransitions={can('callouts.dispatch') ? ['dispatched', 'onscene'] : undefined} aside={r ? <Aside callout={r} /> : undefined}>
       {r && <Response callout={r} />}
     </RecordDetail>
   );

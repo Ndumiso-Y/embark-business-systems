@@ -45,15 +45,19 @@ export default function Callouts() {
             {active.map((c) => {
               const s = slaState(data, c);
               return (
-                <li key={c.id}>
-                  <span className="time-chip">{str(c, 'receivedAt')}</span>
-                  <div className="grow">
+                <li key={c.id} style={{ flexWrap: 'wrap' }}>
+                  <span className="time-chip" style={{ minWidth: 46 }}>{str(c, 'receivedAt')}</span>
+                  <div className="grow" style={{ flex: '1 1 200px' }}>
                     <Link to={`${base}/callouts/${c.id}`}><b>{siteName(data, c.values.site)} — {label(SIGNALS, str(c, 'signal'))}</b></Link>
                     <small>{c.ref} · received {str(c, 'receivedAt')}{str(c, 'zone') ? ` · ${str(c, 'zone')}` : ''}{str(c, 'vehicle') ? ` · ${equipmentLabel(rec(data, 'equipment', c.values.vehicle))}` : ''}</small>
                   </div>
-                  <Tag tone={s.state === 'breached' ? 'red' : s.state === 'met' ? 'green' : 'amber'}>{s.state === 'met' ? `On scene in ${s.minutes} min` : s.state === 'breached' ? `${s.minutes} min — over ${s.sla}-min SLA` : `Due on scene by ${s.dueBy}`}</Tag>
-                  <StatusTag workflow={def.workflow} status={c.status} />
-                  <WorkflowActions def={def} record={c} compact />
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                    <Tag tone={s.state === 'breached' ? 'red' : s.state === 'met' ? 'green' : 'amber'}>{s.state === 'met' ? `On scene in ${s.minutes} min` : s.state === 'breached' ? `${s.minutes} min — over ${s.sla}-min SLA` : `Due on scene by ${s.dueBy}`}</Tag>
+                    <StatusTag workflow={def.workflow} status={c.status} />
+                    {/* Dispatching needs a vehicle, so the list links to the dispatch form instead of a button that can only refuse. */}
+                    {c.status === 'received' && can('callouts.dispatch') && <Link className="btn xs primary" to={`${base}/callouts/${c.id}`} data-testid="dispatch-link">Dispatch…</Link>}
+                    <WorkflowActions def={def} record={c} compact hide={c.status === 'received' && can('callouts.dispatch') ? ['dispatched'] : undefined} />
+                  </div>
                 </li>
               );
             })}

@@ -34,7 +34,9 @@ function Issue({ item: e }: { item: DemoRecord }) {
   const candidates = records(data, 'officers')
     .map((o) => ({ o, shift: activeShiftFor(data, o.id, today) }))
     .filter((x) => everyone || x.shift)
-    .sort((a, b) => fullName(a.o).localeCompare(fullName(b.o)));
+    // For a firearm, officers on an armed post come first — they are the only ones who can receive it.
+    .map((x) => ({ ...x, armed: !!x.shift && postOf(data, x.shift)?.values.armed === true }))
+    .sort((a, b) => (firearm ? Number(b.armed) - Number(a.armed) : 0) || fullName(a.o).localeCompare(fullName(b.o)));
   const problems = officer ? issueProblems(data, e, officer, today) : [];
   const issue = () => {
     const p = issueProblems(data, e, officer, today);
@@ -48,12 +50,12 @@ function Issue({ item: e }: { item: DemoRecord }) {
     <Panel title="Issue to an officer" meta={firearm ? 'Firearms: only to an officer with valid competency who is posted on an armed post this shift (demo rule)' : 'Equipment is issued at book-on to an officer on the current or next shift'}>
       {permitExpired(e, today) && <Notice tone="red">{PERMIT_LABEL[str(e, 'category')] ?? 'Permit'} expired on {formatDate(str(e, 'permitExpiry'))} — this item cannot be issued.</Notice>}
       <div className="form-grid">
-        <Field label="Officer">
+        <Field label="Officer" hint={firearm ? 'Officers on an armed post are listed first. Pick anyone to see why they would be refused.' : 'Officers posted on today’s day or night shift.'}>
           <select className="select" aria-label="Issue to officer" value={officer} onChange={(ev) => setOfficer(ev.target.value)}>
             <option value="">Select officer…</option>
-            {candidates.map(({ o, shift }) => (
+            {candidates.map(({ o, shift, armed }) => (
               <option key={o.id} value={o.id}>
-                {fullName(o)} — {shift ? `${shiftTitle(data, shift)} (${SHIFT_SHORT[kindOf(data, shift)]}${postOf(data, shift)?.values.armed === true ? ', armed post' : ''})` : 'not on shift'}
+                {fullName(o)} — {shift ? `${shiftTitle(data, shift)} (${SHIFT_SHORT[kindOf(data, shift)]}${armed ? ', armed post' : ''})` : 'not on shift'}
               </option>
             ))}
           </select>

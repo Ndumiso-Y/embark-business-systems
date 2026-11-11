@@ -10,6 +10,7 @@ import {
   ACTIVE_CALLOUT, coverageNow, dailyCoverage, daysSinceInspection, equipmentLabel, fullName, inspectionOverdue, invoiceOverdue, lateBookOn,
   notReturned, officerExpiries, officerName, permitExpired, postLabel, responseStats, sapsProblem, shiftTitle, siteName, slaState,
 } from '../helpers';
+import { DAYS_BACK } from '../seed';
 import { pctTone, shortDate, useClock } from './format';
 
 export default function Dashboard() {
@@ -40,7 +41,14 @@ export default function Dashboard() {
   const actionsOverdue = records(data, 'actions').filter((a) => a.status === 'open' && str(a, 'due') < today);
   const invoicesOverdue = records(data, 'invoices').filter((i) => invoiceOverdue(i, today));
 
-  const chart = Array.from({ length: 14 }, (_, i) => addDays(today, i - 14)).map((d) => ({ label: shortDate(d), value: dailyCoverage(data, d).pct }));
+  const history = Array.from({ length: DAYS_BACK }, (_, i) => addDays(today, i - DAYS_BACK)).map((d) => ({ d, ...dailyCoverage(data, d) }));
+  const chart = history.map((x) => ({ label: shortDate(x.d), value: x.posts - x.covered }));
+  const historyPct = history.reduce((n, x) => n + x.posts, 0) ? Math.round((history.reduce((n, x) => n + x.covered, 0) / history.reduce((n, x) => n + x.posts, 0)) * 1000) / 10 : 0;
+  // Each simulated role gets a shortcut to its own work.
+  const shortcuts: Record<string, [string, string]> = {
+    hr: ['officers', 'Open officers & compliance'], armoury: ['equipment', 'Open the armoury'], supervisor: ['inspections', 'Open site inspections'], accounts: ['invoices', 'Open invoicing'],
+  };
+  const own = shortcuts[user.role] ?? ['roster', 'Open duty roster'];
   const weeks = Array.from({ length: 8 }, (_, i) => {
     const end = addDays(today, -7 * (7 - i));
     const start = addDays(end, -6);
@@ -66,9 +74,9 @@ export default function Dashboard() {
   return (
     <>
       <PageHeader kicker={`${config.businessName} / Control room`} title={`Good day, ${user.name.split(' ')[0]}`} subtitle={`${formatDate(today)} · control room overview built from the live demo records.`}
-        actions={hasModule('roster') ? <Link className="btn primary" to={`${base}/roster`}>Open duty roster</Link> : undefined} />
+        actions={hasModule(own[0]) ? <Link className="btn primary" to={`${base}/${own[0]}`} data-testid="dash-shortcut">{own[1]}</Link> : undefined} />
       {cover.covered === 0 && cover.posts > 0 && (
-        <Notice tone="amber">The demo roster only runs three days ahead of the day it was seeded, so nobody is rostered for the shift running now. Open <Link to={`${base}/settings`}>Settings &amp; reset</Link> to re-seed the demo around today.</Notice>
+        <Notice tone="amber">The demo roster only runs a few days ahead of the day it was seeded, so nobody is rostered for the shift running now. Open <Link to={`${base}/settings`}>Settings &amp; reset</Link> to re-seed the demo around today.</Notice>
       )}
       <div className="dash-hero">
         <div>
@@ -97,8 +105,8 @@ export default function Dashboard() {
       </div>
       <div className="section-gap" />
       <div className="grid-2">
-        <Panel title="Coverage — last 14 days" meta="% of contracted day and night posts with an officer who reported for duty">
-          <BarChart label="Daily post coverage percentage, last 14 days" data={chart} format={(n) => `${n}%`} />
+        <Panel title={`Unfilled shifts — last ${DAYS_BACK} days`} meta="Contracted day and night posts nobody reported for, per day (hover a bar for the figure)" right={<Tag tone={pctTone(historyPct)}>{historyPct}% covered</Tag>}>
+          <BarChart label={`Unfilled shifts per day, last ${DAYS_BACK} days`} data={chart} format={(n) => `${n} unfilled`} />
         </Panel>
         <Panel title="Unfilled posts now" meta={`${SHIFT_SHORT[cover.slot.kind]} shift — posts without an officer`} right={<Tag tone={pctTone(cover.pct)}>{cover.pct}%</Tag>}>
           {cover.unfilled.length ? (

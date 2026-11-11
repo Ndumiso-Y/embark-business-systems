@@ -63,8 +63,6 @@ export const slotKey = (date: string, kind: string) => `${date}${kind === 'night
 export function currentSlot(today = todayStr()): Slot {
   return { date: today, kind: 'day' };
 }
-/** Day or night, from an entry's own recorded time. */
-export const kindOfTime = (time: string): ShiftKind => (time >= '06:00' && time < '18:00' ? 'day' : 'night');
 export const nextSlot = (s: Slot): Slot => (s.kind === 'day' ? { date: s.date, kind: 'night' } : { date: addDays(s.date, 1), kind: 'day' });
 export const prevSlot = (s: Slot): Slot => (s.kind === 'night' ? { date: s.date, kind: 'day' } : { date: addDays(s.date, -1), kind: 'night' });
 export function slotPhase(date: string, kind: string, today = todayStr()): 'past' | 'current' | 'future' {
@@ -329,6 +327,7 @@ export function incidentReportProblem(r: DemoRecord): string | null {
 }
 export function incidentCloseProblems(r: DemoRecord): string[] {
   const out: string[] = [];
+  if (!str(r, 'clientNotifiedAt')) out.push('The time the client was notified is not recorded — use the close-out form on the incident page.');
   if (!str(r, 'rootCause').trim()) out.push('Root cause not recorded.');
   if (!str(r, 'outcome').trim()) out.push('Outcome not recorded — use the close-out form on the incident page.');
   if (r.values.clientReportSent !== true) out.push('Client report has not been logged as sent.');

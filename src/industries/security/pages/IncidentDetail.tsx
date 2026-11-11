@@ -40,7 +40,7 @@ function CloseOut({ incident: r }: { incident: DemoRecord }) {
     <>
     <Panel title="Close-out checklist" meta="An incident can only be closed when every item is on file" right={<Tag tone={r.status === 'closed' ? 'green' : problems.length ? 'amber' : 'green'}>{r.status === 'closed' ? 'Closed' : problems.length ? `${problems.length} outstanding` : 'Ready to close'}</Tag>}>
       <ul className="list" data-testid="closeout-checklist">
-        <Check ok={!!str(r, 'clientNotifiedAt')} label="Client notified" detail={str(r, 'clientNotifiedAt') ? `Phoned at ${str(r, 'clientNotifiedAt')}` : 'Record the time the client contact was phoned'} />
+        <Check ok={!!str(r, 'clientNotifiedAt')} label="Client notified" detail={str(r, 'clientNotifiedAt') ? `Phoned at ${str(r, 'clientNotifiedAt')}` : 'Record the time the client contact was phoned — needed before closing'} />
         <Check ok={!!str(r, 'rootCause').trim()} label="Root cause" detail={str(r, 'rootCause') || 'Needed before the report goes to the client'} />
         <Check ok={isSerious(r) ? !sapsProblem(r) : null} label="SAPS case number (fictional)" detail={isSerious(r) ? (saps || (str(r, 'noSapsReason') ? `No case: ${str(r, 'noSapsReason')}` : 'Serious incident — record DEMO-CAS … or the reason no case was opened')) : 'Only required for serious (high severity) incidents'} />
         <Check ok={r.values.clientReportSent === true} label="Client report logged" detail={r.values.clientReportSent === true ? `Logged ${formatDate(str(r, 'clientReportOn'))} — nothing was actually sent` : 'Use “Log client report” once the investigation is complete'} />

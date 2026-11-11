@@ -53,11 +53,13 @@ function Checklist({ inspection: r }: { inspection: DemoRecord }) {
         </div>
         {editable && (
           <div style={{ marginTop: 14 }}>
-            <Field label="Findings" hint={s.failed.length ? `${s.failed.length} item(s) below satisfactory — each raises a corrective action on submission.` : 'Optional when everything is satisfactory.'}>
-              <textarea className="textarea" aria-label="Findings" value={findings} onChange={(e) => setFindings(e.target.value)} />
+            <Field label="Findings" hint={s.failed.length ? `${s.failed.length} item(s) below satisfactory — describe them here; each raises a corrective action on submission. Saved as you leave the box.` : 'Optional when everything is satisfactory. Saved as you leave the box.'}>
+              {/* Saved when the box loses focus, so “Submit inspection” always sees what was typed. */}
+              <textarea className="textarea" aria-label="Findings" value={findings} onChange={(e) => setFindings(e.target.value)}
+                onBlur={() => { if (findings !== str(r, 'findings')) act.update('inspections', r.id, { findings }, 'Findings updated'); }} />
             </Field>
             <div className="btns" style={{ marginTop: 10 }}>
-              <button className="btn sm" onClick={() => { act.update('inspections', r.id, { findings }, 'Findings updated'); act.toast(`${r.ref} findings saved`); }}>Save findings</button>
+              <button className="btn sm" onClick={() => { if (findings !== str(r, 'findings')) act.update('inspections', r.id, { findings }, 'Findings updated'); act.toast(`${r.ref} findings saved`); }}>Save findings</button>
             </div>
           </div>
         )}

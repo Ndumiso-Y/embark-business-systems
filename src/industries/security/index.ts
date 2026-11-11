@@ -4,6 +4,7 @@
 import type { CollectionDef, Flag, IndustryConfig, WorkflowDef } from '../../core/types';
 import { num, str } from '../../core/engine';
 import { addDays, daysBetween, formatDate, monthLabel } from '../../core/lib/dates';
+import { formatRand } from '../../core/lib/money';
 import {
   IcoAlert, IcoBell, IcoBriefcase, IcoCalendar, IcoChart, IcoCheck, IcoHome, IcoKey, IcoList, IcoReceipt, IcoTimer, IcoUsers,
 } from '../../core/components/Icons';
@@ -321,8 +322,9 @@ const collections: CollectionDef[] = [
       { key: 'noSapsReason', label: 'Reason no SAPS case was opened', type: 'text', wide: true, hint: 'Serious incidents need a case number or this reason.' },
       { key: 'rootCause', label: 'Root cause', type: 'textarea' },
       { key: 'outcome', label: 'Outcome', type: 'textarea' },
-      { key: 'clientReportSent', label: 'Client report logged as sent', type: 'boolean' },
-      { key: 'clientReportOn', label: 'Client report date', type: 'date' },
+      // Set by the “Log client report” step only, so they are not offered in the edit form; the close-out checklist shows them.
+      { key: 'clientReportSent', label: 'Client report logged as sent', type: 'boolean', hidden: true },
+      { key: 'clientReportOn', label: 'Client report date', type: 'date', hidden: true },
     ],
   },
   {
@@ -381,6 +383,8 @@ const collections: CollectionDef[] = [
   },
   {
     key: 'inspections', singular: 'Site inspection', plural: 'Site inspections', refPrefix: 'INS', workflow: inspectionWorkflow, editPermission: 'inspections',
+    // The checklist is scored on the inspection page, so starting one only asks where, when and who.
+    createFields: ['site', 'date', 'time', 'inspector'],
     title: (r, d) => `${siteName(d, r.values.site)} — inspection`,
     subtitle: (r) => `${formatDate(str(r, 'date'))} ${str(r, 'time')} · ${str(r, 'inspector')} · score ${inspectionScore(r).score}/${inspectionScore(r).max}`,
     sort: byDateTime('date', 'time'),
@@ -433,7 +437,7 @@ const collections: CollectionDef[] = [
       { key: 'firstName', label: 'First name', type: 'text', required: true },
       { key: 'lastName', label: 'Surname', type: 'text', required: true },
       { key: 'employeeNo', label: 'Employee number', type: 'text', required: true },
-      { key: 'psiraNo', label: 'PSIRA number (fictional)', type: 'text', required: true, validate: (v) => (/^DEMO-PSIRA-\d{7}$/.test(String(v)) ? null : 'Use the demo format DEMO-PSIRA-1234567.') },
+      { key: 'psiraNo', label: 'PSIRA number (fictional)', type: 'text', required: true, placeholder: 'DEMO-PSIRA-1234567', validate: (v) => (/^DEMO-PSIRA-\d{7}$/.test(String(v)) ? null : 'Use the demo format DEMO-PSIRA-1234567.') },
       { key: 'grade', label: 'Grade', type: 'select', options: GRADES, required: true, table: true },
       { key: 'psiraExpiry', label: 'PSIRA registration expires', type: 'date', required: true, table: true },
       { key: 'competencyExpiry', label: 'Firearm competency expires', type: 'date', table: true, hint: 'Leave empty if the officer holds no firearm competency.' },
@@ -441,7 +445,7 @@ const collections: CollectionDef[] = [
       { key: 'medicalDue', label: 'Medical fitness due', type: 'date' },
       { key: 'employment', label: 'Employment status', type: 'select', options: EMPLOYMENT, required: true },
       { key: 'inductions', label: 'Site inductions (site codes)', type: 'text', placeholder: 'e.g. KLF, PHE', table: true },
-      { key: 'phone', label: 'Mobile (fictional)', type: 'text', required: true, validate: phoneRule },
+      { key: 'phone', label: 'Mobile (fictional)', type: 'text', required: true, placeholder: '082 555 0100', validate: phoneRule },
       { key: 'email', label: 'Email', type: 'text', validate: emailRule },
       { key: 'hrNotes', label: 'HR notes (restricted)', type: 'textarea', permission: 'hr.notes' },
     ],
@@ -475,7 +479,7 @@ const collections: CollectionDef[] = [
   {
     key: 'contracts', singular: 'Contract', plural: 'Client contracts', refPrefix: 'CT', editPermission: 'contracts',
     title: (r) => str(r, 'client'),
-    subtitle: (r, d) => `R${contractMonthly(d, r.id).toLocaleString('en-ZA')} per month · ends ${formatDate(str(r, 'endDate'))}`,
+    subtitle: (r, d) => `${formatRand(contractMonthly(d, r.id) * 100)} per month excl. VAT · ends ${formatDate(str(r, 'endDate'))}`,
     sort: (a, b) => str(a, 'endDate').localeCompare(str(b, 'endDate')),
     createDefaults: (today) => ({ startDate: today, endDate: addDays(today, 365), slaMinutes: 15, includedCallouts: 3 }),
     flags: (r, _d, today) => {
@@ -487,7 +491,7 @@ const collections: CollectionDef[] = [
     fields: [
       { key: 'client', label: 'Client (fictional)', type: 'text', required: true },
       { key: 'contactName', label: 'Client contact', type: 'text', required: true, table: true },
-      { key: 'phone', label: 'Phone (fictional)', type: 'text', validate: phoneRule },
+      { key: 'phone', label: 'Phone (fictional)', type: 'text', placeholder: '011 555 0100', validate: phoneRule },
       { key: 'email', label: 'Email', type: 'text', validate: emailRule },
       { key: 'startDate', label: 'Contract start', type: 'date', required: true },
       { key: 'endDate', label: 'Contract end', type: 'date', required: true, table: true, validate: (v, all) => (all.startDate && String(v) < String(all.startDate) ? 'Must be after the start date.' : null) },
@@ -512,7 +516,7 @@ const collections: CollectionDef[] = [
     },
     fields: [
       { key: 'name', label: 'Site name', type: 'text', required: true },
-      { key: 'code', label: 'Site code', type: 'text', required: true, table: true, validate: (v) => (/^[A-Z]{3}$/.test(String(v)) ? null : 'Use three capital letters, e.g. KLF.') },
+      { key: 'code', label: 'Site code', type: 'text', required: true, table: true, placeholder: 'e.g. KLF', validate: (v) => (/^[A-Z]{3}$/.test(String(v)) ? null : 'Use three capital letters, e.g. KLF.') },
       { key: 'contract', label: 'Client contract', type: 'ref', ref: 'contracts', required: true, table: true },
       { key: 'area', label: 'Area (fictional)', type: 'text' },
       { key: 'type', label: 'Site type', type: 'select', options: SITE_TYPES, required: true },
@@ -615,12 +619,12 @@ const config: IndustryConfig = {
     'All clients, sites, officers, PSIRA numbers, serial numbers and vehicle registrations are fictional.',
   ],
   guide: [
-    { title: 'Fill an unfilled post', detail: 'Tomorrow’s armed cash-office post has nobody on it. Try posting an officer with a lapsed PSIRA registration, too low a grade or no firearm competency — each is refused with the reason — then post an eligible one.', to: 'roster/roster_1', as: 'u_ctl' },
+    { title: 'Fill an unfilled post', detail: 'Tomorrow’s armed cash-office post has nobody on it. Press “Try to post” on an officer with a lapsed PSIRA registration, too low a grade or no firearm competency — each is refused with the reason — then “Post” an eligible one.', to: `roster/${SEED.guideShift}`, as: 'u_ctl' },
     { title: 'Book an officer off', detail: 'This officer is on duty at the Kloofview Mall main entrance. Press “Book off”: it is refused until the site’s shift handover entry is written and signed in the occurrence book. The “Shift handover” panel on the same page does both — then book off works.', to: `roster/${SEED.onDutyShift}`, as: 'u_ctl' },
-    { title: 'Dispatch armed response', detail: 'A panic signal is waiting for a vehicle. Pick one in the dispatch form — vehicles in repair, unlicensed or already committed are refused — then mark it on scene to see the response time against the SLA.', to: 'callouts/callouts_1', as: 'u_ctl' },
-    { title: 'Close an incident properly', detail: 'This break-in cannot go to the client without a root cause and a SAPS case number (or the reason there is none), and cannot be closed without an outcome. Try the steps, fill in the close-out form on the page, log the client report, then close it.', to: 'incidents/incidents_1', as: 'u_dir' },
-    { title: 'Issue a firearm', detail: 'Use the issue form: an officer on an unarmed post or without firearm competency is refused; an officer on an armed post this shift is accepted. Nothing leaves a real armoury.', to: 'equipment/equipment_1', as: 'u_arm' },
-    { title: 'Submit a site inspection', detail: 'Two checklist items are below satisfactory. Submit the inspection and a corrective action is raised for each; the site drops off the “overdue for inspection” list.', to: 'inspections/inspections_1', as: 'u_sup' },
+    { title: 'Dispatch armed response', detail: 'A panic signal is waiting for a vehicle. Pick one in the dispatch form — vehicles in repair, unlicensed or already committed are refused — mark it on scene to see the response time against the SLA, then stand it down with an outcome.', to: `callouts/${SEED.guideCallout}`, as: 'u_ctl' },
+    { title: 'Close an incident properly', detail: 'This break-in cannot go to the client without a root cause and a SAPS case number (or the reason there is none), and cannot be closed without an outcome. Try the steps, fill in the close-out form on the page, log the client report, then close it.', to: `incidents/${SEED.guideIncident}`, as: 'u_dir' },
+    { title: 'Issue a firearm', detail: 'Pick an officer in the issue form: one on an unarmed post, without firearm competency or already holding a firearm is refused with the reason; an officer on one of tonight’s armed posts is accepted. Then return it to store. Nothing leaves a real armoury.', to: `equipment/${SEED.guideFirearm}`, as: 'u_arm' },
+    { title: 'Submit a site inspection', detail: 'Two checklist items are below satisfactory. Submit the inspection and a corrective action is raised for each; the site drops off the “overdue for inspection” list.', to: `inspections/${SEED.guideInspection}`, as: 'u_sup' },
   ],
   highlights: [
     'Duty roster that blocks expired PSIRA registration, low grades, double bookings and armed posts without competency',
