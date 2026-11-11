@@ -54,6 +54,18 @@ export function monthLabel(key: string): string {
   return `${MONTHS[(m || 1) - 1]} ${y}`;
 }
 
+/**
+ * The last `n` calendar months ending with today's month, oldest first, as YYYY-MM keys.
+ * Use this for month charts — subtracting ~30 days at a time skips or repeats months.
+ */
+export function monthKeys(today: string, n: number): string[] {
+  const [y, m] = today.split('-').map(Number);
+  return Array.from({ length: n }, (_, i) => {
+    const d = new Date(y, m - 1 - (n - 1 - i), 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  });
+}
+
 export function monthShort(key: string): string {
   const m = Number(key.split('-')[1]);
   return MONTHS[(m || 1) - 1];

@@ -49,7 +49,7 @@ function Aside({ id }: { id: string }) {
           <div className="btns" style={{ marginTop: 12 }}>
             {str(p, 'state') !== 'working' && str(p, 'state') !== 'offhired' && <button className="btn sm" onClick={() => set({ state: 'working' }, 'Marked working')}>Mark working</button>}
             {str(p, 'state') === 'working' && <button className="btn sm" onClick={() => set({ state: 'idle' }, 'Marked standing idle')}>Mark idle</button>}
-            {live && <button className="btn sm primary" onClick={() => set({ state: 'offhired', offHiredOn: today }, `Off-hired ${formatDate(today)} — hire company to collect`)} data-testid="off-hire">Off-hire today</button>}
+            {live && <button className="btn sm primary" onClick={() => set({ state: 'offhired', offHiredOn: today }, `Off-hired ${formatDate(today)} — arrange collection with the hire company`)} data-testid="off-hire">Off-hire today</button>}
             {str(p, 'state') !== 'offhired' && <button className="btn sm" onClick={() => set({ nextServiceDue: addDays(today, 90) }, `Service recorded — next due ${formatDate(addDays(today, 90))}`)}>Record service</button>}
           </div>
         )}

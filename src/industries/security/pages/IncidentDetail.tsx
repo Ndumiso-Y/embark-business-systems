@@ -5,7 +5,7 @@ import { str } from '../../../core/engine';
 import { formatDate } from '../../../core/lib/dates';
 import { KeyValues, Notice, Panel, Tag } from '../../../core/components/ui';
 import { RecordDetail } from '../../../core/components/records';
-import { INCIDENT_TYPES, SEVERITIES, label } from '../data';
+import { INCIDENT_TYPES, label } from '../data';
 import { contractOfSite, incidentCloseProblems, isSerious, rec, sapsProblem, siteName } from '../helpers';
 import { Check } from './shared';
 
@@ -50,7 +50,7 @@ function Aside({ incident: r }: { incident: DemoRecord }) {
         <div className="sms-preview" data-testid="client-report">
           <b>Incident report {r.ref}</b><br />
           To: {str(contract, 'contactName') || 'Client contact'}, {str(contract, 'client')}<br /><br />
-          {label(INCIDENT_TYPES, str(r, 'type'))} at {siteName(data, r.values.site)} on {formatDate(str(r, 'date'))} at {str(r, 'time')} ({label(SEVERITIES, str(r, 'severity')).toLowerCase()} severity). {str(r, 'title')}.
+          {label(INCIDENT_TYPES, str(r, 'type'))} at {siteName(data, r.values.site)} on {formatDate(str(r, 'date'))} at {str(r, 'time')} ({str(r, 'severity') || 'unrated'} severity). {str(r, 'title')}.
           {str(r, 'rootCause') ? ` Root cause: ${str(r, 'rootCause')}` : ' Root cause: still under investigation.'}
           {str(r, 'outcome') ? ` Outcome: ${str(r, 'outcome')}` : ''}
           {str(r, 'sapsCase') ? ` SAPS reference: ${str(r, 'sapsCase')}.` : ''}<br /><br />

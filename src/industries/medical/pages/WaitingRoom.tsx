@@ -9,7 +9,7 @@ import { RecordTable, WorkflowActions } from '../../../core/components/records';
 import { RecordFormModal } from '../../../core/components/fields';
 import { IcoArrow, IcoBack, IcoPlus } from '../../../core/components/Icons';
 import { CLINICIANS, VISIT_TYPES, label } from '../data';
-import { byDateTime, clashes, minutesWaiting, patientName, todayStr, vitalAlerts, WAITING_STATES } from '../helpers';
+import { byDateTime, clashes, minutesWaiting, patientName, shownTime, todayStr, vitalAlerts, WAITING_STATES } from '../helpers';
 import { AllergyTag, TriageModal } from './shared';
 
 const COLUMNS = ['booked', 'arrived', 'triaged', 'withdoctor', 'billing', 'done'];
@@ -105,7 +105,7 @@ function QueueCard({ visit, today, onTriage }: { visit: DemoRecord; today: boole
     <article className="board-card" data-testid="queue-card">
       <Link to={`${base}/waiting/${visit.id}`}><strong>{patientName(data, visit.values.patient)}</strong></Link>
       <small>{str(visit, 'time')} · {label(VISIT_TYPES, str(visit, 'type'))} · {CLINICIANS.find((c) => c.value === str(visit, 'clinician'))?.short ?? ''}</small>
-      {str(visit, 'arrivedAt') && visit.status !== 'done' && <small>Arrived {str(visit, 'arrivedAt')}{wait !== null ? ` · ${wait} min` : ''}</small>}
+      {today && shownTime(str(visit, 'arrivedAt')) && visit.status !== 'done' && <small>Arrived {str(visit, 'arrivedAt')}{wait !== null ? ` · ${wait} min` : ''}</small>}
       <Flags flags={alerts} />
       <AllergyTag data={data} patientId={visit.values.patient} />
       <div className="btns" style={{ flexWrap: 'wrap' }}>

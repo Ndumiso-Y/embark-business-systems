@@ -101,7 +101,7 @@ function Picker({ shift }: { shift: DemoRecord }) {
       <span className={`dot ${problems.length ? 'red' : 'green'}`} />
       <div className="grow">
         <Link to={`${base}/officers/${o.id}`}><b>{fullName(o)}</b></Link>
-        <small>Grade {str(o, 'grade')} · PSIRA valid to {formatDate(str(o, 'psiraExpiry'))}{hasCompetency(o, today) ? ' · firearm competent' : ''}{str(o, 'inductions') ? ` · inducted ${str(o, 'inductions')}` : ''}</small>
+        <small>Grade {str(o, 'grade')} · PSIRA {str(o, 'psiraExpiry') < str(shift, 'date') ? 'expired' : 'valid to'} {formatDate(str(o, 'psiraExpiry'))}{hasCompetency(o, today) ? ' · firearm competent' : ''}{str(o, 'inductions') ? ` · inducted ${str(o, 'inductions')}` : ''}</small>
         {problems.map((p) => <small key={p} style={{ color: 'var(--danger)' }}>{p}</small>)}
       </div>
       <button className={`btn sm ${problems.length ? '' : 'primary'}`} onClick={() => assign(o)}>{problems.length ? 'Try to post' : relief ? 'Assign as relief' : 'Post'}</button>

@@ -24,6 +24,13 @@ export function nowTime() {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
+/**
+ * A seeded clock time for today, or '' when it is still ahead of the real clock.
+ * The seeded queue is a mid-morning snapshot; opened earlier in the day, its
+ * arrival times would read as being in the future.
+ */
+export const shownTime = (t: string, now = nowTime()) => (t && t <= now ? t : '');
+
 /* ---------------- Visits & triage ---------------- */
 
 export const needsDoctor = (r: DemoRecord) => VISIT_TYPES.find((t) => t.value === str(r, 'type'))?.doctor ?? true;

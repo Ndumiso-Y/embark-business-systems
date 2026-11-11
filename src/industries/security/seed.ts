@@ -455,11 +455,12 @@ function buildCollections(today: string) {
   patrol(3, cur, due2, 'started', Math.min(31, intoShift - due2));
 
   /* ---------- Site inspections and corrective actions ---------- */
-  const inspection = (siteIdx: number, d: number, scores: number[], status: string, findings = '', inspector = SUPERVISOR) => rec('inspections', 'INS', {
-    site: sites[siteIdx].id, date: day(-d), time: fromMin(540 + ((siteIdx * 47 + d * 13) % 420)), inspector,
+  const inspection = (siteIdx: number, d: number, scores: number[], status: string, findings = '', inspector = SUPERVISOR, at?: string) => rec('inspections', 'INS', {
+    site: sites[siteIdx].id, date: day(-d), time: at ?? fromMin(540 + ((siteIdx * 47 + d * 13) % 420)), inspector,
     uniform: String(scores[0]), postOrders: String(scores[1]), obUpToDate: String(scores[2]), equipment: String(scores[3]), alertness: String(scores[4]), findings,
   }, { status, createdDaysAgo: d, history: [{ daysAgo: d, by: inspector, role: ROLE.sup, action: status === 'submitted' ? 'Submit inspection' : 'Inspection started' }] });
-  inspection(5, 0, [2, 1, 0, 2, 2], 'draft', 'Night officer could not name the fire assembly point. Occurrence book not written up since 22:00 the previous night.');
+  const visit = minutesAgo(today, time, 50);
+  inspection(5, 0, [2, 1, 0, 2, 2], 'draft', 'Officer on post could not name the fire assembly point. Occurrence book not written up since 22:00 the previous night.', SUPERVISOR, visit.date === today ? visit.time : '00:05');
   const findingsText = ['Officer without name badge.', 'Post orders file missing two pages.', 'Occurrence book entries not numbered.', 'Torch not working — battery to be replaced.', 'Officer slow to challenge the inspector at the gate.'];
   const lastBySite: DemoRecord[] = SITES.map((s, si) => {
     const scores = [2, 2, 2, 2, 2];

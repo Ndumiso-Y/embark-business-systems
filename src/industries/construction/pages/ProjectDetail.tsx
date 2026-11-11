@@ -9,7 +9,7 @@ import { Empty, KeyValues, Meters, Notice, Panel, StatusTag } from '../../../cor
 import { RecordDetail } from '../../../core/components/records';
 import { RecordFormModal } from '../../../core/components/fields';
 import { IcoPlus } from '../../../core/components/Icons';
-import { SNAG_CATEGORIES, WEATHER, label } from '../data';
+import { RETENTION_CAP_PCT, SNAG_CATEGORIES, WEATHER, label } from '../data';
 import {
   CERTIFIED_STATES, approvedVariations, certifiedToDate, completionDue, diarySummary, finalCompletionProblem, forProject, nextValuationNo, openValuations,
   practicalCompletionProblem, programmeProgress, projectCost, rand, randShort, revisedContractSum, snagOpen, snagsFor, tasksFor, todayStr,
@@ -48,7 +48,8 @@ function Body({ id }: { id: string }) {
   const prog = programmeProgress(data, p, today);
   const vals = valuationsFor(data, id);
   const lastCert = [...vals].reverse().find((v) => CERTIFIED_STATES.includes(v.status ?? ''));
-  const retentionHeld = lastCert ? valuationFigures(data, lastCert).retention : 0;
+  const lastFigures = lastCert ? valuationFigures(data, lastCert) : null;
+  const retentionHeld = lastFigures?.retention ?? 0;
   const open = openValuations(data, id);
   const vos = variationsFor(data, id).sort((a, b) => str(b, 'instructedOn').localeCompare(str(a, 'instructedOn')));
   const voDef = act.def('variations');
@@ -73,7 +74,7 @@ function Body({ id }: { id: string }) {
           { label: 'Revised contract sum', value: <b>{rand(toCents(revised))}</b> },
           { label: 'Variations pending approval', value: rand(toCents(pending)) },
           { label: 'Certified to date', value: rand(toCents(certified)) },
-          { label: `Retention held (${num(p, 'retentionPct')}%)`, value: rand(retentionHeld) },
+          { label: `Retention held (${num(p, 'retentionPct')}%${lastFigures?.capped ? `, capped at ${RETENTION_CAP_PCT}% of contract` : ''})`, value: rand(retentionHeld) },
         ]} />
         <div style={{ marginTop: 14 }}>
           <Meters format={(n) => randShort(n)} items={[

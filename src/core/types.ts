@@ -45,6 +45,10 @@ export type FieldDef = {
   wide?: boolean;
   /** Hidden from users without this permission (simulated, e.g. clinical notes). */
   permission?: string;
+  /** Internal value: kept on the record but left out of generic forms, details and tables. */
+  hidden?: boolean;
+  /** Unit shown after a number in details and tables, e.g. "km". */
+  unit?: string;
   /** Cross-field / domain validation. Return an error message or null. */
   validate?: (value: Value, values: Values) => string | null;
 };
@@ -60,6 +64,8 @@ export type Transition = {
   /** Permission key required (super admins bypass). */
   permission?: string;
   requiresNote?: boolean;
+  /** Shown in the note dialog: what the note should say (e.g. "How did the customer approve?"). */
+  noteHint?: string;
   /** Business rule. Return a reason string to block the transition. */
   guard?: (ctx: GuardContext) => string | null;
   /** Visual weight of the button. */
@@ -110,6 +116,8 @@ export type CollectionDef = {
   flags?: (r: DemoRecord, data: IndustryData, today: string, user?: DemoUser) => Flag[];
   /** Permission needed to create / edit / delete (super admins bypass). */
   editPermission?: string;
+  /** Starting values for the "New …" form, e.g. today's date. */
+  createDefaults?: (today: string, data: IndustryData) => Values;
   /** Field keys shown when creating (defaults to all visible fields). */
   createFields?: string[];
   /** Default sort, newest first by default. */

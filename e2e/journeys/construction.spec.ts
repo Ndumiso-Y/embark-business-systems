@@ -328,7 +328,7 @@ test.describe('Construction journeys', () => {
     await expect(done.locator('.panel-head .tag')).toHaveText('Off-hired / returned');
     expect(cents(await page.getByTestId('hire-cost').textContent())).toBe(days * rate);
     await expect(page.getByTestId('off-hire')).toHaveCount(0);
-    await expect(page.locator('.timeline')).toContainText('hire company to collect');
+    await expect(page.locator('.timeline')).toContainText('arrange collection with the hire company');
 
     // A project manager can see hired plant but is told who off-hires it.
     await signInAs(page, 'u_pm1');

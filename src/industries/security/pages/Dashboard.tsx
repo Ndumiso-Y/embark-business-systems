@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useBase, useData, useIndustry, useUser } from '../../../core/context';
 import { records, str } from '../../../core/engine';
 import { addDays, daysBetween, formatDate, relativeWhen } from '../../../core/lib/dates';
-import { BarChart, Empty, Meters, PageHeader, Panel, Stat, Tag } from '../../../core/components/ui';
+import { BarChart, Empty, Meters, Notice, PageHeader, Panel, Stat, Tag } from '../../../core/components/ui';
 import RoleBar from '../../../core/components/RoleBar';
 import type { Tone } from '../../../core/types';
 import { DEFAULT_SLA_MIN, INSPECTION_INTERVAL_DAYS, SEVERITIES, SHIFT_SHORT, SIGNALS, label } from '../data';
@@ -49,7 +49,7 @@ export default function Dashboard() {
   type Item = { to: string; title: string; sub: string; tone: Tone; mod: string };
   const attention: Item[] = [
     ...active.filter((c) => slaState(data, c, today, time).state === 'breached').map((c) => ({ to: `callouts/${c.id}`, title: `${c.ref} past the response SLA`, sub: `${siteName(data, c.values.site)} · ${label(SIGNALS, str(c, 'signal'))} · ${duration(elapsedMinutes(c, today, time))} since the signal`, tone: 'red' as const, mod: 'callouts' })),
-    ...cover.unfilled.map((u) => ({ to: u.shift ? `roster/${u.shift.id}` : 'roster', title: `Unfilled now: ${postLabel(data, u.post)}`, sub: `${u.reason} · ${SHIFT_SHORT[cover.slot.kind]} shift`, tone: 'red' as const, mod: 'roster' })),
+    ...cover.unfilled.slice(0, 4).map((u) => ({ to: u.shift ? `roster/${u.shift.id}` : 'roster', title: `Unfilled now: ${postLabel(data, u.post)}`, sub: `${u.reason} · ${SHIFT_SHORT[cover.slot.kind]} shift`, tone: 'red' as const, mod: 'roster' })),
     ...late.map((r) => ({ to: `roster/${r.id}`, title: `${officerName(data, r.values.reliefOfficer || r.values.officer)} has not booked on`, sub: shiftTitle(data, r), tone: 'amber' as const, mod: 'roster' })),
     ...open.filter((i) => sapsProblem(i)).map((i) => ({ to: `incidents/${i.id}`, title: `${i.ref} serious incident without a SAPS case number`, sub: `${str(i, 'title')} · ${siteName(data, i.values.site)}`, tone: 'red' as const, mod: 'incidents' })),
     ...open.filter((i) => i.status === 'reported').map((i) => ({ to: `incidents/${i.id}`, title: `${i.ref} reported — no response logged`, sub: `${str(i, 'title')} · ${siteName(data, i.values.site)}`, tone: 'amber' as const, mod: 'incidents' })),
@@ -65,6 +65,9 @@ export default function Dashboard() {
     <>
       <PageHeader kicker={`${config.businessName} / Control room`} title={`Good day, ${user.name.split(' ')[0]}`} subtitle={`${formatDate(today)} ${time} · control room overview built from the live demo records.`}
         actions={hasModule('roster') ? <Link className="btn primary" to={`${base}/roster`}>Open duty roster</Link> : undefined} />
+      {cover.covered === 0 && cover.posts > 0 && (
+        <Notice tone="amber">The demo roster only runs three days ahead of the day it was seeded, so nobody is rostered for the shift running now. Open <Link to={`${base}/settings`}>Settings &amp; reset</Link> to re-seed the demo around today.</Notice>
+      )}
       <div className="dash-hero">
         <div>
           <div className="hero-kicker">{SHIFT_SHORT[cover.slot.kind]} shift · {formatDate(cover.slot.date)}</div>
@@ -98,7 +101,7 @@ export default function Dashboard() {
         <Panel title="Unfilled posts now" meta={`${SHIFT_SHORT[cover.slot.kind]} shift — posts without an officer`} right={<Tag tone={pctTone(cover.pct)}>{cover.pct}%</Tag>}>
           {cover.unfilled.length ? (
             <ul className="list" data-testid="unfilled-list">
-              {cover.unfilled.map((u) => (
+              {cover.unfilled.slice(0, 8).map((u) => (
                 <li key={u.post.id}>
                   <span className="dot red" />
                   <div className="grow">
@@ -109,6 +112,7 @@ export default function Dashboard() {
               ))}
             </ul>
           ) : <Empty title="All posts covered" />}
+          {cover.unfilled.length > 8 && <p className="muted-note" style={{ marginTop: 10 }}>+ {cover.unfilled.length - 8} more unfilled posts</p>}
         </Panel>
       </div>
       <div className="grid-2">

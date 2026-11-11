@@ -241,3 +241,8 @@ body { background: var(--bg-app); }
 /* Search on phones: the top-bar field is hidden, so offer a button to the search page. */
 .search-mobile { display: none; text-decoration: none; }
 @media (max-width: 900px) { .search-mobile { display: inline-flex; } }
+
+/* Audit fixes: who can do a blocked step; record picker filter; fewer stacked toasts on phones */
+.wf-who { display: block; font-size: 10.5px; color: var(--muted-2); line-height: 1.35; margin-top: 4px; }
+.ref-filter { margin-bottom: 6px; }
+@media (max-width: 900px) { .toasts .toast:nth-last-child(n+3) { display: none; } }

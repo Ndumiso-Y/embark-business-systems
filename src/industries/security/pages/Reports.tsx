@@ -86,8 +86,8 @@ export default function Reports() {
       </div>
       <div className="grid-2">
         <Panel title="Armed response times" meta="Minutes from signal to on scene, last 30 days, oldest first">
-          {done.length ? <BarChart label="Response time per call-out in minutes" data={done.slice(-16).map((c) => ({ label: shortDate(str(c, 'date')), value: responseMinutes(c) ?? 0, alt: calloutSla(data, c) }))} alt="SLA" format={(n) => `${n} min`} /> : <Empty title="No completed call-outs" />}
-          <p className="muted-note" style={{ marginTop: 8 }}>Accent bar: response time. Dark bar: the contract SLA for that site.</p>
+          {done.length ? <BarChart label="Response time per call-out in minutes" data={done.slice(-16).map((c) => ({ label: `#${Number(c.ref.split('-').pop())}`, value: responseMinutes(c) ?? 0, alt: calloutSla(data, c) }))} alt="SLA" format={(n) => `${n} min`} /> : <Empty title="No completed call-outs" />}
+          <p className="muted-note" style={{ marginTop: 8 }}>Accent bar: response time. Dark bar: the contract SLA for that site. Labels are call-out numbers (CO-…).</p>
         </Panel>
         <Panel title="Responses over the SLA" meta={`${slow.length} in the last 30 days`}>
           {slow.length ? (

@@ -136,7 +136,7 @@ export default function Roster() {
         </Panel>
       ) : (
         <Panel title={`Shifts on ${formatDate(date)}`} meta="Book on, book off, mark absent — each step applies the roster rules">
-          {all.length ? <RecordTable def={def} rows={[...all].sort((a, b) => (a.status === 'onduty' ? 0 : 1) - (b.status === 'onduty' ? 0 : 1))} moduleKey="roster" extra={{ head: 'Next step', cell: (r) => <span onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}><WorkflowActions def={def} record={r} compact /></span> }} />
+          {all.length ? <RecordTable def={def} rows={[...all].sort((a, b) => (a.status === 'onduty' ? 0 : 1) - (b.status === 'onduty' ? 0 : 1))} moduleKey="roster" extra={{ head: 'Next step', cell: (r) => <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}><WorkflowActions def={def} record={r} compact /></div> }} />
             : <Empty title="No shifts on this date" />}
         </Panel>
       )}

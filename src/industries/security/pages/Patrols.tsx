@@ -133,7 +133,7 @@ function Round({ patrol: p }: { patrol: DemoRecord }) {
             <button className="btn sm primary" onClick={complete} data-testid="complete-round">Complete round</button>
           </div>
           {missed.length > 0 && (
-            <Field label={`Why ${missed.length === 1 ? 'was 1 checkpoint' : `were ${missed.length} checkpoints`} missed?`}>
+            <Field label={`${missed.length} checkpoint${missed.length === 1 ? '' : 's'} not scanned yet`} hint="To complete the round with missed checkpoints, say why they were missed.">
               <input className="input" aria-label="Reason checkpoints were missed" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. gate locked, area flooded" />
             </Field>
           )}

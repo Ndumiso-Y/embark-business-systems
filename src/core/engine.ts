@@ -22,6 +22,17 @@ export function can(user: DemoUser | undefined, permission: string | undefined):
   return !!user.isSuperAdmin || user.permissions.includes(permission);
 }
 
+/** "Needs “Dispense” — held by Megan van Wyk (Optical dispenser)". Explains a permission refusal in the UI. */
+export function permissionHint(config: IndustryConfig, data: IndustryData, permission: string | undefined): string {
+  const label = config.permissions.find((p) => p.key === permission)?.label ?? permission ?? 'this';
+  const holders = data.users.filter((u) => !u.isSuperAdmin && !!permission && u.permissions.includes(permission)).map((u) => `${u.name} (${u.title})`);
+  const admin = data.users.find((u) => u.isSuperAdmin);
+  const who = holders.length ? holders.slice(0, 2).join(' or ') : admin ? `${admin.name} (${admin.title})` : 'an administrator';
+  return `Needs the “${label}” permission — switch to ${who} in the top bar.`;
+}
+
+export const PERMISSION_REFUSED = 'Your simulated role does not hold this permission.';
+
 export function currentUser(data: IndustryData): DemoUser {
   return data.users.find((u) => u.id === data.currentUserId) ?? data.users[0];
 }
@@ -211,11 +222,24 @@ export function validateConfig(config: IndustryConfig): string[] {
     const mod = g.to.split('/')[0];
     if (mod && !moduleKeys.has(mod) && !['admin', 'settings'].includes(mod)) problems.push(`Guide step "${g.title}" → unknown module ${mod}`);
     if (g.as && !seed.users.some((u) => u.id === g.as)) problems.push(`Guide step "${g.title}" → unknown user ${g.as}`);
-    const recId = g.to.split('/')[1];
-    if (recId && mod) {
-      const col = config.modules.find((m) => m.key === mod)?.collection;
-      if (!col || !(seed.collections[col] ?? []).some((r) => r.id === recId)) problems.push(`Guide step "${g.title}" → unknown record ${g.to}`);
+  }
+  // Guide links to a specific record must point at the same kind of record on every day of the week
+  // (seeds that skip weekends shift sequential ids).
+  const guided = (config.guide ?? []).filter((g) => g.to.includes('/'));
+  if (guided.length) {
+    const seen = new Map<string, Set<string>>();
+    for (let d = 15; d < 22; d++) {
+      const s = config.seed(`2026-01-${d}`);
+      for (const g of guided) {
+        const [mod, recId] = g.to.split('/');
+        const col = config.modules.find((m) => m.key === mod)?.collection;
+        const rec = col ? (s.collections[col] ?? []).find((r) => r.id === recId) : undefined;
+        if (!rec) { problems.push(`Guide step "${g.title}" → no record ${g.to} when seeded on 2026-01-${d}`); continue; }
+        const set = seen.get(g.to) ?? seen.set(g.to, new Set()).get(g.to)!;
+        set.add(rec.status ?? '-');
+      }
     }
+    for (const [to, statuses] of seen) if (statuses.size > 1) problems.push(`Guide record ${to} has a different status depending on the day (${[...statuses].join(', ')}) — give it a fixed id`);
   }
   for (const [k, recs] of Object.entries(seed.collections)) {
     if (!keys.has(k)) { problems.push(`Seed has undeclared collection ${k}`); continue; }

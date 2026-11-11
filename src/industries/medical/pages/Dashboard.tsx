@@ -6,7 +6,7 @@ import { formatRand } from '../../../core/lib/money';
 import { BarChart, Empty, PageHeader, Panel, Pipeline, Stat, Tag } from '../../../core/components/ui';
 import RoleBar from '../../../core/components/RoleBar';
 import { CHRONIC_CONDITIONS, TESTS, VISIT_TYPES, label } from '../data';
-import { byDateTime, minutesWaiting, needsDoctor, outstandingCents, overdueChronic, patientName, scriptAllergyBlock, todayStr, unreviewedAbnormal, vitalAlerts, WAITING_STATES } from '../helpers';
+import { byDateTime, minutesWaiting, needsDoctor, outstandingCents, overdueChronic, patientName, scriptAllergyBlock, shownTime, todayStr, unreviewedAbnormal, vitalAlerts, WAITING_STATES } from '../helpers';
 
 type Tone = 'red' | 'amber' | 'blue';
 
@@ -82,7 +82,7 @@ export default function Dashboard() {
                   const mins = minutesWaiting(v, today);
                   return (
                     <li key={v.id}>
-                      <span className="time-chip">{str(v, 'arrivedAt') || str(v, 'time')}</span>
+                      <span className="time-chip">{shownTime(str(v, 'arrivedAt')) || str(v, 'time')}</span>
                       <div className="grow">
                         {hasModule('waiting') ? <Link to={`${base}/waiting/${v.id}`}><b>{patientName(data, v.values.patient)}</b></Link> : <b>{patientName(data, v.values.patient)}</b>}
                         <small>{label(VISIT_TYPES, str(v, 'type'))} · booked {str(v, 'time')}{mins !== null ? ` · waiting ${mins} min` : ''}</small>

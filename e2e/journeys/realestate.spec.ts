@@ -163,9 +163,14 @@ test.describe('Real estate journeys', () => {
     await page.getByLabel('Tenant / applicant (fictional)').fill('Tina Tenant');
     await page.getByLabel('Monthly rent').fill('9500');
     await page.getByLabel('Deposit (held in trust — simulated)').fill('14250');
-    const today = await page.evaluate(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; });
-    await page.getByLabel('Lease start').fill(today);
-    await page.getByLabel('Lease end').fill(`${Number(today.slice(0, 4)) + 1}${today.slice(4)}`);
+    // Lease starts today (the browser's local date) and runs for a year.
+    const [start, end] = await page.evaluate(() => {
+      const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const d = new Date();
+      return [iso(d), iso(new Date(d.getFullYear(), d.getMonth(), d.getDate() + 364))];
+    });
+    await page.getByLabel('Lease start').fill(start);
+    await page.getByLabel('Lease end').fill(end);
     await page.getByTestId('save-record').click();
     await expect(status(page)).toHaveText('Application');
 
@@ -255,10 +260,12 @@ test.describe('Real estate journeys', () => {
 
     await open(4); // register a lodged transfer
     const lodged = page.locator('section[aria-label="Lodged at deeds office (simulated) column"]');
+    await expect(lodged.getByRole('button', { name: 'Registered (simulated)' }).first()).toBeVisible();
     const before = await lodged.locator('.board-card').count();
     await lodged.getByRole('button', { name: 'Registered (simulated)' }).first().click();
-    await expect(page.locator('.toast', { hasText: 'is now payable' })).toBeVisible();
     await expect(lodged.locator('.board-card')).toHaveCount(before - 1);
+    await page.goto('#/realestate');
+    await expect(page.locator('.panel', { hasText: 'Recent activity' }).last()).toContainText(/Commission COM-\d+ created/);
 
     await open(5); // sign a lease once the deposit is in
     await step(page, 'Lease signed').click();

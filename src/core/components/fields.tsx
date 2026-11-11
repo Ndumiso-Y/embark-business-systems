@@ -27,6 +27,13 @@ export function formatValue(f: FieldDef, v: Value, data: IndustryData, collectio
       const t = linesTotals(Array.isArray(v) ? v : []);
       return `${Array.isArray(v) ? v.length : 0} line(s) · ${formatRand(t.total)} incl. VAT`;
     }
+    case 'number': {
+      const n = Number(v);
+      if (!Number.isFinite(n)) return String(v);
+      // Group thousands for readability (22 900 km); leave years and small numbers alone.
+      const text = Math.abs(n) >= 10000 ? n.toLocaleString('en-US', { maximumFractionDigits: 2 }).replace(/,/g, ' ') : String(n);
+      return f.unit ? `${text} ${f.unit}` : text;
+    }
     default: return String(v);
   }
 }
@@ -89,17 +96,9 @@ export function FieldInput({ f, value, onChange, error, data, collections }: { f
         </select>
       );
       break;
-    case 'ref': {
-      const def = collections.find((c) => c.key === f.ref)!;
-      const opts = records(data, f.ref!);
-      input = (
-        <select className="select" {...common} value={String(value ?? '')} onChange={(e) => onChange(e.target.value)}>
-          <option value="">Select {def.singular.toLowerCase()}…</option>
-          {opts.map((r) => <option key={r.id} value={r.id}>{def.title(r, data)} · {r.ref}</option>)}
-        </select>
-      );
+    case 'ref':
+      input = <RefSelect f={f} value={value} onChange={onChange} common={common} data={data} collections={collections} />;
       break;
-    }
     case 'boolean':
       return (
         <label className="check" style={{ alignSelf: 'end', minHeight: 44 }}>
@@ -115,10 +114,32 @@ export function FieldInput({ f, value, onChange, error, data, collections }: { f
   return <Field label={f.label} error={error} hint={f.hint}>{input}</Field>;
 }
 
+/** Record picker. Long lists get a filter box so the right record is quick to find. */
+function RefSelect({ f, value, onChange, common, data, collections }: { f: FieldDef; value: Value; onChange: (v: Value) => void; common: Record<string, unknown>; data: IndustryData; collections: CollectionDef[] }) {
+  const def = collections.find((c) => c.key === f.ref)!;
+  const all = records(data, f.ref!);
+  const [q, setQ] = useState('');
+  const needle = q.trim().toLowerCase();
+  const text = (r: DemoRecord) => `${def.title(r, data)} · ${r.ref}`;
+  const opts = needle ? all.filter((r) => r.id === value || text(r).toLowerCase().includes(needle)) : all;
+  return (
+    <>
+      {all.length > 12 && (
+        <input className="input sm ref-filter" aria-label={`Filter ${f.label}`} placeholder={`Type to filter ${all.length} ${def.plural.toLowerCase()}…`} value={q} onChange={(e) => setQ(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); const first = opts.find((r) => r.id !== value) ?? opts[0]; if (needle && first) { onChange(first.id); setQ(''); } } }} />
+      )}
+      <select className="select" {...common} value={String(value ?? '')} onChange={(e) => onChange(e.target.value)}>
+        <option value="">{needle ? `${opts.length} match${opts.length === 1 ? '' : 'es'} — choose…` : `Select ${def.singular.toLowerCase()}…`}</option>
+        {opts.map((r) => <option key={r.id} value={r.id}>{text(r)}</option>)}
+      </select>
+    </>
+  );
+}
+
 /** Fields the signed-in demo user may see (simulated field-level restriction). */
 export function useVisibleFields(def: CollectionDef): FieldDef[] {
   const { user } = useUser();
-  return def.fields.filter((f) => can(user, f.permission));
+  return def.fields.filter((f) => !f.hidden && can(user, f.permission));
 }
 
 /* ---------------- Create / edit modal ---------------- */

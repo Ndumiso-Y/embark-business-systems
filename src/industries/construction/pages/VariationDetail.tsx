@@ -96,7 +96,9 @@ function Aside({ id }: { id: string }) {
           ) : <p className="muted-note">The reference is recorded by {holders(data, 'variations.record')}.</p>}
         </Panel>
       )}
-      {v.status === 'priced' && !can('variations.price') && <Notice tone="grey">Submitted to the client by {holders(data, 'variations.price')}.</Notice>}
+      {v.status === 'priced' && (can('variations.price')
+        ? <Notice tone="grey">“Submit to client” records that the priced variation went to the client. Nothing is e-mailed from this demo.</Notice>
+        : <Notice tone="grey">Submitted to the client by {holders(data, 'variations.price')}.</Notice>)}
       {v.status === 'submitted' && !can('variations.approve') && <Notice tone="grey">The client’s decision is recorded by {holders(data, 'variations.approve')}. Switch user in the top bar to try it.</Notice>}
     </>
   );

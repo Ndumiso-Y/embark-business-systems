@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import config, { allergyConflict, claimProblems, consultProblems, outstandingCents, resultFlags, setTodayForTests, vitalAlerts, vitalsProblems } from '../src/industries/medical';
+import config, { allergyConflict, claimProblems, consultProblems, outstandingCents, resultFlags, setTodayForTests, shownTime, vitalAlerts, vitalsProblems } from '../src/industries/medical';
 import { CHRONIC_CONDITIONS } from '../src/industries/medical/data';
 import { applyTransition, findRecord, findTransition, records, str, validateConfig } from '../src/core/engine';
 import { buildIndustryData } from '../src/core/seed';
@@ -61,6 +61,12 @@ describe('helpers (demo rules, not clinical advice)', () => {
     expect(vitalsProblems({ ...VITALS, pulse: '' })[0]).toMatch(/missing: pulse/);
     expect(vitalsProblems({ ...VITALS, bpDia: 130, bpSys: 120 })[0]).toMatch(/Diastolic/);
     expect(vitalsProblems({ pulse: 110, temp: 37, spo2: 98, weight: 14 }, true)).toEqual([]);
+  });
+  it('does not show a seeded arrival time that is still ahead of the clock', () => {
+    expect(shownTime('09:41', '07:30')).toBe('');
+    expect(shownTime('09:41', '09:41')).toBe('09:41');
+    expect(shownTime('09:41', '22:10')).toBe('09:41');
+    expect(shownTime('', '22:10')).toBe('');
   });
   it('flags results awaiting more than 7 days and abnormal unreviewed results', () => {
     const r = (status: string, requestedOn: string, abnormal = false) => ({ id: 'x', ref: 'LR-1', status, values: { requestedOn, abnormal }, history: [], createdAt: '', updatedAt: '' }) as DemoRecord;

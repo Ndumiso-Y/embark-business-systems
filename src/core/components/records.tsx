@@ -3,7 +3,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import type { CollectionDef, DemoRecord, ModuleDef, Transition } from '../types';
-import { availableTransitions, can, searchText } from '../engine';
+import { availableTransitions, can, PERMISSION_REFUSED, permissionHint, searchText } from '../engine';
 import { useActions, useBase, useData, useIndustry, useUser } from '../context';
 import { formatDateTime, todayIso } from '../lib/dates';
 import { Confirm, Empty, Flags, KeyValues, Modal, PageHeader, Panel, Segmented, StatusTag, Field } from './ui';
@@ -21,6 +21,7 @@ export function useModule(): ModuleDef {
 
 /* ---------------- Workflow action buttons ---------------- */
 export function WorkflowActions({ def, record, compact, onDone }: { def: CollectionDef; record: DemoRecord; compact?: boolean; onDone?: (to: string) => void }) {
+  const config = useIndustry();
   const data = useData();
   const { user } = useUser();
   const act = useActions();
@@ -28,7 +29,8 @@ export function WorkflowActions({ def, record, compact, onDone }: { def: Collect
   const [note, setNote] = useState('');
   const [err, setErr] = useState('');
   if (!def.workflow) return null;
-  const options = availableTransitions(def.workflow, record, user, data);
+  const options = availableTransitions(def.workflow, record, user, data)
+    .map((o) => (o.blocked === PERMISSION_REFUSED ? { ...o, blocked: permissionHint(config, data, o.transition.permission), byPermission: true } : { ...o, byPermission: false }));
   if (!options.length) return compact ? null : <span className="muted-note">No further steps — this is a final state.</span>;
 
   const run = (t: Transition, n?: string) => {
@@ -41,10 +43,10 @@ export function WorkflowActions({ def, record, compact, onDone }: { def: Collect
   return (
     <>
       <div className="btns wf-actions">
-        {options.map(({ transition: t, blocked }) => (
+        {options.map(({ transition: t, blocked, byPermission }) => (
           <button key={t.label + t.to} type="button" title={blocked ?? undefined}
             className={`btn ${compact ? 'xs' : 'sm'} ${t.intent === 'primary' ? 'primary' : t.intent === 'danger' ? 'danger' : ''}`}
-            disabled={!!blocked && blocked.startsWith('Your simulated role')}
+            disabled={byPermission}
             onClick={() => (t.requiresNote ? setPending(t) : blocked ? act.toast(blocked, 'err') : run(t))}>
             {t.label}
           </button>
@@ -55,7 +57,8 @@ export function WorkflowActions({ def, record, compact, onDone }: { def: Collect
           {options.filter((o) => o.blocked).map((o) => <li key={o.transition.label}><b>{o.transition.label}:</b> {o.blocked}</li>)}
         </ul>
       )}
-      <Modal open={!!pending} title={pending?.label ?? ''} sub={`${record.ref} · a note is required for this step`} onClose={() => setPending(null)}
+      {compact && options.length > 0 && options.every((o) => o.byPermission) && <small className="wf-who">{options[0].blocked}</small>}
+      <Modal open={!!pending} title={pending?.label ?? ''} sub={`${record.ref} · ${pending?.noteHint ?? 'a note is required for this step'}`} onClose={() => setPending(null)}
         footer={<><button className="btn" onClick={() => setPending(null)}>Cancel</button><button className="btn primary" data-testid="confirm-transition" onClick={() => pending && run(pending, note)}>{pending?.label}</button></>}>
         <Field label="Note" error={err || undefined}><textarea className="textarea" aria-label="Transition note" value={note} onChange={(e) => setNote(e.target.value)} /></Field>
       </Modal>
@@ -199,7 +202,7 @@ export function RegisterPage({ collection, intro, children }: { collection?: str
         {view === 'board' && def.workflow ? <RecordBoard def={def} rows={rows} moduleKey={m.key} /> : <RecordTable def={def} rows={rows} moduleKey={m.key} />}
       </Panel>
       {creating && (
-        <RecordFormModal def={def} open onClose={() => setCreating(false)} onSave={(v) => {
+        <RecordFormModal def={def} open initial={def.createDefaults?.(todayIso(), data)} onClose={() => setCreating(false)} onSave={(v) => {
           const r = act.create(def.key, v);
           act.toast(`${def.singular} ${r.ref} created`);
           setCreating(false);

@@ -9,6 +9,11 @@ import { applyTransition, records, str, validateConfig } from '../src/core/engin
 import { buildIndustryData } from '../src/core/seed';
 import { addDays } from '../src/core/lib/dates';
 import { useStore } from '../src/core/store';
+import { createElement as h } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { IndustryContext } from '../src/core/context';
+import { ModuleDetailView, ModuleView } from '../src/core/components/records';
 import type { DemoRecord, EffectApi, IndustryData, Values } from '../src/core/types';
 
 const TODAY = '2026-11-11';
@@ -572,5 +577,51 @@ describe('guided walkthrough, end to end through the store', () => {
     expect(inspectionOverdue(live(), site, TODAY)).toBe(false);
     expect(act('actions', raised[0].id, 'done')).toMatchObject({ ok: false });
     expect(act('actions', raised[0].id, 'done', 'Briefed both officers.')).toMatchObject({ ok: true });
+  });
+});
+
+describe('screens', () => {
+  // Server-renders each screen. The store hook reads its initial state on the server, so the seeded data is placed there.
+  const initial = useStore.getInitialState() as { data: Record<string, IndustryData> };
+  const original = initial.data;
+  afterAll(() => { initial.data = original; });
+  const render = (path: string) => renderToStaticMarkup(
+    h(IndustryContext.Provider, { value: config }, h(MemoryRouter, { initialEntries: [path] }, h(Routes, null,
+      h(Route, { path: '/security', element: h(config.dashboard) }),
+      h(Route, { path: '/security/:module', element: h(ModuleView) }),
+      h(Route, { path: '/security/:module/:id', element: h(ModuleDetailView) })))),
+  );
+
+  it('every module page and a record of every status renders for every simulated user, day and night', () => {
+    const errors: string[] = [];
+    const spy = vi.spyOn(console, 'error').mockImplementation((...a) => { errors.push(a.map(String).join(' ').slice(0, 300)); });
+    for (const time of ['12:00', '21:15']) {
+      setTodayForTests(TODAY, time);
+      const seeded = buildIndustryData(config, TODAY);
+      for (const u of seeded.users) {
+        initial.data = { security: { ...seeded, currentUserId: u.id } };
+        const dash = render('/security');
+        expect(dash).toContain('posts covered now');
+        expect(dash).toContain(config.businessName);
+        for (const m of config.modules) {
+          expect(render(`/security/${m.key}`), m.key).toContain('<h1');
+          if (!m.collection) continue;
+          const byStatus = new Map(seeded.collections[m.collection].map((r) => [r.status ?? '', r.id]));
+          for (const id of byStatus.values()) expect(render(`/security/${m.key}/${id}`), `${m.key}/${id}`).toContain('<h1');
+        }
+      }
+    }
+    spy.mockRestore();
+    setTodayForTests(TODAY, NOW);
+    expect(errors).toEqual([]);
+  });
+
+  it('never hard-codes the business name in a page', () => {
+    initial.data = { security: buildIndustryData(config, TODAY) };
+    const renamed = { ...config, businessName: 'Example Guarding Co' };
+    const html = renderToStaticMarkup(h(IndustryContext.Provider, { value: renamed }, h(MemoryRouter, { initialEntries: ['/security/incidents/incidents_1'] }, h(Routes, null,
+      h(Route, { path: '/security/:module/:id', element: h(ModuleDetailView) })))));
+    expect(html).toContain('Example Guarding Co control room');
+    expect(html).not.toContain('Sentinel Ridge');
   });
 });

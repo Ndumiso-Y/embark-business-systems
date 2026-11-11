@@ -113,6 +113,7 @@ function Aside({ id }: { id: string }) {
         </Panel>
         </div>
       )}
+      {v.status === 'draft' && can('valuations') && <Notice tone="grey">“Submit valuation” fixes the amount claimed and records the date. Nothing is sent to the client or principal agent from this demo.</Notice>}
       {v.status !== 'paid' && !can('valuations') && <Notice tone="grey">Valuations are prepared, certified and marked paid by {holders(data, 'valuations')}. Switch user in the top bar to try it.</Notice>}
       <Panel title="Other valuations on this project">
         {others.length ? (

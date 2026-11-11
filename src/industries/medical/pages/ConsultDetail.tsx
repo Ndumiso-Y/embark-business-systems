@@ -10,7 +10,7 @@ import { RecordFormModal } from '../../../core/components/fields';
 import RoleBar from '../../../core/components/RoleBar';
 import { IcoBack, IcoPlus, IcoPrint } from '../../../core/components/Icons';
 import { CLINICIANS, ICD10, MEDICINES, TESTS, label } from '../data';
-import { consultProblems, patientName, resultFlags, scriptProblems, todayStr } from '../helpers';
+import { consultProblems, patientName, resultFlags, scriptProblems, shownTime, todayStr } from '../helpers';
 import { PatientCard, VitalsCard } from './shared';
 
 /** SOAP consultation: editable while draft or addendum, read-only once signed. */
@@ -161,7 +161,7 @@ export default function ConsultDetail() {
               </div>
             </Panel>
           )}
-          {visit && <Panel title="Triage vitals" meta={`${visit.ref}${str(visit, 'triagedAt') ? ` · triaged ${str(visit, 'triagedAt')}` : ''}`}><VitalsCard values={visit.values} /></Panel>}
+          {visit && <Panel title="Triage vitals" meta={`${visit.ref}${str(visit, 'triagedAt') && (str(visit, 'date') !== todayStr() || shownTime(str(visit, 'triagedAt'))) ? ` · triaged ${str(visit, 'triagedAt')}` : ''}`}><VitalsCard values={visit.values} /></Panel>}
           <Panel title="Patient"><PatientCard data={data} patientId={consult.values.patient} /></Panel>
           <Panel title="History"><History record={consult} /></Panel>
           <RoleBar compact />

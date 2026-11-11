@@ -21,6 +21,9 @@ export default function OfficerDetail() {
   );
 }
 
+/** Training and medical dates are "due" dates; registration and competency "expire". */
+const dated = (key: string) => key === 'refresherDue' || key === 'medicalDue';
+
 function Compliance({ officer: o }: { officer: DemoRecord }) {
   const data = useData();
   const base = useBase();
@@ -54,7 +57,7 @@ function Compliance({ officer: o }: { officer: DemoRecord }) {
         <ul className="list" data-testid="officer-compliance">
           {officerExpiries(o, today).map((e) => (
             <Check key={e.key} ok={e.state === 'none' ? null : e.state !== 'overdue'} label={e.label}
-              detail={!e.date ? 'Not on record' : e.state === 'overdue' ? `Expired ${formatDate(e.date)} (${daysBetween(e.date, today)} days ago)` : `Valid to ${formatDate(e.date)}${e.state === 'due-soon' ? ` — ${daysBetween(today, e.date)} days left` : ''}`} />
+              detail={!e.date ? 'Not on record' : e.state === 'overdue' ? `${dated(e.key) ? 'Overdue since' : 'Expired'} ${formatDate(e.date)} (${daysBetween(e.date, today)} days ago)` : `${dated(e.key) ? 'Due' : 'Valid to'} ${formatDate(e.date)}${e.state === 'due-soon' ? ` — ${daysBetween(today, e.date)} days left` : ''}`} />
           ))}
           <Check ok={str(o, 'competencyExpiry') ? str(o, 'competencyExpiry') >= today : null} label="Armed posts" detail={str(o, 'competencyExpiry') ? (str(o, 'competencyExpiry') >= today ? 'May be posted on armed posts and issued a firearm (demo rule)' : 'Competency lapsed — unarmed posts only') : 'No firearm competency — unarmed posts only'} />
         </ul>
