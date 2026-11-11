@@ -149,9 +149,12 @@ export const useStore = create<State>()(
               record: res.record,
               data: s.data[config.id]!,
               today: todayIso(),
+              user: u,
+              note: note?.trim() || undefined,
               api: {
                 create: (c, v, st2, a) => s.createRecord(config, c, v, st2, a),
                 update: (c, i, v, a, n) => s.updateRecord(config, c, i, v, a, n),
+                transition: (c, i, to2, n) => s.transition(config, c, i, to2, n),
                 toast: s.toast,
               },
             });

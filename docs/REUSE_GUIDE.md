@@ -43,7 +43,8 @@ plus `/admin`, `/settings`, `/search`.
    `flags()` for computed attention tags (overdue, low stock …) and `sort`.
 5. **Workflows**: `states` (with tones; mark final ones `terminal`) and `transitions`. Put business rules in
    `guard` (return a reason string to block — the reason is shown to the user), use `requiresNote` for
-   rejections/cancellations, and `after` for side effects (create a linked record, adjust stock).
+   rejections/cancellations, and `after` for side effects. `after` receives `{ record, data, today, user, note, api }`
+   where `api.create`, `api.update` and `api.transition` act on other records (their own rules still apply).
 6. **Modules**: each `ModuleDef` points at a `collection` (generic register + detail) and/or a custom `page`
    and `detail`. Use `group` to build the sidebar sections and `view: 'board'` for pipeline-style work.
 7. **Seed**: `seed(today)` returns `{ users, collections, currentUserId }`. Use `seeder(today)`; express dates
@@ -115,7 +116,22 @@ an exam form, a shift log, a trust ledger). Everything else should stay configur
   fixed date; and exercises at least two of its business rules through `applyTransition` (blocked and allowed).
 - `e2e/*.spec.ts` (Playwright) drive the real UI. Run `npm run e2e`.
 
-## 6. Honesty rules for every demo
+## 6. Lessons from building the five demos
+
+The guide was tested by building medical, automotive, mining and legal from it in parallel, after optometry.
+What those builds ran into, and how to handle it:
+
+| Situation | Approach |
+| --- | --- |
+| A rule needs a value typed at the moment of the step (payment amount, gas reading) | Store it on the record first (a field or a small form on the custom detail page), then let the `guard` read it |
+| A note is only sometimes required (e.g. only when a reading exceeds a limit) | Leave `requiresNote` off and check `note` inside the `guard`; give the custom page a "with note" form |
+| Two separate steps with the same from/to states | Not supported — use one transition and branch in the guard/after |
+| Clinical or privileged detail in a computed flag | `flags(r, data, today, user)` receives the user — return a neutral label for roles without the permission |
+| "Today" in tests | Keep a `todayStr()` / `setTodayForTests()` pair in the industry's `helpers.ts` (see optometry) |
+| Circular imports between config and pages | Put rules and lookups in `helpers.ts`; `index.ts` imports pages, pages import helpers |
+| A record created from a register should be linked to its parent (estimate → job) | Create it from the parent's detail page with `initial` values, or resolve the link in a helper |
+
+## 7. Honesty rules for every demo
 
 - Every person, business, number, code and document is fictional. Use `example.com` emails and `555` phone numbers.
 - Never claim real authentication, authorisation, compliance, integrations or persistence. The shell already

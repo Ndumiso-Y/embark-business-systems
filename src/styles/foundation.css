@@ -95,7 +95,7 @@ a:focus-visible, button:focus-visible, .clickable:focus-visible, select:focus-vi
 .mini-stat-row b { color: var(--ink); font-size: 15px; display: block; }
 
 /* Gallery */
-.gallery { max-width: 1240px; margin: 0 auto; padding: 28px 24px 40px; }
+.gallery { --accent: #28697a; --accent-tint: #e6f1f3; --accent-line: #c6dfe4; --accent-text: #204f5f; max-width: 1240px; margin: 0 auto; padding: 28px 24px 40px; }
 .gallery-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 36px; flex-wrap: wrap; }
 .gallery-brand { display: flex; align-items: center; gap: 10px; }
 .gallery-brand b { display: block; font-size: 14px; }
@@ -183,3 +183,7 @@ a:focus-visible, button:focus-visible, .clickable:focus-visible, select:focus-vi
   .back-link, .role-bar, .footer-note { display: none !important; }
 }
 .refraction td.ro { font-size: 13px; color: var(--ink-2); font-weight: 600; }
+/* Long attention tags wrap inside narrow cards instead of overflowing. */
+.board-card .tag, .patient-card .tag, .list .tag { white-space: normal; line-height: 1.3; max-width: 100%; }
+.board-card .flags { display: flex; }
+body { background: var(--bg-app); }

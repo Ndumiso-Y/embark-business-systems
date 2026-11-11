@@ -29,3 +29,4 @@ internal/
 # tool state
 *.tsbuildinfo
 .claude/
+dist-preview/

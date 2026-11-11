@@ -103,3 +103,13 @@ describe('seed helpers', () => {
     expect(s.day(-1)).toBe('2026-02-28');
   });
 });
+
+describe('compact rand formatting', () => {
+  it('labels thousands and millions correctly', async () => {
+    const { formatRand } = await import('../src/core/lib/money');
+    expect(formatRand(103_429_00, { compact: true })).toBe('R103k');
+    expect(formatRand(1_250_000_00, { compact: true })).toBe('R1.25m');
+    expect(formatRand(25_500_000_00, { compact: true })).toBe('R25.5m');
+    expect(formatRand(4_927_00, { compact: true })).toBe('R4,927.00');
+  });
+});

@@ -71,10 +71,12 @@ export type Transition = {
 export type EffectApi = {
   create: (collection: string, values: Values, status?: string, action?: string) => DemoRecord;
   update: (collection: string, id: string, values: Values, action?: string, note?: string) => void;
+  /** Move another record through its own workflow (its rules still apply). */
+  transition: (collection: string, id: string, to: string, note?: string) => { ok: true; value: DemoRecord } | { ok: false; reason: string };
   toast: (text: string, tone?: 'ok' | 'err' | 'info') => void;
 };
 
-export type EffectContext = { record: DemoRecord; data: IndustryData; api: EffectApi; today: string };
+export type EffectContext = { record: DemoRecord; data: IndustryData; api: EffectApi; today: string; user: DemoUser; note?: string };
 
 export type WorkflowDef = { states: WorkflowState[]; initial: string; transitions: Transition[] };
 
@@ -105,7 +107,7 @@ export type CollectionDef = {
   title: (r: DemoRecord, data: IndustryData) => string;
   subtitle?: (r: DemoRecord, data: IndustryData) => string;
   /** Computed warning/attention tags (overdue, low stock …). */
-  flags?: (r: DemoRecord, data: IndustryData, today: string) => Flag[];
+  flags?: (r: DemoRecord, data: IndustryData, today: string, user?: DemoUser) => Flag[];
   /** Permission needed to create / edit / delete (super admins bypass). */
   editPermission?: string;
   /** Field keys shown when creating (defaults to all visible fields). */

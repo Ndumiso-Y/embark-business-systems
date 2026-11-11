@@ -54,8 +54,13 @@ export function group(n: number): string {
 export function formatRand(cents: number, opts: { compact?: boolean } = {}): string {
   const sign = cents < 0 ? '-' : '';
   const abs = Math.abs(cents);
+  // Compact: R1.25m from R1,000,000; R104k from R100,000. (Fixes the JNL original,
+  // which divided by R100,000 but labelled the result "m".)
+  if (opts.compact && abs >= 1_000_000_00) {
+    return `${sign}R${(abs / 1_000_000_00).toFixed(abs >= 10_000_000_00 ? 1 : 2)}m`;
+  }
   if (opts.compact && abs >= 100_000_00) {
-    return `${sign}R${(abs / 100_000_00).toFixed(abs >= 1_000_000_00 ? 1 : 2)}m`;
+    return `${sign}R${Math.round(abs / 1_000_00)}k`;
   }
   const rand = Math.floor(abs / 100);
   const c = abs % 100;

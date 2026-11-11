@@ -86,6 +86,7 @@ export function RecordTable({ def, rows, moduleKey, extra }: { def: CollectionDe
   const base = useBase();
   const navigate = useNavigate();
   const fields = useVisibleFields(def).filter((f) => f.table);
+  const { user } = useUser();
   const today = todayIso();
   if (!rows.length) return <Empty title={`No ${def.plural.toLowerCase()} match`} body="Adjust the search or filters, or create a new record." />;
   return (
@@ -105,7 +106,7 @@ export function RecordTable({ def, rows, moduleKey, extra }: { def: CollectionDe
               <td>
                 <strong>{def.title(r, data)}</strong>
                 <small>{r.ref}{def.subtitle ? ` · ${def.subtitle(r, data)}` : ''}</small>
-                <Flags flags={def.flags?.(r, data, today) ?? []} />
+                <Flags flags={def.flags?.(r, data, today, user) ?? []} />
               </td>
               {fields.map((f) => <td key={f.key} className={f.type === 'money' || f.type === 'number' ? 'num' : ''}>{formatValue(f, r.values[f.key], data, config.collections)}</td>)}
               {extra && <td>{extra.cell(r)}</td>}
@@ -121,6 +122,7 @@ export function RecordTable({ def, rows, moduleKey, extra }: { def: CollectionDe
 /* ---------------- Board (kanban by workflow state) ---------------- */
 export function RecordBoard({ def, rows, moduleKey, hideTerminal = true }: { def: CollectionDef; rows: DemoRecord[]; moduleKey: string; hideTerminal?: boolean }) {
   const data = useData();
+  const { user } = useUser();
   const base = useBase();
   const today = todayIso();
   const states = def.workflow!.states.filter((s) => !hideTerminal || !s.terminal);
@@ -135,7 +137,7 @@ export function RecordBoard({ def, rows, moduleKey, hideTerminal = true }: { def
               <article key={r.id} className="board-card">
                 <Link to={`${base}/${moduleKey}/${r.id}`}><strong>{def.title(r, data)}</strong></Link>
                 <small>{r.ref}{def.subtitle ? ` · ${def.subtitle(r, data)}` : ''}</small>
-                <Flags flags={def.flags?.(r, data, today) ?? []} />
+                <Flags flags={def.flags?.(r, data, today, user) ?? []} />
                 <WorkflowActions def={def} record={r} compact />
               </article>
             ))}
@@ -258,7 +260,7 @@ export function RecordDetail({ collection, aside, children, backLabel }: { colle
             </Panel>
           )}
           {children}
-          <Panel title="Details" right={<Flags flags={def.flags?.(record, data, todayIso()) ?? []} />}>
+          <Panel title="Details" right={<Flags flags={def.flags?.(record, data, todayIso(), user) ?? []} />}>
             <KeyValues items={fields.filter((f) => f.type !== 'lines').map((f) => ({ label: f.label, value: formatValue(f, record.values[f.key], data, config.collections), wide: f.type === 'textarea' }))} />
             {hidden > 0 && <p className="muted-note" style={{ marginTop: 12 }}>{hidden} field(s) hidden for your simulated role.</p>}
           </Panel>
