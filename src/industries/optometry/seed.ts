@@ -235,6 +235,13 @@ export function buildOptometrySeed(today: string) {
         diagnosis: add ? 'H52.4' : 'H52.1', plan: 'Update spectacles.', referral: 'none', recallMonths: type === 'diabetic' ? '12' : '24', recallType: type === 'diabetic' ? 'diabetic' : 'annual',
       }, { status: 'final', createdDaysAgo: 0, history: [{ daysAgo: 0, by: prac === 'lk' ? 'Dr Lerato Khumalo' : 'Sipho Dlamini', role: 'Optometrist', action: 'Finalise exam & issue Rx' }] });
       pt.values.lastExam = today;
+      const exNew = collections.exams[collections.exams.length - 1];
+      const prevRx = latestRx.get(pt.id);
+      if (prevRx) prevRx.status = 'superseded';
+      rec('prescriptions', 'RX', {
+        patient: pt.id, exam: exNew.id, date: today, practitioner: prac, rxType: add ? 'multifocal' : 'distance',
+        r_sph: -0.75, r_cyl: -0.25, r_axis: 175, r_add: add, l_sph: -0.5, l_cyl: null, l_axis: null, l_add: add, pd: 62, expiry: day(730), notes: '',
+      }, { status: 'issued', createdDaysAgo: 0 });
       const tariff = type === 'diabetic' ? TARIFFS[3] : TARIFFS[0];
       rec('claims', 'CLM', { patient: pt.id, date: today, scheme: pt.values.scheme, memberNo: pt.values.memberNo, icd10: add ? 'H52.4' : 'H52.1', schemePaid: 0, patientPaid: 0, submittedOn: '', notes: '', lines: [line(tariff.description, 1, tariff.price, tariff.code)] },
         { status: 'draft', createdDaysAgo: 0 });

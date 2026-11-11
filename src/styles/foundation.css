@@ -182,3 +182,4 @@ a:focus-visible, button:focus-visible, .clickable:focus-visible, select:focus-vi
   .print-head { font-size: 11px; border-bottom: 1px solid #000; padding-bottom: 6px; margin-bottom: 10px; }
   .back-link, .role-bar, .footer-note { display: none !important; }
 }
+.refraction td.ro { font-size: 13px; color: var(--ink-2); font-weight: 600; }

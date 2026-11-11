@@ -10,7 +10,7 @@ import RoleBar from '../../../core/components/RoleBar';
 import { IcoBack } from '../../../core/components/Icons';
 import { ICD10, OPTOMETRISTS, RECALL_TYPES, label } from '../data';
 import { examProblems, patientName } from '../helpers';
-import { eyeFrom, formatEye, validateEye, validVA } from '../rx';
+import { eyeFrom, formatEye, signed, validateEye, validVA } from '../rx';
 import { IopTags, PatientCard, RxCard } from './shared';
 
 /** Structured eye examination: editable while in progress, read-only once finalised. */
@@ -47,7 +47,9 @@ export default function ExamDetail() {
   const rx = records(data, 'prescriptions').find((p) => str(p, 'exam') === exam.id);
   const save = () => { if (draft) { act.update('exams', exam.id, draft, 'Exam notes saved'); act.toast(`${exam.ref} saved`); setDraft(null); } };
 
-  const num = (k: string, lbl: string, step = 0.25, err?: string) => (
+  const num = (k: string, lbl: string, step = 0.25, err?: string) => !editable ? (
+    <td className="num ro" aria-label={lbl}>{n(k) === '' ? '—' : step === 1 ? String(n(k)).padStart(3, '0') : signed(Number(n(k)))}</td>
+  ) : (
     <td><input className="input sm num" type="number" step={step} aria-label={lbl} aria-invalid={err ? true : undefined} title={err} disabled={!editable} value={n(k)} onChange={(e) => set(k, e.target.value === '' ? null : Number(e.target.value))} /></td>
   );
   const txt = (k: string, lbl: string) => (
