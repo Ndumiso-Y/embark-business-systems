@@ -161,6 +161,38 @@ low stock), lab pipeline, six-month exams vs orders chart, activity feed.
 | Quotes & jobs | Once-off cleans from quote to invoice | Above R15,000 or below 25 % margin needs approval (demo thresholds) |
 | Invoicing, Reports, Staff | Month-end drafts with a credit for unstaffed shifts; attendance, scores, complaints, costs; training and PPE | |
 
+## 11. Education — Marula Ridge Academy
+
+**Roles:** principal (all access), deputy / academic head, class teacher, subject teacher, school secretary, bursar.
+
+| Module | What it does | Rules worth showing |
+| --- | --- | --- |
+| Admissions | Application → documents → assessment → offer → enrolled / waiting list | Offer needs all documents and a free place; accepting needs the deposit and creates the learner, class place and fee account |
+| Learners, Classes | Profiles with guardians, attendance %, marks, points; class lists against capacity | Medical notes and fee balances restricted by role |
+| Daily attendance | One tap per learner, "mark all present", submit locks the register | Cannot submit with unmarked learners or a future date; absences need a reason; 3 days absent in a row flagged; parent message previewed, never sent |
+| Timetable, Staff absence & cover | Periods by class or teacher; cover for an absent teacher | A teacher cannot be in two classes in one period; cover list shows who is eligible and why others are not |
+| Assessments & marks | Capture grid → moderated → published | Moderation by a different person; no mark above the total; weightings must reach 100 % |
+| Report cards | Generated from published marks, teacher comment, principal sign-off, release | Cannot sign without published marks in every subject and a comment; no withholding for unpaid fees |
+| Fees & accounts, Payments received | Plans by grade, sibling discount, month-end invoices, statements, arrears ageing, arrangements | Payment cannot exceed the balance |
+| Discipline & merits, Staff, Notices, Calendar, Reports | Points and detention; fictional SACE numbers; notices logged as sent; enrolment, attendance, results, fees | Serious incidents need the deputy or principal |
+
+## 12. Shopping centre — Harbour Crossing Mall
+
+**Roles:** centre manager (all access), leasing manager, leasing administrator, operations manager, tenant coordinator, credit controller, marketing manager.
+
+| Module | What it does | Rules worth showing |
+| --- | --- | --- |
+| Shops & stacking plan | Every unit by level, sized by floor area and coloured by status or category | A unit's status is never typed: it follows its lease |
+| Leases | Application → heads of terms → signed → fit-out → trading → renewal / notice → vacated | Credit check and approval above 500 m²; deposit or guarantee and FICA (simulated) to sign; fit-out sign-off, occupancy certificate number and insurance to trade; a unit cannot be let twice; escalation on the anniversary |
+| Leasing pipeline & vacancies | Prospects, months vacant, tenant mix by floor area | |
+| Monthly billing | Month-end draft: base rent, operating costs, marketing levy, metered utilities, turnover rent, recharges | Turnover rent = max(0, verified turnover × % − base rent) (demo formula); missing readings or unverified turnover leave the line off with a note |
+| Arrears & credit control | Ageing and case steps: reminder → letter of demand → arrangement → hand-over | Reminders previewed, never sent; interest not calculated |
+| Turnover declarations | Tenants' monthly sales, verified by accounts | Overdue after the 7th; trading density; rent-to-sales "at risk" above 15 % |
+| Utilities metering | Sub-meter readings feed the invoice | A reading below the previous one is refused; ±40 % usage flagged |
+| Maintenance, Fit-outs, Work permits | Tenant and common-area jobs; fit-out projects; hot work and after-hours permits | Responsibility decided before assignment; contractor insurance and induction; hot work needs a fire watch; sprinkler isolation needs a reinstatement time |
+| Centre operations, Incidents | Daily footfall and parking log; incidents with insurance reference | |
+| Exhibitions, Marketing fund, Reports | Short-term space bookings; levies vs spend; occupancy, collections, density, expiry profile | No double-booking; spend cannot exceed the fund |
+
 ## Research notes
 
 Module choices were checked against public vendor and directory descriptions of sector software (vendor

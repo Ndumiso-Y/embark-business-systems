@@ -77,6 +77,7 @@ export function WorkflowActions({ def, record, compact, onDone, hide }: { def: C
 }
 
 export function History({ record }: { record: DemoRecord }) {
+  if (!record.history.length) return <p className="muted-note">No steps recorded on this sample record. Anything you do to it from now on is listed here.</p>;
   return (
     <ul className="timeline">
       {[...record.history].reverse().map((h, i) => (

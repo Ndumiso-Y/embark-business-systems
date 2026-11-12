@@ -271,3 +271,7 @@ body { background: var(--bg-app); }
 }
 .list li .wf-who { display: none; }
 .stale-banner { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; background: var(--warn-bg); border: 1px solid #efe0c4; color: #7d5a26; border-radius: 12px; padding: 10px 14px; font-size: 12.5px; margin-bottom: 16px; }
+
+/* Charts with many bars and narrow cards (found while building the school and mall demos). */
+.bar-labels span { min-width: 0; overflow: hidden; text-overflow: clip; }
+.role-bar.compact .select { max-width: 100%; min-width: 0; }

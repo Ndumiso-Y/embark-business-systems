@@ -1,6 +1,6 @@
 # Embark Digitals — Industry management demos
 
-A reusable, browser-only application foundation with ten industry configurations, built by
+A reusable, browser-only application foundation with twelve industry configurations, built by
 Embark Digitals as discovery demonstrations. It is **not** a production system.
 
 | # | Industry | Fictional business | Depth |
@@ -15,6 +15,8 @@ Embark Digitals as discovery demonstrations. It is **not** a production system.
 | 8 | Tyre & fitment centre | TreadRight Tyre & Fitment | Interactive core workflows |
 | 9 | Security services | Sentinel Ridge Security | Interactive core workflows |
 | 10 | Cleaning services | BrightPath Cleaning Services | Interactive core workflows |
+| 11 | Education | Marula Ridge Academy | Interactive core workflows |
+| 12 | Shopping centre | Harbour Crossing Mall | Interactive core workflows |
 
 - Every business, person, record, code and figure is **fictional**.
 - Any demo can be **branded for a client** (name, logo, colours) — see `docs/BRANDING.md`.
@@ -40,6 +42,8 @@ other demos, and none of their code or data.
 | Tyre & fitment centre | https://ndumiso-y.github.io/embark-business-systems/tyre-fitment/ |
 | Security services | https://ndumiso-y.github.io/embark-business-systems/security/ |
 | Cleaning services | https://ndumiso-y.github.io/embark-business-systems/cleaning/ |
+| School | https://ndumiso-y.github.io/embark-business-systems/school/ |
+| Shopping centre | https://ndumiso-y.github.io/embark-business-systems/shopping-centre/ |
 
 The site root shows a neutral Embark Digitals page that lists nothing. The full hub with every industry is at an
 unlisted address for internal use — see `docs/SHARING_LINKS.md`.
@@ -91,6 +95,7 @@ npm run build:preview  # portable build with relative paths (dist-preview/)
 | --- | --- |
 | `docs/BRANDING.md` | Show any demo in a client's own name, logo and colours |
 | `docs/AUDIT_REPORT.md` | Functional audit: what was tested as a first-time user, what was fixed, known limits |
+| `docs/design/` | Design lock (references, tokens, screen map) and the cover-photo asset manifest |
 | `docs/SHARING_LINKS.md` | Client links, the unlisted hub, and what "private" means on a public site |
 | `docs/INDUSTRY_STRATEGY.md` | How industries are chosen, the four families, and what to build next |
 | `docs/REUSE_GUIDE.md` | How the foundation works and how to add or adapt an industry |

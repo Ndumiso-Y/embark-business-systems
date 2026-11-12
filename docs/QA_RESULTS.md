@@ -1,13 +1,13 @@
 # QA results
 
-Run on 11 Nov 2026 (latest full run 23:20 UTC) in a Linux cloud container (Node 22, Chromium via Playwright 1.52).
+Latest full run 12 Nov 2026 in a Linux cloud container (Node 22, Chromium via Playwright 1.52).
 
 | Check | Command | Result |
 | --- | --- | --- |
 | Typecheck | `npm run typecheck` | Pass |
 | Lint | `npm run lint` | 0 errors, 8 warnings (react-refresh "only export components" — dev hot-reload hint only) |
-| Unit tests | `npm test` | **276 passed** in 12 files: engine 13 · brand 8 · optometry 16 · medical 18 · automotive 13 · tyres 18 · mining 21 · construction 29 · real estate 24 · legal 26 · security 50 · cleaning 40 |
-| Browser tests | `npm run e2e` | **120 passed** against the built site: 10 cross-industry smoke · 9 optometry workflows · 5 shared-foundation · 4 branding · 13 client-link checks · 79 end-to-end journeys across the ten industries (`e2e/journeys/`) |
+| Unit tests | `npm test` | **352 passed** in 14 files: engine 13 · brand 8 · optometry 16 · medical 18 · automotive 13 · tyres 18 · mining 21 · construction 29 · real estate 24 · legal 26 · security 50 · cleaning 40 · education 47 · mall 29 |
+| Browser tests | `npm run e2e` | **149 passed** against the built site: 12 cross-industry smoke · 9 optometry workflows · 5 shared-foundation · 4 branding · 14 client-link checks · 105 end-to-end journeys across the twelve industries (`e2e/journeys/`) |
 | Production build | `npm run build` | Pass — JS 780 kB (238 kB gzip), CSS 37 kB |
 | Preview build | `npm run build:preview` | Single self-contained HTML (~800 kB) boots with no console errors |
 
@@ -44,10 +44,10 @@ that only looks right at certain times.
 
 ## Client links
 
-`e2e/client-links.spec.ts` builds on `npm run build:pages` served at the same path as GitHub Pages: each of the ten
+`e2e/client-links.spec.ts` builds on `npm run build:pages` served at the same path as GitHub Pages: each of the twelve
 client links opens its own dashboard with the right page title, shows no "All industry demos" link, redirects the
 gallery route and every other industry's route back to its own dashboard, and contains none of the other businesses'
-names; the root page has no links; the unlisted hub shows all ten industries.
+names; the root page has no links; the unlisted hub shows all twelve industries.
 
 ## Deployment check (11 Nov 2026)
 

@@ -58,3 +58,5 @@ export const IcoList = (p: P) => (<svg {...base(p)}><path d="M9 6h11M9 12h11M9 1
 export const IcoTimer = (p: P) => (<svg {...base(p)}><circle cx="12" cy="13" r="8" /><path d="M12 9v4l2.5 2M9 2h6" /></svg>);
 export const IcoSend = (p: P) => (<svg {...base(p)}><path d="m3 11 18-8-8 18-2-8-8-2Z" /></svg>);
 export const IcoBack = (p: P) => (<svg {...base(p)}><path d="M19 12H5" /><path d="m11 6-6 6 6 6" /></svg>);
+export const IcoCap = (p: P) => (<svg {...base(p)}><path d="M2 9.5 12 5l10 4.5-10 4.5L2 9.5Z" /><path d="M6 11.5V16c0 1.4 2.7 2.8 6 2.8s6-1.4 6-2.8v-4.5" /><path d="M22 9.5V15" /></svg>);
+export const IcoStore = (p: P) => (<svg {...base(p)}><path d="M4 9.5 5.5 4h13L20 9.5" /><path d="M4 9.5a2.7 2.7 0 0 0 5.3 0 2.7 2.7 0 0 0 5.4 0 2.7 2.7 0 0 0 5.3 0" /><path d="M5.5 12v8h13v-8" /><path d="M10 20v-5h4v5" /></svg>);

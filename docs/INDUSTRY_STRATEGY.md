@@ -24,19 +24,25 @@ Score each candidate from 1 to 3 on five questions:
 | Vehicles & workshops | Automotive workshop, Tyre & fitment centre | Job card through bays → customer approval → parts/tools → QC → invoice | Panel beaters (insurance assessor approvals), fleet maintenance, auto electricians |
 | Site & field operations | Mining, Construction | Daily log → permits/safety → plant → contractor compliance → progress claims | Electrical/plumbing contractors, civil maintenance, renewable-energy installers |
 | Contract services | Security, Cleaning | Staff deployed to client sites → rosters and attendance → site checks and inspections → incidents/complaints → contract billing with penalties | Landscaping & garden services, pest control, facilities management, staffing/labour brokers, catering contracts |
-| Property & professional services | Real estate, Law firm | Pipeline of deals/matters → compliance checks → trust money → fees | Property management & body corporates (levies, arrears, maintenance), accounting & bookkeeping practices, insurance brokers |
+| Education | School | Admissions → class registers → marks and moderation → report cards → fees and arrears → parent notices | Early-learning centres, colleges and training providers, tutoring centres, driving schools |
+| Property & professional services | Real estate, Shopping centre, Law firm | Pipeline of deals/matters → compliance checks → trust money → fees | Property management & body corporates (levies, arrears, maintenance), accounting & bookkeeping practices, insurance brokers |
 
 Security and cleaning were added in November 2026 as a fifth family because both are fast-growing, labour-intensive
 services run largely on WhatsApp and spreadsheets, with strong compliance and client-reporting pain.
 
 ## Recommended next demos (in order)
 
-1. **Property management / body corporate (sectional title & HOA).** Levies, arrears, owner and tenant records,
+0. **Bookkeeping / accounting practice manager.** A real prospect has asked for one. Client list, SARS and CIPC
+   deadline calendar, month-end checklist per client, document chasing, queries, review and sign-off, time and
+   billing. Reuses the law firm's deadlines, time and fee notes. Awaiting the owner's go-ahead.
+1. **Property management / body corporate (sectional title & HOA).** (The shopping-centre demo, built November
+   2026, already covers commercial leases, rent roll and arrears, so this is now closer.) Levies, arrears, owner and tenant records,
    maintenance, AGM and trustee decisions. High pain, recurring billing, many estates and complexes, and it reuses
    real estate (rentals, maintenance) and legal (trust-style ledger).
 2. **Dental practice.** Nearly all of optometry and GP carries over (diary, charting instead of refraction, claims,
    recalls). Very cheap and a large, well-paid market.
-3. **Private schools and early-learning centres.** Enrolments, fee billing and arrears, attendance, parent
+3. **(Built November 2026: school management.)** Early-learning centres and colleges are now cheap variants.
+   Original note — **Private schools and early-learning centres.** Enrolments, fee billing and arrears, attendance, parent
    communication. Strong pain and recurring fees. It is a new family, so it costs more, but it opens the education sector.
 4. **Facilities management / landscaping / pest control.** Now cheap: they reuse the contract-services family
    (rosters, site inspections, complaints, contract billing) built for security and cleaning.

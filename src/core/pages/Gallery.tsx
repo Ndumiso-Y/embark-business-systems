@@ -3,12 +3,12 @@ import { Link } from 'react-router-dom';
 import { INDUSTRIES } from '../../industries/registry';
 import { FAMILIES } from '../../industries/ids';
 import type { IndustryConfig } from '../types';
-import { IcoArrow, IcoBriefcase, IcoCar, IcoCheck, IcoEye, IcoHelmet, IcoHome, IcoPickaxe, IcoScale, IcoShield, IcoStethoscope, IcoWrench, IcoX } from '../components/Icons';
+import { IcoArrow, IcoBriefcase, IcoCap, IcoCar, IcoCheck, IcoEye, IcoHelmet, IcoHome, IcoPickaxe, IcoScale, IcoShield, IcoStethoscope, IcoStore, IcoWrench, IcoX } from '../components/Icons';
 
 /** Stand-in artwork per industry, used only until a licensed cover photo is supplied. */
 const COVER_ICON: Record<string, typeof IcoEye> = {
   optometry: IcoEye, medical: IcoStethoscope, automotive: IcoWrench, tyres: IcoCar, mining: IcoPickaxe,
-  construction: IcoHelmet, realestate: IcoHome, legal: IcoScale, security: IcoShield, cleaning: IcoCheck,
+  construction: IcoHelmet, realestate: IcoHome, legal: IcoScale, security: IcoShield, cleaning: IcoCheck, education: IcoCap, mall: IcoStore,
 };
 
 /**

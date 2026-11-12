@@ -20,6 +20,8 @@ To add a photo: save it as `public/industries/<id>.jpg` (about 1200 px on the lo
 | Law firm | `industries/legal.jpg` | GREY | | | | Library, desk or columns; sober |
 | Security | `industries/security.jpg` | GREY | | | | Control room, gatehouse or officer from behind |
 | Cleaning | `industries/cleaning.jpg` | GREY | | | | Clean office interior or floor machine |
+| Education | `industries/education.jpg` | GREY | | | | Classroom or school building; no identifiable children |
+| Shopping centre | `industries/mall.jpg` | GREY | | | | Mall interior or atrium; no readable real brand signage |
 
 Status key (playbook A3): GREEN documented and cleared · ORANGE usable but needs a better crop or resolution ·
 RED rights unverified, do not publish · GREY awaiting owner decision.

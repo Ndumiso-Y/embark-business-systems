@@ -14,7 +14,9 @@
 | Tyre fitment client | https://ndumiso-y.github.io/embark-business-systems/tyre-fitment/ | TreadRight Tyre & Fitment only |
 | Security company client | https://ndumiso-y.github.io/embark-business-systems/security/ | Sentinel Ridge Security only |
 | Cleaning company client | https://ndumiso-y.github.io/embark-business-systems/cleaning/ | BrightPath Cleaning Services only |
-| Embark Digitals (internal) | https://ndumiso-y.github.io/embark-business-systems/hub-k7q3m9/ | Gallery of all ten, grouped by family |
+| School client | https://ndumiso-y.github.io/embark-business-systems/school/ | Marula Ridge Academy only |
+| Shopping centre client | https://ndumiso-y.github.io/embark-business-systems/shopping-centre/ | Harbour Crossing Mall only |
+| Embark Digitals (internal) | https://ndumiso-y.github.io/embark-business-systems/hub-k7q3m9/ | Portal with all twelve, filterable by family |
 | Anyone at the root | https://ndumiso-y.github.io/embark-business-systems/ | Neutral page, lists nothing |
 
 ## Branding a link for a client

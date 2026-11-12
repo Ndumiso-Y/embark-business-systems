@@ -15,9 +15,16 @@ export const STORAGE_KEY = 'embark-industry-demos-v1';
  * full, the demo keeps working in memory for the current visit instead of crashing.
  */
 const memory = new Map<string, string>();
+let warnedFull = false;
 export const safeStorage = {
   getItem: (k: string) => { try { return localStorage.getItem(k) ?? memory.get(k) ?? null; } catch { return memory.get(k) ?? null; } },
-  setItem: (k: string, v: string) => { memory.set(k, v); try { localStorage.setItem(k, v); } catch { /* quota or blocked: keep in memory */ } },
+  setItem: (k: string, v: string) => {
+    memory.set(k, v);
+    try { localStorage.setItem(k, v); } catch {
+      // Quota or blocked storage: keep working in memory and say so once.
+      if (!warnedFull) { warnedFull = true; queueMicrotask(() => useStore.getState().toast('This browser’s storage is full, so changes are kept for this visit only. Reset demos you no longer need (Settings & reset) to free space.', 'info')); }
+    }
+  },
   removeItem: (k: string) => { memory.delete(k); try { localStorage.removeItem(k); } catch { /* ignore */ } },
 };
 
