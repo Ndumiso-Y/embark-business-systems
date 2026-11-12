@@ -202,6 +202,10 @@ export type IndustryConfig = {
   boundaries: string[];
   /** Short highlights for the gallery card. */
   highlights: string[];
+  /** Cover photo for the portal card and dashboard banner: a path under public/, e.g. "industries/optometry.jpg". See docs/design/04_asset_manifest.md. */
+  image?: string;
+  /** CSS object-position for the cover photo's focal point, e.g. "50% 30%". */
+  imageFocus?: string;
   /** Set at runtime by client branding (see core/brand.ts): the client's logo and name. */
   logo?: string;
   brandedFor?: string;
