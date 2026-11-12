@@ -3,7 +3,7 @@
 Follows the Embark Digitals Living Web Experience Playbook (ED-WEB-001 v1.1 candidate): reference-led, tokens
 recorded, real build judged from browser captures, owner acceptance before release.
 
-**Status: Gate 1 (static build) complete on branch `design-portal-v2`. Awaiting owner acceptance. Not released.**
+**Status: released 12 Nov 2026.** The owner reviewed the preview and asked for it to be implemented. Cover photos are still pending (temporary artwork in place).
 
 ## Visual authority
 
@@ -70,3 +70,26 @@ Captured with Chromium at 1440, 1024, 768 and 390 px: portal and optometry dashb
 dashboard and real-estate listings at 1440. No horizontal page scroll at 390. Full browser suite: 108 passed
 (12 client-link checks run against the built site only). Layout and typography reviewed; photographic realism
 cannot be judged until photos are in.
+
+## Planned next (owner direction, 12 Nov 2026 — planning only, not yet scheduled)
+
+> "Each of these pages needs its own divided attention. I love the consistency across, but they need their own
+> individual touch that communicates that this is a system that does what it says. Right now it's text — pictures
+> sell. People need more pictures than words."
+
+What this means for the next design pass:
+
+1. **Keep the shared frame** (shell, cards, pills, tint) — consistency stays.
+2. **Give each industry a visual signature**, led by imagery rather than text:
+   - a cover photo on the portal card and dashboard banner (asset manifest);
+   - one "hero" screen per industry designed individually in the style of reference R5 — the thing that industry's
+     people recognise at a glance (optometry: eye/prescription view; tyres: the four-wheel diagram; mall: the stacking
+     plan; real estate: listing cards with photos; construction: programme and site photos; security: roster wall;
+     school: class register with learner avatars);
+   - pictures inside records where a real system would have them (vehicle, property, product, person avatars).
+3. **Replace words with visuals** on dashboards: fewer sentences, more diagrams, progress rings, photo thumbnails,
+   status illustrations and empty-state artwork.
+4. Run it **one industry at a time** through the playbook gates (references → lock → build → browser captures →
+   owner acceptance), starting with the industries closest to a real client conversation.
+
+Needs from the owner per industry: 3–5 reference images for its hero screen and a set of licensed photos.
