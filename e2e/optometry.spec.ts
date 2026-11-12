@@ -17,10 +17,11 @@ test.describe('Optometry demo', () => {
     await expect(page.getByTestId('industry-optometry')).toBeVisible();
     for (const id of ['medical', 'automotive', 'tyres', 'mining', 'construction', 'realestate', 'legal', 'security', 'cleaning']) await expect(page.getByTestId(`industry-${id}`)).toBeVisible();
     // Every module on every card is a direct link into that industry's module.
+    await page.getByTestId('modules-open-mining').click();
     await page.getByTestId('module-mining-permits').click();
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Permits to work');
     await page.goto('#/');
-    await page.getByRole('link', { name: /Open optometry dashboard/ }).click();
+    await page.getByRole('link', { name: 'Open optometry demo' }).click();
     await expect(page.getByRole('heading', { level: 1 })).toContainText('Good day');
     await expect(page.getByTestId('today-list').locator('li')).toHaveCount(16);
     expect(errors).toEqual([]);

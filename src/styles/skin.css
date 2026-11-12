@@ -1,0 +1,121 @@
+/* ==========================================================================
+   Skin v2 — shared interior look for every industry.
+   Design lock: docs/design/02_design_lock.md (references R4 and R5):
+   cool light-grey canvas, white cards with large radii and soft shadows,
+   pill buttons and navigation, near-black for the active item and primary
+   actions. Industry colour (--accent*) and client branding still apply.
+   Loaded last; it only overrides tokens and shapes, never markup.
+   ========================================================================== */
+:root {
+  --bg-app: #f1f2f4; --bg-sidebar: #ffffff; --bg-panel: #ffffff;
+  --bg-subtle: #f4f5f7; --bg-ivory: #f6f7f8; --bg-ivory-2: #f2f3f5;
+  --bg-dark: #15191b; --bg-dark-2: #1d2225;
+  --ink: #14181a; --ink-2: #23292c; --ink-3: #454d52;
+  --muted: #646c71; --muted-2: #838b90; --muted-3: #a3a9ad;
+  --line: #e6e8eb; --line-2: #eceef0; --line-3: #d9dce0;
+  --r-panel: 24px; --r-card: 20px; --r-btn: 999px; --r-nav: 999px; --r-input: 14px;
+  --shadow-panel: 0 1px 2px rgba(20, 24, 26, 0.04), 0 14px 30px -20px rgba(20, 24, 26, 0.22);
+  --shadow-pop: 0 28px 60px -18px rgba(20, 24, 26, 0.32);
+}
+/* Dark tint of the industry colour; declared where the accent variables are set. */
+.app { --tint: color-mix(in srgb, var(--accent-text) 62%, #090b0b); }
+html { background: var(--bg-app); }
+body { color: var(--ink); }
+
+/* Shell: floating sidebar panel, borderless top bar */
+.sidebar { margin: 14px 0 14px 14px; height: calc(100vh - 28px); top: 14px; border: 0; border-radius: 26px; padding: 26px 16px 18px; box-shadow: var(--shadow-panel); }
+.topbar { border-bottom: 0; background: color-mix(in srgb, var(--bg-app) 88%, transparent); backdrop-filter: blur(10px); }
+.brand-monogram { color: var(--ink); }
+.nav-title { color: var(--muted-3); }
+.nav-item { border-radius: 999px; gap: 12px; }
+.nav-item .ico { width: 30px; height: 30px; padding: 7px; border-radius: 50%; background: var(--bg-app); color: var(--ink-3); flex: none; }
+.nav-item:hover { background: var(--bg-subtle); }
+.nav-item.active { background: var(--bg-dark); box-shadow: 0 10px 20px -10px rgba(20, 24, 26, 0.5); }
+.nav-item.active .ico { background: rgba(255, 255, 255, 0.14); color: #fff; }
+.help-card { background: var(--bg-subtle); border-color: var(--line); border-radius: 18px; }
+.help-card p { color: var(--muted); }
+.user-box { border-top-color: var(--line); }
+.avatar { background: var(--accent-tint); color: var(--accent-text); }
+.search-box { border-color: var(--line); border-radius: 999px; background: #fff; }
+.circle-button { border-color: var(--line); }
+.user-switch { border-color: var(--line); border-radius: 999px; }
+.top-avatar { background: var(--bg-dark); color: #fff; }
+.demo-pill { background: #fff; border-color: var(--line); color: var(--ink-3); }
+
+/* Surfaces */
+.panel, .stat { border-color: transparent; }
+.stat { border-radius: var(--r-panel); }
+.page-title { color: var(--ink); font-weight: 650; }
+.subtitle, .panel-meta, .metric-label, .metric-sub { color: var(--muted); }
+.table th { color: var(--muted-2); }
+.table td { color: var(--ink-3); border-bottom-color: var(--line-2); }
+.table td strong { color: var(--ink); }
+.table td small, .list small, .timeline small { color: var(--muted-2); }
+.table tr.clickable:hover td { background: var(--bg-subtle); }
+.footer-note { color: var(--muted-3); }
+
+/* Controls */
+.btn { border-color: var(--line-3); color: var(--ink-2); padding: 0 18px; }
+.btn.sm { border-radius: 999px; padding: 0 14px; }
+.btn.xs { border-radius: 999px; padding: 0 11px; }
+.btn.primary { background: var(--bg-dark); border-color: var(--bg-dark); }
+.btn.primary:hover { background: #2a3034; }
+.input, .select, .textarea { border-color: var(--line-3); }
+.input.sm, .select.sm { border-radius: 11px; }
+.segmented { border-radius: 999px; background: var(--bg-subtle); border-color: var(--line); }
+.segmented button { border-radius: 999px; }
+.field label, .field-label { color: var(--muted-2); }
+.check input, .matrix-check { accent-color: var(--bg-dark); }
+
+/* Dashboard banner: the industry's cover photo under a tint of its colour */
+.dash-hero {
+  border-radius: 26px; padding: 30px 32px; min-height: 148px; position: relative; overflow: hidden; isolation: isolate;
+  background:
+    radial-gradient(70% 140% at 96% 0%, color-mix(in srgb, var(--accent) 70%, transparent) 0%, transparent 60%),
+    linear-gradient(120deg, var(--tint) 0%, color-mix(in srgb, var(--tint) 82%, var(--accent)) 100%);
+}
+.app[data-cover] .dash-hero { background: linear-gradient(100deg, var(--tint) 0%, color-mix(in srgb, var(--tint) 86%, transparent) 46%, color-mix(in srgb, var(--tint) 30%, transparent) 100%), var(--cover) var(--cover-focus, 50% 40%) / cover no-repeat, var(--tint); }
+.dash-hero h2 { font-size: 24px; letter-spacing: -.6px; }
+.dash-hero p { color: rgba(255, 255, 255, 0.78); }
+.dash-hero .hero-kicker { color: rgba(255, 255, 255, 0.7); }
+.dash-hero .btn { background: #fff; border-color: #fff; color: var(--ink); height: 46px; padding: 0 20px; }
+.dash-hero .btn:hover { background: #eceef0; }
+
+/* Pieces */
+.board-col { border-radius: 20px; background: var(--bg-subtle); border-color: transparent; }
+.board-card { border-radius: 16px; border-color: var(--line); }
+.pipeline li { border-radius: 16px; background: var(--bg-subtle); border-color: transparent; }
+.pipeline li.has { background: #fff; border-color: var(--line); }
+.guide { border-left-width: 1px; border-color: var(--line); border-radius: var(--r-panel); }
+.guide li { border-radius: 16px; border-color: transparent; }
+.guide li.done { border-color: var(--line); }
+.notice { border-radius: 16px; }
+.modal { border-radius: 26px; }
+.toast { border-radius: 16px; }
+.bar .fill { border-radius: 999px 999px 6px 6px; }
+.bar.alt .fill { background: #cfd3d7; }
+.role-bar { border-radius: 20px; border-color: var(--line); }
+.stale-banner { border-radius: 16px; }
+.planner-slot, .appt { border-radius: 14px; }
+.rx-card { border-radius: 16px; }
+.kv dt { color: var(--muted-2); }
+
+@media (max-width: 900px) {
+  .sidebar { margin: 0; height: 100vh; top: 0; border-radius: 0 26px 26px 0; }
+}
+
+/* Laptop widths: the top-bar search collapses to its icon so the business name keeps its room. */
+@media (max-width: 1180px) {
+  .topbar .search-box { display: none; }
+  .search-mobile { display: inline-flex; }
+}
+
+/* Walkthrough: compact rows; the explanation opens on hover or keyboard focus. */
+.guide { padding: 16px 18px; }
+.guide header { margin-bottom: 10px; }
+.guide ol { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.guide li { align-items: center; padding: 9px 10px 9px 12px; }
+.guide li small:not(.guide-as) { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+.guide li:hover small:not(.guide-as), .guide li:focus-within small:not(.guide-as) { -webkit-line-clamp: 6; }
+.guide li small.guide-as { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.guide li .btn { height: 34px; padding: 0 12px; }
