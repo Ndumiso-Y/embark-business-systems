@@ -177,7 +177,7 @@ export type Theme = {
   accentText: string;
 };
 
-export type IndustryId = 'optometry' | 'medical' | 'automotive' | 'mining' | 'legal' | 'realestate' | 'construction' | 'tyres' | 'security' | 'cleaning';
+export type IndustryId = 'optometry' | 'medical' | 'automotive' | 'mining' | 'legal' | 'realestate' | 'construction' | 'tyres' | 'security' | 'cleaning' | 'education' | 'mall';
 
 export type IndustryConfig = {
   id: IndustryId;

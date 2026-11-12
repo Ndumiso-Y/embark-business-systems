@@ -14,6 +14,8 @@ const SITES = [
   { slug: 'tyre-fitment', id: 'tyres', name: 'TreadRight Tyre & Fitment' },
   { slug: 'security', id: 'security', name: 'Sentinel Ridge Security' },
   { slug: 'cleaning', id: 'cleaning', name: 'BrightPath Cleaning Services' },
+  { slug: 'school', id: 'education', name: 'Marula Ridge Academy' },
+  { slug: 'shopping-centre', id: 'mall', name: 'Harbour Crossing Mall' },
 ];
 const HUB = 'hub-k7q3m9';
 
