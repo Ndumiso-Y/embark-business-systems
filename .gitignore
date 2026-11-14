@@ -31,3 +31,7 @@ internal/
 .claude/
 dist-preview/
 dist-pages/
+
+# Private working material (strategy research) — never publish to this public repo
+research_notes/
+reports/
