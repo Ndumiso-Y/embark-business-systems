@@ -10,7 +10,8 @@ for (const id of INDUSTRIES) {
 
     await page.goto(`#/${id}`);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-    await expect(page.locator('.stat').first()).toBeVisible();
+    // Headline figures: the shared stat cards, or optometry's own KPI strip.
+    await expect(page.locator('.stat, .od-kpi').first()).toBeVisible();
 
     const sidebar = page.getByLabel('Main navigation');
     const hrefs = await sidebar.locator('a.nav-item').evaluateAll((as) => as.map((a) => a.getAttribute('href') ?? ''));

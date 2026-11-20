@@ -25,6 +25,9 @@ test.describe('Optometry demo', () => {
     await page.goto('#/');
     await page.getByRole('link', { name: 'Open optometry demo' }).click();
     await expect(page.getByRole('heading', { level: 1 })).toContainText('Good day');
+    // The dashboard previews "now and next"; the full day is one click away.
+    await expect(page.getByTestId('today-list').locator('li')).toHaveCount(4);
+    await page.getByTestId('today-toggle').click();
     await expect(page.getByTestId('today-list').locator('li')).toHaveCount(16);
     expect(errors).toEqual([]);
   });

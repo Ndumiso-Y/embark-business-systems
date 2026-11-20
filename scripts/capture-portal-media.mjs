@@ -14,6 +14,8 @@ import { createServer } from 'vite';
 import { INDUSTRY_IDS } from '../src/industries/ids.ts';
 
 const OUT = process.env.PORTAL_MEDIA_OUT ?? 'src/core/portal/media';
+/** Optional: PORTAL_MEDIA_ONLY=optometry re-captures just that industry's card (and the hero, if it is the hero demo). */
+const ONLY = process.env.PORTAL_MEDIA_ONLY;
 /** The demo shown inside the hero laptop and phone. */
 const HERO = 'optometry';
 
@@ -28,7 +30,7 @@ async function dashboard(id, viewport) {
   const context = await browser.newContext({ viewport, deviceScaleFactor: 1, reducedMotion: 'reduce' });
   const page = await context.newPage();
   await page.goto(`${base}#/${id}`);
-  await page.locator('.dash-hero').first().waitFor();
+  await page.locator('.dash-hero, .od').first().waitFor();
   const hide = page.getByRole('button', { name: 'Hide', exact: true });
   if (await hide.count()) await hide.first().click();
   await page.evaluate(() => document.fonts.ready);
@@ -37,20 +39,21 @@ async function dashboard(id, viewport) {
 }
 
 try {
-  {
+  if (!ONLY || ONLY === HERO) {
     const { context, page } = await dashboard(HERO, { width: 1280, height: 800 });
     await page.screenshot({ path: join(OUT, `hero-${HERO}-desktop.png`) });
     await context.close();
   }
-  {
+  if (!ONLY || ONLY === HERO) {
     const { context, page } = await dashboard(HERO, { width: 390, height: 844 });
     await page.screenshot({ path: join(OUT, `hero-${HERO}-phone.png`) });
     await context.close();
   }
-  for (const id of INDUSTRY_IDS) {
+  for (const id of INDUSTRY_IDS.filter((x) => !ONLY || x === ONLY)) {
     const { context, page } = await dashboard(id, { width: 820, height: 640 });
     // Start at the page heading so the card shows the greeting, the day's banner and the first figures.
-    const top = await page.locator('.dash-hero').first().evaluate((el) => Math.max(0, el.getBoundingClientRect().top + window.scrollY - 118));
+    // `.od` is a dashboard with its own layout (optometry): start just above its greeting.
+    const top = await page.locator('.dash-hero, .od').first().evaluate((el) => Math.max(0, el.getBoundingClientRect().top + window.scrollY - (el.classList.contains('od') ? 14 : 118)));
     await page.screenshot({ path: join(OUT, 'cards', `${id}.jpg`), type: 'jpeg', quality: 84, clip: { x: 0, y: top, width: 820, height: 520 }, fullPage: true });
     await context.close();
     console.log(`captured ${id}`);

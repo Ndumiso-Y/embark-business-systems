@@ -22,8 +22,8 @@ test.describe('Client branding', () => {
     await page.goto('#/optometry/settings');
     const before = await accentHue(page);
 
-    // A blue logo on a transparent background with white lettering.
-    const logo = makePng(120, 60, (x, y) => (x < 8 || y < 8 || x > 111 || y > 51 ? [0, 0, 0, 0] : y > 24 && y < 34 ? [255, 255, 255, 255] : [26, 115, 232, 255]));
+    // A green logo on a transparent background with white lettering (optometry's own default is blue).
+    const logo = makePng(120, 60, (x, y) => (x < 8 || y < 8 || x > 111 || y > 51 ? [0, 0, 0, 0] : y > 24 && y < 34 ? [255, 255, 255, 255] : [22, 150, 92, 255]));
     await page.getByTestId('brand-logo-input').setInputFiles({ name: 'acme-logo.png', mimeType: 'image/png', buffer: logo });
     await page.getByLabel('Company name').fill('Acme Eye Care');
 
@@ -31,14 +31,14 @@ test.describe('Client branding', () => {
     await expect(sidebar(page)).toContainText('ACME EYE CARE');
     const hue = await accentHue(page);
     expect(Math.abs(hue - before)).toBeGreaterThan(10);
-    expect(hue).toBeGreaterThan(200);
-    expect(hue).toBeLessThan(230);
+    expect(hue).toBeGreaterThan(140);
+    expect(hue).toBeLessThan(165);
     await expect(page).toHaveTitle('Acme Eye Care · Demonstration');
     await expect(page.locator('.footer-note')).toContainText('prepared for Acme Eye Care');
 
     // The brand carries through the rest of the demo and survives a reload and a data reset.
     await page.goto('#/optometry');
-    await expect(page.locator('.page-kicker').first()).toContainText('Acme Eye Care');
+    await expect(page.locator('.od-sub')).toContainText('Acme Eye Care');
     await page.reload();
     await expect(sidebar(page).locator('img.brand-logo')).toBeVisible();
     await page.goto('#/optometry/settings');

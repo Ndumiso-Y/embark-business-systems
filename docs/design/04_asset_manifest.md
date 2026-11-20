@@ -11,6 +11,14 @@ Two groups: imagery made from Embark's own material (in use), and cover photos (
 | Hero phone screen | `src/core/portal/media/hero-optometry-phone.png` | GREEN | Same, at 390×844 | Same | None | Homepage hero, inside a CSS phone frame | Self-generated |
 | Card captures ×12 | `src/core/portal/media/cards/<id>.jpg` | GREEN — interim | Browser capture of each demo's dashboard at 820 px wide, 20 Nov 2026 (same script) | Own software; fictional sample data only | Cropped to the top 520 px from the page heading; JPEG quality 84 | Homepage industry cards, until a cover photo is GREEN | Self-generated |
 
+Re-captured 20 Nov 2026 (later the same day) after the optometry dashboard redesign: the two hero screens and
+`cards/optometry.jpg` (`PORTAL_MEDIA_ONLY=optometry npm run capture:portal`). The other eleven card captures are unchanged.
+
+| Asset | File | Status | Source / creator | Licence / permission | Modification | Placement | Approval |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Lens-dial artwork | drawn in code (`OpticalArt` in `src/industries/optometry/pages/Dashboard.tsx`) | GREEN — interim | Original SVG written for this project; abstract dial with axis ticks, no third-party source | Own work | — | Optometry dashboard, right side of "Today's patient flow" | Stands in for the photo below |
+| Optometry dashboard photo (phoropter or similar) | `industries/optometry.jpg` (same file as the cover photo row below) | GREY — pending | | | | Flow panel on the optometry dashboard, the optometry homepage card and banner | Needs a licensed or owner-generated image; the concept's phoropter and spectacles are generated reference art and are not used |
+
 The captures show the capture date and that day's sample figures. Re-run `npm run capture:portal` after a visible
 change to a dashboard, review the images, and update the dates above.
 

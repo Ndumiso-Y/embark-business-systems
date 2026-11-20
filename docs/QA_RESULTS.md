@@ -1,5 +1,48 @@
 # QA results
 
+## Optometry dashboard redesign — 20 Nov 2026 (branch `design/optometry-dashboard-2026-11`, not merged)
+
+Design record: `docs/design/06_optometry_dashboard_addendum_2026-11.md`. Captures: `docs/design/evidence/2026-11-optometry-dashboard/`.
+
+| Check | Command | Exit | Result |
+| --- | --- | --- | --- |
+| Typecheck | `npm run typecheck` | 0 | Pass |
+| Lint | `npm run lint` | 0 | 0 errors, 6 warnings (same six as before this change) |
+| Unit tests | `npm test` | 0 | **366 passed** in 16 files (6 new: dashboard figures) |
+| Browser tests, dev server | `npm run e2e` | 0 | **158 passed**, 14 skipped (client-link checks need the built site) |
+| Browser tests, built site | client-links + homepage + optometry-dashboard against `dist-pages` | 0 | **37 passed** |
+| Production build | `npm run build` | 0 | Pass — JS 2,101 kB (624 kB gzip), CSS 78 kB |
+| Multi-link build | `npm run build:pages` | 0 | Pass — the mining client build contains none of the optometry styles |
+
+New dashboard tests (`e2e/optometry-dashboard.spec.ts`, 11): the legend adds up to appointments today and matches the
+KPI cards; the ring's percentage equals completed ÷ visits and is spelled out; claims stay a Rand amount; no invented
+trend badge; each preview expands and collapses by click, Enter, Space and Escape (focus returns to its button); the
+order stages, six-month chart, exams this month, recent activity and role bar are all still reachable; every KPI card
+and shortcut lands on the right screen; for each of the five simulated users every dashboard link points at a module
+in that user's own menu, and panels for modules they lack are absent; a branded link renames and recolours the
+dashboard and sidebar; mining and medical keep a white sidebar and their own dashboard; layout at 1440, 1024, 768, 390
+and 360 px.
+
+Regression evidence: full-page captures of the mining dashboard (1440 and 390 px) and the medical dashboard (1440 px)
+taken before and after are pixel-identical. The homepage differs only in the three re-captured optometry screens.
+
+Found and fixed while testing:
+- At 390 and 360 px the page scrolled sideways by 43–73 px (the dashboard's grid column grew to fit its widest child).
+- At 1280 px, a common laptop width, the cards stacked too early and left a gap; the full desktop layout now holds
+  down to about 1,150 px of window width.
+- The shared icon helper drops its base class when a class name is passed, which turned one chevron into a solid
+  triangle; worked around in the dashboard, shared helper left untouched.
+
+Changed existing tests, deliberately:
+- `e2e/optometry.spec.ts`: the dashboard's list shows 4 appointments until "Show all 16" is pressed.
+- `e2e/industries.spec.ts`: accepts optometry's KPI cards where it looked for the shared stat cards.
+- `e2e/branding.spec.ts`: the uploaded test logo is green instead of blue, because optometry's default colour is
+  now blue and the test needs a colour that differs from the default; the branded name is read from the new subtitle.
+
+Not tested: Safari, Firefox, real phones, assistive-technology walkthrough.
+
+---
+
 ## Homepage redesign — 20 Nov 2026 (branch `design/homepage-coverflow-2026-11-20`, not merged)
 
 Same container (Node 22, Chromium via Playwright). Design record: `docs/design/05_homepage_addendum_2026-11-20.md`.

@@ -378,7 +378,8 @@ const config: IndustryConfig = {
   tagline: 'Eye care practice management',
   summary: 'An independent optometry practice: diary and patient flow, structured eye examinations that issue prescriptions, spectacle and contact lens orders tracked through the lab, frame stock, recalls, and medical aid claims.',
   priority: 1,
-  theme: { accent: '#3b7f8c', accent2: '#4d93a1', accentSoft: '#9fd0d8', accentTint: '#e7f2f4', accentLine: '#c8e1e6', accentText: '#2b6370' },
+  // Blue of the owner-approved optometry concept (Nov 2026), derived with themeFromHex('#2563c9') so contrast holds.
+  theme: { accent: '#2462c6', accent2: '#3070d9', accentSoft: '#a5bfe9', accentTint: '#ecf1f9', accentLine: '#cfdaed', accentText: '#184081' },
   roles: [
     { key: 'owner', label: 'Practice owner' },
     { key: 'optometrist', label: 'Optometrist' },
