@@ -1,5 +1,9 @@
 # Design lock — portal and interior (v2)
 
+> **20 Nov 2026:** the homepage / portal presentation described here is superseded by
+> `05_homepage_addendum_2026-11-20.md` (owner-approved concept ED-HOME-2026-11-20, held for approval on a branch).
+> The interior decisions below still stand. The portal sections are kept as the record of what was released on 12 Nov.
+
 Follows the Embark Digitals Living Web Experience Playbook (ED-WEB-001 v1.1 candidate): reference-led, tokens
 recorded, real build judged from browser captures, owner acceptance before release.
 

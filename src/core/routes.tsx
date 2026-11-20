@@ -2,7 +2,7 @@ import type { RouteObject } from 'react-router-dom';
 import { useParams } from 'react-router-dom';
 import { LOCKED_INDUSTRY } from '../industries/registry';
 import IndustryLayout from './IndustryLayout';
-import Gallery from './pages/Gallery';
+import Hub from 'virtual:hub';
 import UsersPage from './pages/UsersPage';
 import SettingsPage from './pages/SettingsPage';
 import SearchPage from './pages/SearchPage';
@@ -29,7 +29,7 @@ function ModuleRoute({ detail }: { detail?: boolean }) {
 
 export const routes: RouteObject[] = [
   // A locked client build has no gallery: the root opens that industry's dashboard.
-  { path: '/', element: LOCKED_INDUSTRY ? <LockedRedirect to={LOCKED_INDUSTRY} /> : <Gallery /> },
+  { path: '/', element: LOCKED_INDUSTRY ? <LockedRedirect to={LOCKED_INDUSTRY} /> : Hub ? <Hub /> : <div className="content"><NotFound /></div> },
   {
     path: '/:industry',
     element: <IndustryLayout />,

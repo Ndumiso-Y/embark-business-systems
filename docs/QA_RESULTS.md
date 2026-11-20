@@ -1,5 +1,39 @@
 # QA results
 
+## Homepage redesign — 20 Nov 2026 (branch `design/homepage-coverflow-2026-11-20`, not merged)
+
+Same container (Node 22, Chromium via Playwright). Design record: `docs/design/05_homepage_addendum_2026-11-20.md`.
+
+| Check | Command | Exit | Result |
+| --- | --- | --- | --- |
+| Typecheck | `npm run typecheck` | 0 | Pass |
+| Lint | `npm run lint` | 0 | 0 errors, 6 warnings (all in files this change did not touch, plus the existing route helpers) |
+| Unit tests | `npm test` | 0 | **360 passed** in 15 files (8 new: carousel position maths and card lines) |
+| Browser tests, dev server | `npm run e2e` | 0 | **147 passed**, 14 skipped (the 14 client-link checks need the built site) |
+| Browser tests, built site | `PAGES_URL=… LIVE_URL=…/hub-k7q3m9/ playwright test client-links homepage` | 0 | **26 passed**: 14 client-link checks + 12 homepage tests against the built hub |
+| Production build | `npm run build` | 0 | Pass — JS 2,090 kB (621 kB gzip), CSS 64 kB, plus 15 homepage images (≈0.9 MB) |
+| Multi-link build | `npm run build:pages` | 0 | Pass — client builds contain no homepage code or images (checked `optometry/assets`) |
+
+New homepage tests (`e2e/homepage.spec.ts`, 12): hero copy, both device images load, mark shown at its natural
+proportions, no WhatsApp link and no links in the header, both actions land where they say; all 12 industries
+centred in turn with the next arrow, one `Open … demo` link at a time with the right address, one dot per industry;
+circular wrap; a neighbouring card centres first and opens only on the second click (also while hovered); Left /
+Right / Home / End and the tab order; mouse drag both ways without navigating; module shortcuts follow the centred
+industry; reduced motion; layout at 1440, 1024, 768, 390 and 360 px (no sideways page scroll, neighbours peek, 44 px
+controls, headline unclipped); touch swipe at 390 px.
+
+Found and fixed while testing: hovering the centred card moved its arrow with a CSS transform, which made the arrow
+the containing block for the card-wide link area, so only a narrow strip stayed clickable. The arrow icon now moves
+instead of the link.
+
+Changed existing tests: `e2e/optometry.spec.ts` and `e2e/client-links.spec.ts` asserted that all twelve cards were
+visible at once; a carousel shows about five, so they now assert every card exists and every industry has a visible
+position dot, and centre an industry before opening its module list.
+
+Not tested: Safari, Firefox, real phones, assistive-technology walkthrough.
+
+---
+
 Latest full run 12 Nov 2026 in a Linux cloud container (Node 22, Chromium via Playwright 1.52).
 
 | Check | Command | Result |

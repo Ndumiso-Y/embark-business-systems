@@ -8,12 +8,13 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "build:pages": "tsc -b && node scripts/build-pages.mjs",
-    "build:preview": "tsc -b && vite build --outDir dist-preview && node scripts/single-file-preview.mjs",
+    "build:preview": "tsc -b && PREVIEW_INLINE=1 vite build --outDir dist-preview && node scripts/single-file-preview.mjs",
     "preview": "vite preview",
     "typecheck": "tsc -b",
     "lint": "eslint src",
     "test": "vitest run",
-    "e2e": "playwright test --trace off"
+    "e2e": "playwright test --trace off",
+    "capture:portal": "node scripts/capture-portal-media.mjs"
   },
   "dependencies": {
     "react": "^19.1.0",

@@ -95,7 +95,7 @@ npm run build:preview  # portable build with relative paths (dist-preview/)
 | --- | --- |
 | `docs/BRANDING.md` | Show any demo in a client's own name, logo and colours |
 | `docs/AUDIT_REPORT.md` | Functional audit: what was tested as a first-time user, what was fixed, known limits |
-| `docs/design/` | Design lock (references, tokens, screen map) and the cover-photo asset manifest |
+| `docs/design/` | Design lock (references, tokens, screen map), the homepage addendum, and the asset manifest |
 | `docs/SHARING_LINKS.md` | Client links, the unlisted hub, and what "private" means on a public site |
 | `docs/INDUSTRY_STRATEGY.md` | How industries are chosen, the four families, and what to build next |
 | `docs/REUSE_GUIDE.md` | How the foundation works and how to add or adapt an industry |

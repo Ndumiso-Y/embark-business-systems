@@ -50,6 +50,10 @@ test.describe('client links (one industry per link)', () => {
 
   test('the unlisted hub still shows every industry', async ({ page }) => {
     await page.goto(`${PAGES}${HUB}/`);
-    for (const s of SITES) await expect(page.getByTestId(`industry-${s.id}`)).toBeVisible();
+    // The hub homepage is a carousel: every industry has a card and a position dot; a few cards are on screen at a time.
+    for (const s of SITES) {
+      await expect(page.getByTestId(`industry-${s.id}`)).toBeAttached();
+      await expect(page.getByTestId(`coverflow-dot-${s.id}`)).toBeVisible();
+    }
   });
 });

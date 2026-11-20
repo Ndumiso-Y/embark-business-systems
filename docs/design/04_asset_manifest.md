@@ -1,6 +1,25 @@
-# Asset manifest — cover photos
+# Asset manifest
 
-One cover photo per industry is used on the portal card and behind the dashboard banner.
+Two groups: imagery made from Embark's own material (in use), and cover photos (all still pending).
+
+## In use on the homepage (added 20 Nov 2026)
+
+| Asset | File | Status | Source / creator | Licence / permission | Modification | Placement | Approval |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Embark mark | `src/core/portal/media/embark-mark.png` | GREEN — owner to confirm public use | Embark Digitals; supplied by the owner in the homepage handoff (1080×1080 transparent PNG) | Embark's own brand asset | Cropped to the mark and downscaled to 174×192. Not redrawn or recoloured. The wordmark in the source is white and is not used; "EMBARK / DIGITALS" is set as live text | Homepage header | Supplied for this homepage 20 Nov 2026; the full-size source is not in the repository |
+| Hero laptop screen | `src/core/portal/media/hero-optometry-desktop.png` | GREEN | Browser capture of this repository's optometry demo at 1280×800, 20 Nov 2026 (`npm run capture:portal`) | Own software; fictional sample data only | None (walkthrough panel hidden with its own Hide button before capture) | Homepage hero, inside a CSS laptop frame | Self-generated |
+| Hero phone screen | `src/core/portal/media/hero-optometry-phone.png` | GREEN | Same, at 390×844 | Same | None | Homepage hero, inside a CSS phone frame | Self-generated |
+| Card captures ×12 | `src/core/portal/media/cards/<id>.jpg` | GREEN — interim | Browser capture of each demo's dashboard at 820 px wide, 20 Nov 2026 (same script) | Own software; fictional sample data only | Cropped to the top 520 px from the page heading; JPEG quality 84 | Homepage industry cards, until a cover photo is GREEN | Self-generated |
+
+The captures show the capture date and that day's sample figures. Re-run `npm run capture:portal` after a visible
+change to a dashboard, review the images, and update the dates above.
+
+Not in the repository and never to be published: the approved concept image and the three inspiration images from
+the handoff package (generated or third-party; composition reference only).
+
+## Cover photos
+
+One cover photo per industry is used on the homepage card and behind the dashboard banner.
 
 **Rule:** only photos with a documented free-commercial-use licence or written permission. Pinterest pins are
 reference only and are never used. No photo may show a real, identifiable business as if it were the fictional one.
@@ -26,4 +45,5 @@ To add a photo: save it as `public/industries/<id>.jpg` (about 1200 px on the lo
 Status key (playbook A3): GREEN documented and cleared · ORANGE usable but needs a better crop or resolution ·
 RED rights unverified, do not publish · GREY awaiting owner decision.
 
-Temporary substitute until GREEN: a colour wash in the industry's own colour with a line icon (`.pcard-art`).
+Temporary substitute until GREEN: on the homepage card, the industry's own dashboard capture on a wash of its colour
+(`.icard-shot`), or its icon alone if no capture exists; on the dashboard banner, the colour tint.

@@ -21,7 +21,7 @@ need to touch `src/core/` to add an industry.
 | Generic screens | `src/core/components/records.tsx` | `RegisterPage` (search, status filter, table/board toggle, create modal), `RecordDetail` (workflow stepper + actions + blocked reasons, details, history, edit, delete), `RecordTable`, `RecordBoard`, `WorkflowActions`, `History` |
 | Forms | `src/core/components/fields.tsx` | `FieldInput` for every field type, `LinesEditor` (priced lines with VAT totals), `RecordFormModal`, `formatValue`, `money()` |
 | UI kit | `src/core/components/ui.tsx` | `PageHeader`, `Stat`, `Panel`, `Tag`, `StatusTag`, `Flags`, `Notice`, `Field`, `Modal`, `Confirm`, `Empty`, `DueTag`, `Segmented`, `BarChart`, `Meters`, `Pipeline`, `KeyValues` |
-| Built-in pages | `src/core/pages/` | Users & permissions matrix, Settings & reset (lists your `boundaries`), workspace Search, Gallery, Not found |
+| Built-in pages | `src/core/pages/` | Users & permissions matrix, Settings & reset (lists your `boundaries`), workspace Search, Gallery (the owner homepage; its carousel and cards live in `src/core/portal/`), Not found |
 | Helpers | `src/core/lib/` | `dates.ts` (`todayIso`, `addDays`, `daysBetween`, `dueState`, `formatDate`, `monthShort` …), `money.ts` (integer-cent `computeTotals`, `formatRand`) |
 | Icons | `src/core/components/Icons.tsx` | ~55 stroke icons (`IcoEye`, `IcoStethoscope`, `IcoHelmet`, `IcoWrench`, `IcoScale` …) |
 
@@ -56,6 +56,10 @@ plus `/admin`, `/settings`, `/search`.
    from live records (never hard-coded numbers), an attention list, and at least one chart or pipeline.
 9. **Boundaries**: list what the demo does *not* do in `boundaries` (shown on Settings).
 10. **Test**: add `tests/<id>.test.ts` (see §5). `validateConfig(config)` must return `[]`.
+11. **Homepage card**: add one short factual line for the industry to `src/core/portal/cardLines.ts` (name only
+    modules that exist), then run `npm run capture:portal` to capture its dashboard for the card and review the image.
+    Record it in `docs/design/04_asset_manifest.md`. A licensed cover photo, once cleared, replaces the capture:
+    set `image` on the config.
 
 ## 3. Minimal example
 

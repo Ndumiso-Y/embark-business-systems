@@ -15,20 +15,25 @@ function industries(): Plugin {
   if (only && !(INDUSTRY_IDS as readonly string[]).includes(only)) throw new Error(`Unknown DEMO_INDUSTRY "${only}"`);
   const ids = only ? [only] : [...INDUSTRY_IDS];
   const ID = '\0virtual:industries';
+  const HUB = '\0virtual:hub';
   return {
     name: 'embark-industries',
-    resolveId: (id) => (id === 'virtual:industries' ? ID : null),
-    load: (id) => id === ID
-      ? `${ids.map((x, i) => `import i${i} from '/src/industries/${x}/index.ts';`).join('\n')}
+    resolveId: (id) => (id === 'virtual:industries' ? ID : id === 'virtual:hub' ? HUB : null),
+    load: (id) => {
+      if (id === ID) return `${ids.map((x, i) => `import i${i} from '/src/industries/${x}/index.ts';`).join('\n')}
 export const INDUSTRIES = [${ids.map((_, i) => `i${i}`).join(', ')}];
-export const LOCKED_INDUSTRY = ${only ? JSON.stringify(only) : 'null'};`
-      : null,
+export const LOCKED_INDUSTRY = ${only ? JSON.stringify(only) : 'null'};`;
+      // The owner homepage (and its pictures of every demo) is left out of client builds entirely.
+      if (id === HUB) return only ? 'export default null;' : `export { default } from '/src/core/pages/Gallery.tsx';`;
+      return null;
+    },
   };
 }
 
 export default defineConfig({
   plugins: [react(), industries()],
   base: './',
-  build: { outDir: 'dist', sourcemap: false, target: 'es2020' },
+  // PREVIEW_INLINE=1 (npm run build:preview) inlines images so the single-file preview is self-contained.
+  build: { outDir: 'dist', sourcemap: false, target: 'es2020', ...(process.env.PREVIEW_INLINE ? { assetsInlineLimit: 100_000_000 } : {}) },
   test: { environment: 'node', include: ['tests/**/*.test.ts'] },
 });

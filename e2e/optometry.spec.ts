@@ -15,8 +15,10 @@ test.describe('Optometry demo', () => {
     const errors = watchErrors(page);
     await page.goto('#/');
     await expect(page.getByTestId('industry-optometry')).toBeVisible();
-    for (const id of ['medical', 'automotive', 'tyres', 'mining', 'construction', 'realestate', 'legal', 'security', 'cleaning', 'education', 'mall']) await expect(page.getByTestId(`industry-${id}`)).toBeVisible();
-    // Every module on every card is a direct link into that industry's module.
+    // The homepage is a carousel: every industry has a card, and a few are on screen at a time.
+    for (const id of ['medical', 'automotive', 'tyres', 'mining', 'construction', 'realestate', 'legal', 'security', 'cleaning', 'education', 'mall']) await expect(page.getByTestId(`industry-${id}`)).toBeAttached();
+    // Every module of every industry is a direct link: centre the industry, then open its module list.
+    await page.getByTestId('coverflow-dot-mining').click();
     await page.getByTestId('modules-open-mining').click();
     await page.getByTestId('module-mining-permits').click();
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Permits to work');
