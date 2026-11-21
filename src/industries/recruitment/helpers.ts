@@ -65,6 +65,7 @@ export const monthRange = (today: string) => {
   const from = `${today.slice(0, 7)}-01`;
   return { from, to: addDays(addMonths(from, 1), -1) };
 };
+export const daysSince = (iso: string, today: string) => Math.max(0, daysBetween(iso.slice(0, 10), today));
 const minutes = (t: string) => { const [h, m] = t.split(':').map(Number); return (h || 0) * 60 + (m || 0); };
 
 /* ---------------- Lookups ---------------- */

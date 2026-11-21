@@ -1,0 +1,41 @@
+/* Recruitment demo only: every rule is scoped under an .rc- class. */
+.rc-board { grid-auto-flow: row; grid-auto-columns: auto; grid-template-columns: repeat(auto-fill, minmax(178px, 1fr)); overflow: visible; align-items: start; }
+.rc-board .board-col { min-height: 0; }
+.rc-strip { list-style: none; margin: 0 0 12px; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(82px, 1fr)); gap: 6px; }
+.rc-strip li { border: 1px solid var(--line); border-radius: 14px; padding: 8px 10px; display: flex; flex-direction: column; gap: 3px; min-width: 0; background: #fff; }
+.rc-strip li.has { border-color: var(--accent-line); background: var(--accent-tint); }
+.rc-strip b { font-size: 18px; line-height: 1.1; color: var(--ink); }
+.rc-strip span { font-size: 10.5px; font-weight: 700; color: var(--ink-3); display: flex; align-items: center; gap: 5px; line-height: 1.25; }
+.rc-strip .dot { flex: none; }
+.rc-card { gap: 6px; }
+.rc-card-head { display: flex; gap: 9px; align-items: center; min-width: 0; }
+.rc-card-head > div { min-width: 0; }
+.rc-card-head strong { display: block; overflow-wrap: anywhere; }
+.rc-card-head small { display: block; }
+.rc-av { width: 32px; height: 32px; font-size: 11px; }
+.rc-av.blue { background: #e3edf9; color: #1f4f86; }
+.rc-av.accent { background: var(--accent-tint); color: var(--accent-text); }
+.rc-av.amber { background: #fbf0d9; color: #7a5200; }
+.rc-av.green { background: #e2f3e6; color: #22603a; }
+.rc-av.dark { background: #ecedee; color: #3b3f45; }
+.rc-av.red { background: #f9e3e1; color: #8c2a20; }
+.rc-stack { display: flex; padding-left: 6px; margin: 0 0 2px; }
+.rc-stack .rc-av { width: 24px; height: 24px; font-size: 9px; margin-left: -6px; border: 2px solid var(--bg-subtle, #f4f5f6); }
+.rc-reasons { list-style: none; margin: 2px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.rc-reasons li { font-size: 11px; line-height: 1.4; color: #8c2a20; background: #fbeceb; border-radius: 8px; padding: 6px 8px; }
+.rc-card .btns { margin-top: 2px; }
+.rc-closed { margin-top: 12px; font-size: 12.5px; }
+.rc-closed summary { cursor: pointer; font-weight: 700; color: var(--ink-3); }
+.rc-hours { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+.rc-hours label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; font-weight: 700; color: var(--ink-3); min-width: 0; }
+.rc-hours label small { font-weight: 500; color: var(--muted-2); }
+.rc-hours label.rc-out small { color: #8c2a20; }
+.rc-hours .input { padding-left: 6px; padding-right: 6px; min-width: 0; }
+.rc-inline-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+.rc-inline-form .field { min-width: 0; flex: 1 1 190px; }
+.rc-msg { white-space: pre-wrap; font-size: 12.5px; line-height: 1.55; background: var(--bg-subtle, #f4f5f6); border-radius: 12px; padding: 12px 14px; margin: 8px 0 0; overflow-wrap: anywhere; }
+.rc-jobpick { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
+.rc-jobpick .select { max-width: 100%; flex: 1 1 260px; }
+@media (max-width: 720px) {
+  .rc-hours { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}

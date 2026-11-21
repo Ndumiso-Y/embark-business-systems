@@ -68,16 +68,16 @@ export const EXIT_REASONS: Option[] = [
 ];
 
 /* ---------------- Onboarding ---------------- */
-export type OnboardingItem = { key: string; label: string; when?: 'ppe' | 'driver' };
+export type OnboardingItem = { key: string; label: string; short: string; when?: 'ppe' | 'driver' };
 export const ONBOARDING_ITEMS: OnboardingItem[] = [
-  { key: 'contract', label: 'Employment contract signed' },
-  { key: 'idcopy', label: 'ID copy on file' },
-  { key: 'taxno', label: 'Tax number captured' },
-  { key: 'banking', label: 'Banking details captured' },
-  { key: 'emergency', label: 'Emergency contact recorded' },
-  { key: 'induction', label: 'Site safety induction done' },
-  { key: 'ppe', label: 'PPE issued (safety boots, hi-vis vest, gloves)', when: 'ppe' },
-  { key: 'licence', label: 'Driver’s licence (Code 14) and PrDP checked', when: 'driver' },
+  { key: 'contract', label: 'Employment contract signed', short: 'Contract signed' },
+  { key: 'idcopy', label: 'ID copy on file', short: 'ID copy' },
+  { key: 'taxno', label: 'Tax number captured', short: 'Tax number' },
+  { key: 'banking', label: 'Banking details captured', short: 'Banking details' },
+  { key: 'emergency', label: 'Emergency contact recorded', short: 'Emergency contact' },
+  { key: 'induction', label: 'Site safety induction done', short: 'Safety induction' },
+  { key: 'ppe', label: 'PPE issued (safety boots, hi-vis vest, gloves)', short: 'PPE issued', when: 'ppe' },
+  { key: 'licence', label: 'Driver’s licence (Code 14) and PrDP checked', short: 'Licence and PrDP checked', when: 'driver' },
 ];
 
 /* ---------------- Leave ---------------- */

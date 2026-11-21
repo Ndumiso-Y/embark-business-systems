@@ -7,7 +7,7 @@ import { can, findRecord, num, records, str } from '../../core/engine';
 import { addDays, daysBetween, formatDate, parseIso, toIso } from '../../core/lib/dates';
 import { formatRand, toCents } from '../../core/lib/money';
 import {
-  ANNUAL_ACCRUAL, ANNUAL_DAYS, CERT_TYPES, CERT_WARN_DAYS, DEPARTMENTS, FAMILY_DAYS, FAMILY_MIN_MONTHS, FIXED_TERM_WARN_DAYS, HEARING_NOTICE_DAYS, JOBS, LEAVE_TYPES,
+  ANNUAL_ACCRUAL, ANNUAL_DAYS, CERT_TYPES, CERT_WARN_DAYS, DEPARTMENTS, FAMILY_DAYS, FAMILY_MIN_MONTHS, FIXED_TERM_WARN_DAYS, HEARING_NOTICE_DAYS, LEAVE_TYPES, PROBATION_MONTHS,
   MATERNITY_MAX_MONTHS, ONBOARDING_ITEMS, OT_WEEKLY_LIMIT, PARENTAL_MAX_DAYS, PROBATION_WARN_DAYS, SICK_CERT_AFTER, SICK_CYCLE_MONTHS, SICK_DAYS, SICK_DAYS_WORKED_PER_DAY,
   SICK_FIRST_MONTHS, SITES, STUDY_DAYS, TEAM_AWAY_SHARE, WARNING_MONTHS, WORKING_DAYS_PER_MONTH, jobOf, label, type OnboardingItem,
 } from './data';
@@ -150,7 +150,7 @@ export const onboardingDone = (r: DemoRecord | undefined) => new Set(csv(str(r, 
 export const onboardingMissing = (r: DemoRecord | undefined) => { const done = onboardingDone(r); return requiredOnboarding(r).filter((i) => !done.has(i.key)); };
 export function startProblem(r: DemoRecord, today: string): string | null {
   const missing = onboardingMissing(r);
-  if (missing.length) return `Complete the onboarding checklist first — ${missing.length} required item${missing.length === 1 ? '' : 's'} still open: ${missing.map((i) => i.label.split(' (')[0]).join('; ')}. Tick them under “Onboarding checklist” on this page.`;
+  if (missing.length) return `Complete the onboarding checklist first — ${missing.length} required item${missing.length === 1 ? '' : 's'} still open: ${missing.map((i) => i.short).join('; ')}. Tick them under “Onboarding checklist” on this page.`;
   if (str(r, 'startDate') > today) return `The start date is ${formatDate(str(r, 'startDate'))} — employment can only start on or after it.`;
   return null;
 }
@@ -159,7 +159,7 @@ export function startProblem(r: DemoRecord, today: string): string | null {
 export function probationProblem(r: DemoRecord): string | null {
   const outcome = str(r, 'probationOutcome');
   if (!outcome || !str(r, 'probationReviewDate')) return 'Record the probation review first — the outcome and the review date, under “Probation review” on this page.';
-  if (outcome === 'extended') return `Probation was extended to ${formatDate(str(r, 'probationEnd'))}. Record a new review outcome when the extension ends.`;
+  if (outcome === 'extended') return `Probation was extended to ${formatDate(probationEndOf(r))}. Record a new review outcome when the extension ends.`;
   if (outcome === 'notconfirmed') return 'The review outcome is “Not confirmed” — use “Give notice” with the reason “Not confirmed after probation” instead.';
   return null;
 }
@@ -177,7 +177,9 @@ export function exitProblem(r: DemoRecord, today: string): string | null {
   if (open.length) return `Complete the exit checklist first: ${open.join(' and ')} (under “Leaving” on this page).`;
   return null;
 }
-export const probationDaysLeft = (r: DemoRecord, today: string) => (r.status === 'probation' && str(r, 'probationEnd') ? daysBetween(today, str(r, 'probationEnd')) : null);
+/** Recorded probation end, or three months from the start date. */
+export const probationEndOf = (r: DemoRecord | undefined) => str(r, 'probationEnd') || (str(r, 'startDate') ? addMonths(str(r, 'startDate'), PROBATION_MONTHS) : '');
+export const probationDaysLeft = (r: DemoRecord, today: string) => (r.status === 'probation' && probationEndOf(r) ? daysBetween(today, probationEndOf(r)) : null);
 export const fixedTermDaysLeft = (r: DemoRecord, today: string) =>
   (str(r, 'employmentType') === 'fixed' && str(r, 'fixedTermEnd') && isCurrent(r) ? daysBetween(today, str(r, 'fixedTermEnd')) : null);
 
@@ -599,4 +601,14 @@ export function leaveLiability(data: IndustryData, today: string) {
   });
   return { rows, days: rows.reduce((n, r) => n + r.days, 0), value: rows.reduce((n, r) => n + r.value, 0) };
 }
-export { JOBS };
+
+/** Overtime approval is recorded by the employee's own manager, HR or the managing director. */
+export function overtimeApproverProblem(data: IndustryData, user: DemoUser, empId: string): string | null {
+  if (!can(user, 'overtime.approve')) return 'Recording an overtime approval needs the “Approve overtime” permission (the employee’s manager or the managing director).';
+  if (isHr(user) || can(user, 'payroll.approve')) return null;
+  const me = employeeOfUser(data, user);
+  const e = emp(data, empId);
+  if (me?.id === empId) return 'You cannot approve your own overtime.';
+  if (!me || str(e, 'manager') !== me.id) return `Only ${fullName(e)}’s own manager, HR or the managing director can approve this overtime.`;
+  return null;
+}
