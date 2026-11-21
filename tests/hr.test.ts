@@ -46,7 +46,7 @@ describe('hr configuration and seed', () => {
   });
 
   it('keeps the fixed identity and a contrast-safe violet theme', () => {
-    expect(config).toMatchObject({ id: 'hr', industry: 'Human resources', businessName: 'Bluegum Distribution', monogram: 'BG', priority: 13 });
+    expect(config).toMatchObject({ id: 'hr', industry: 'HR system', businessName: 'Bluegum Distribution', monogram: 'BG', priority: 13 });
     expect(config.theme).toEqual(themeFromHex('#6a43c2'));
     expect(contrast(config.theme.accentText, config.theme.accentTint)).toBeGreaterThanOrEqual(4.5);
     expect(contrast(config.theme.accent, '#ffffff')).toBeGreaterThanOrEqual(4.5);

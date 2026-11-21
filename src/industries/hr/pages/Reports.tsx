@@ -44,6 +44,8 @@ export default function Reports() {
   // Overtime by department, last three pay periods.
   const periods = monthKeys(today, 3);
   const ot = records(data, 'inputs').filter((i) => str(i, 'kind') === 'overtime' && periods.includes(str(i, 'period')));
+  // Name only the pay periods that actually have overtime captured.
+  const otPeriods = periods.filter((p) => ot.some((i) => str(i, 'period') === p));
   const otByDept = depts.map((d) => ({ label: d.label, value: ot.filter((i) => deptOf(records(data, 'employees').find((e) => e.id === str(i, 'employee'))) === d.value).reduce((n, i) => n + num(i, 'hours'), 0) })).filter((x) => x.value > 0);
 
   // Cases.
@@ -93,7 +95,7 @@ export default function Reports() {
         <Panel title="Annual leave liability by department" meta={`Each person’s unused annual leave × (monthly salary ÷ ${WORKING_DAYS_PER_MONTH}) · ${randWhole(liab.value)} in total`}>
           <Meters items={liabByDept} format={(n) => randWhole(n)} />
         </Panel>
-        <Panel title="Overtime by department" meta={`Hours captured in the payroll inputs for ${periods.map(monthShort).join(', ')}`}>
+        <Panel title="Overtime by department" meta={otPeriods.length ? `Hours captured in the payroll inputs for ${otPeriods.map(monthShort).join(', ')}` : 'Last three pay periods'}>
           {otByDept.length ? <Meters items={otByDept} format={(n) => `${fmtDays(n)} h`} /> : <p className="muted-note">No overtime captured.</p>}
         </Panel>
       </div>

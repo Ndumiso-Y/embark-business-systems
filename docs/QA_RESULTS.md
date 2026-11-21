@@ -1,5 +1,23 @@
 # QA results
 
+## HR system and recruitment agency added — 21 Nov 2026
+
+| Check | Command | Exit | Result |
+| --- | --- | --- | --- |
+| Typecheck | `npm run typecheck` | 0 | Pass |
+| Lint | `npm run lint` | 0 | 0 errors, 6 warnings (unchanged) |
+| Unit tests | `npm test` | 0 | **449 passed** in 17 files (46 HR, 43 recruitment) |
+| Browser tests, dev server | `npm run e2e` | 0 | **171 passed**, 16 skipped (client-link checks need the built site) |
+| Browser tests, built site | client-links + homepage against `dist-pages` | 0 | **28 passed** — all 14 client links show only their own business; the hub lists all 14 |
+| Production build | `npm run build` | 0 | Pass — JS 2,440 kB (721 kB gzip) |
+| Multi-link build | `npm run build:pages` | 0 | Pass — adds `human-resources/` and `recruitment-agency/` |
+
+New journeys: `e2e/journeys/hr.spec.ts` (13) and `e2e/journeys/recruitment.spec.ts` (9), each including a 390 px
+check. Both were also run with the browser clock moved to other days (weekends, early morning, late night, a public
+holiday) without failures. Homepage tests now count industries instead of assuming twelve.
+
+---
+
 ## Homepage redesign — 20 Nov 2026 (branch `design/homepage-coverflow-2026-11-20`, not merged)
 
 Same container (Node 22, Chromium via Playwright). Design record: `docs/design/05_homepage_addendum_2026-11-20.md`.

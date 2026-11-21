@@ -522,12 +522,13 @@ const collections: CollectionDef[] = [
 
 const config: IndustryConfig = {
   id: 'hr',
-  industry: 'Human resources',
+  // A business tool for any company with staff, shown running inside a fictional distributor.
+  industry: 'HR system',
   businessName: 'Bluegum Distribution',
   monogram: 'BG',
   workspaceTag: 'PEOPLE & HR',
-  tagline: 'In-house HR for a multi-depot distributor',
-  summary: 'The in-house HR team of a food-and-beverage distributor with a head office and three depots: employee records and onboarding, leave with balances and a who’s-away calendar, monthly payroll inputs, hiring, performance reviews, discipline and grievances, training and certificates.',
+  tagline: 'HR for any business with staff, shown at a multi-depot distributor',
+  summary: 'An HR system for any business with staff, shown here as the in-house HR team of a food-and-beverage distributor with a head office and three depots: employee records and onboarding, leave with balances and a who’s-away calendar, monthly payroll inputs, hiring, performance reviews, discipline and grievances, training and certificates.',
   priority: 13,
   theme: { accent: '#5e39b1', accent2: '#6d46c3', accentSoft: '#bcaae4', accentTint: '#f0ecf9', accentLine: '#d8cfed', accentText: '#3d2574' },
   roles: [

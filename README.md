@@ -17,7 +17,7 @@ Embark Digitals as discovery demonstrations. It is **not** a production system.
 | 10 | Cleaning services | BrightPath Cleaning Services | Interactive core workflows |
 | 11 | Education | Marula Ridge Academy | Interactive core workflows |
 | 12 | Shopping centre | Harbour Crossing Mall | Interactive core workflows |
-| 13 | Human resources | Bluegum Distribution | Interactive core workflows |
+| 13 | HR system (any business with staff) | Bluegum Distribution | Interactive core workflows |
 | 14 | Recruitment agency | Fynbos Talent Partners | Interactive core workflows |
 
 - Every business, person, record, code and figure is **fictional**.
@@ -46,7 +46,7 @@ other demos, and none of their code or data.
 | Cleaning services | https://ndumiso-y.github.io/embark-business-systems/cleaning/ |
 | School | https://ndumiso-y.github.io/embark-business-systems/school/ |
 | Shopping centre | https://ndumiso-y.github.io/embark-business-systems/shopping-centre/ |
-| Human resources | https://ndumiso-y.github.io/embark-business-systems/human-resources/ |
+| HR system | https://ndumiso-y.github.io/embark-business-systems/human-resources/ |
 | Recruitment agency | https://ndumiso-y.github.io/embark-business-systems/recruitment-agency/ |
 
 The site root shows a neutral Embark Digitals page that lists nothing. The full hub with every industry is at an
