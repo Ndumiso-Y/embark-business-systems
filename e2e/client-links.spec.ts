@@ -16,6 +16,8 @@ const SITES = [
   { slug: 'cleaning', id: 'cleaning', name: 'BrightPath Cleaning Services' },
   { slug: 'school', id: 'education', name: 'Marula Ridge Academy' },
   { slug: 'shopping-centre', id: 'mall', name: 'Harbour Crossing Mall' },
+  { slug: 'human-resources', id: 'hr', name: 'Bluegum Distribution' },
+  { slug: 'recruitment-agency', id: 'recruitment', name: 'Fynbos Talent Partners' },
 ];
 const HUB = 'hub-k7q3m9';
 

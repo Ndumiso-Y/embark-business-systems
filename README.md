@@ -1,6 +1,6 @@
 # Embark Digitals — Industry management demos
 
-A reusable, browser-only application foundation with twelve industry configurations, built by
+A reusable, browser-only application foundation with fourteen industry configurations, built by
 Embark Digitals as discovery demonstrations. It is **not** a production system.
 
 | # | Industry | Fictional business | Depth |
@@ -17,6 +17,8 @@ Embark Digitals as discovery demonstrations. It is **not** a production system.
 | 10 | Cleaning services | BrightPath Cleaning Services | Interactive core workflows |
 | 11 | Education | Marula Ridge Academy | Interactive core workflows |
 | 12 | Shopping centre | Harbour Crossing Mall | Interactive core workflows |
+| 13 | HR system (any business with staff) | Bluegum Distribution | Interactive core workflows |
+| 14 | Recruitment agency | Fynbos Talent Partners | Interactive core workflows |
 
 - Every business, person, record, code and figure is **fictional**.
 - Any demo can be **branded for a client** (name, logo, colours) — see `docs/BRANDING.md`.
@@ -44,6 +46,8 @@ other demos, and none of their code or data.
 | Cleaning services | https://ndumiso-y.github.io/embark-business-systems/cleaning/ |
 | School | https://ndumiso-y.github.io/embark-business-systems/school/ |
 | Shopping centre | https://ndumiso-y.github.io/embark-business-systems/shopping-centre/ |
+| HR system | https://ndumiso-y.github.io/embark-business-systems/human-resources/ |
+| Recruitment agency | https://ndumiso-y.github.io/embark-business-systems/recruitment-agency/ |
 
 The site root shows a neutral Embark Digitals page that lists nothing. The full hub with every industry is at an
 unlisted address for internal use — see `docs/SHARING_LINKS.md`.

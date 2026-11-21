@@ -10,6 +10,7 @@ function watchErrors(page: Page) {
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
   return errors;
 }
+const N = INDUSTRY_IDS.length;
 const centred = (page: Page) => page.locator('.cf-slide[data-slot="0"]');
 const status = (page: Page) => page.getByTestId('coverflow-status');
 const overflowX = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
@@ -115,20 +116,20 @@ test.describe('Homepage', () => {
     await page.getByTestId('coverflow-stage').focus();
     await page.keyboard.press('ArrowRight');
     await page.keyboard.press('ArrowRight');
-    await expect(status(page)).toContainText(', 3 of 12');
+    await expect(status(page)).toContainText(`, 3 of ${N}`);
     await page.keyboard.press('ArrowLeft');
-    await expect(status(page)).toContainText(', 2 of 12');
+    await expect(status(page)).toContainText(`, 2 of ${N}`);
     await page.keyboard.press('End');
-    await expect(status(page)).toContainText(', 12 of 12');
+    await expect(status(page)).toContainText(`, ${N} of ${N}`);
     await page.keyboard.press('Home');
-    await expect(status(page)).toHaveText('Optometry, 1 of 12');
+    await expect(status(page)).toHaveText(`Optometry, 1 of ${N}`);
 
     // Tab from the carousel reaches the centred card's link next, then the controls — never a hidden card.
     await page.keyboard.press('Tab');
     await expect(page.getByRole('link', { name: 'Open optometry demo' })).toBeFocused();
     // Arrow keys still work from there, and focus does not stay on a card that has moved aside.
     await page.keyboard.press('ArrowRight');
-    await expect(status(page)).toContainText(', 2 of 12');
+    await expect(status(page)).toContainText(`, 2 of ${N}`);
     await expect(page.getByTestId('coverflow-stage')).toBeFocused();
     expect(await page.locator('.cf-slide:not([data-slot="0"]) a:not([tabindex="-1"])').count()).toBe(0);
     await page.keyboard.press('Tab');
@@ -151,7 +152,7 @@ test.describe('Homepage', () => {
     await page.mouse.move(x - 180, y + 4, { steps: 6 });
     await page.mouse.up();
     await expect(page).toHaveURL(/#\/$/);
-    await expect(status(page)).toContainText(', 2 of 12');
+    await expect(status(page)).toContainText(`, 2 of ${N}`);
     // Drag right: back again.
     await page.waitForTimeout(450);
     await page.mouse.move(x, y);
@@ -159,7 +160,7 @@ test.describe('Homepage', () => {
     await page.mouse.move(x + 180, y, { steps: 8 });
     await page.mouse.up();
     await expect(page).toHaveURL(/#\/$/);
-    await expect(status(page)).toHaveText('Optometry, 1 of 12');
+    await expect(status(page)).toHaveText(`Optometry, 1 of ${N}`);
     // A tiny movement is still a click.
     await page.waitForTimeout(450);
     await page.getByTestId('modules-open-optometry').click();
@@ -179,7 +180,7 @@ test.describe('Homepage', () => {
     const duration = await page.locator('.cf-slide').first().evaluate((el) => getComputedStyle(el).transitionDuration);
     expect(duration.split(',').every((d) => parseFloat(d) === 0)).toBe(true);
     await page.getByTestId('coverflow-next').click();
-    await expect(status(page)).toContainText(', 2 of 12');
+    await expect(status(page)).toContainText(`, 2 of ${N}`);
     await expect(centred(page).getByTestId('industry-medical')).toBeVisible();
     await context.close();
   });
@@ -230,7 +231,7 @@ test.describe('Homepage', () => {
     await touch('touchStart', x);
     for (const dx of [-20, -60, -110, -150]) await touch('touchMove', x + dx);
     await touch('touchEnd', x - 150);
-    await expect(status(page)).toContainText(', 2 of 12');
+    await expect(status(page)).toContainText(`, 2 of ${N}`);
     await expect(page).toHaveURL(/#\/$/);
     expect(await overflowX(page)).toBeLessThanOrEqual(1);
     await context.close();

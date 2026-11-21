@@ -19,6 +19,8 @@ export const CLIENT_SLUGS = {
   cleaning: 'cleaning',
   education: 'school',
   mall: 'shopping-centre',
+  hr: 'human-resources',
+  recruitment: 'recruitment-agency',
 };
 // Unlisted, not secret: the repository is public. See docs/SHARING_LINKS.md.
 export const HUB_PATH = 'hub-k7q3m9';

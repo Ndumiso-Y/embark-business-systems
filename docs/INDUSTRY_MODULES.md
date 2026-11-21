@@ -193,6 +193,41 @@ low stock), lab pipeline, six-month exams vs orders chart, activity feed.
 | Centre operations, Incidents | Daily footfall and parking log; incidents with insurance reference | |
 | Exhibitions, Marketing fund, Reports | Short-term space bookings; levies vs spend; occupancy, collections, density, expiry profile | No double-booking; spend cannot exceed the fund |
 
+## 13. HR system (any business with staff) — Bluegum Distribution
+
+A business tool rather than an industry: shown as the in-house HR team of a fictional distributor (head office and
+three depots, about 50 staff), but the same system fits any company with employees.
+
+**Roles:** HR manager (all access), HR officer, payroll administrator, depot (line) manager, managing director, and an
+employee who only sees self-service ("My leave").
+
+| Module | What it does | Rules worth showing |
+| --- | --- | --- |
+| Employees | Register and profile: job, site, manager, probation, contract end, balances, warnings, certificates | Confirming an appointment needs a probation review outcome; exit needs reason, last day, equipment returned and access removed |
+| Onboarding | Checklist per new hire, depending on the job | Cannot start until required items are done (PPE for warehouse and fleet; licence and PrDP for drivers) |
+| Leave requests, Who's away, My leave | Requests with balances; two-week calendar by team; employee self-service | Annual leave beyond balance refused (take unpaid instead); sick leave over 2 days needs a certificate; nobody approves their own leave; only HR or the employee's manager approves; team-cover limit needs a cover note (demo rules modelled on BCEA minimums) |
+| Payroll inputs | Monthly pack: overtime, unpaid leave (pulled from leave), allowances, deductions, starters, leavers | Over 10 h overtime a week needs manager approval; the checker cannot approve; locked once approved; CSV download. No pay or tax calculated |
+| Requisitions, Applicants | Light hiring pipeline | Unbudgeted roles need MD approval; hiring creates the employee in Onboarding with their checklist |
+| Performance reviews | Self-assessment → manager review → moderation → signed off | Ratings of 1 or 5 moderated by the MD; 2 or below needs an improvement plan |
+| Discipline & grievances | Cases from report to outcome and appeal | Hearing needs 2 working days' notice (demo rule); chairperson cannot be the investigator; warnings on file expire after 3, 6 or 12 months; dismissal moves the employee to notice |
+| Training, Certificates, Reports | Courses, certificate expiries, headcount, turnover, absenteeism, leave liability, overtime | Completing a course issues certificates; drivers without a valid PrDP flagged |
+
+## 14. Recruitment agency — Fynbos Talent Partners
+
+**Roles:** director (all access), senior consultant, consultant, resourcer (cannot send CVs), contracts & timesheet
+administrator, finance.
+
+| Module | What it does | Rules worth showing |
+| --- | --- | --- |
+| Clients & terms | Companies, contacts, terms of business, fee %, guarantee and its remedy | A job order can only be opened for a client with signed, current terms |
+| Job orders | Draft → open → shortlist sent → interviewing → offer → filled; on hold, lost | Each stage needs the step behind it (a CV sent, an interview booked, an accepted offer) |
+| Candidates | Profiles, packages, notice, POPIA consent with expiry | No CV goes to a client without current consent to share; duplicate warning on email or phone |
+| Pipeline | A board per job: longlist → CV sent → client reviewing → interview → final → offer → accepted | Six-month ownership rule per client, naming who sent the CV and when; accepting an offer creates the placement and fills the job |
+| Interviews | Schedule, feedback, reminders (previewed, not sent) | A candidate cannot be double-booked; completing needs rating, outcome and feedback |
+| Placements | Start, guarantee, fall-off | Starting raises the fee invoice; falling off inside the guarantee raises a pro-rata credit note or a free replacement job, as the client's terms say |
+| Contractors, Timesheets | Assignments with pay and charge rates; weekly timesheets | Hours outside the assignment refused; invoice only after client approval (simulated); illustrative flag near 3 months for lower earners (modelled on LRA s198A, not legal advice) |
+| Invoices, Consultants & reports | Fee and contractor invoices, credit notes, VAT 15%; fees vs target, funnel, time to fill, weighted pipeline | Credit notes must link to the invoice they reduce |
+
 ## Research notes
 
 Module choices were checked against public vendor and directory descriptions of sector software (vendor

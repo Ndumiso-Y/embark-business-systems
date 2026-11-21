@@ -16,7 +16,7 @@ test.describe('Optometry demo', () => {
     await page.goto('#/');
     await expect(page.getByTestId('industry-optometry')).toBeVisible();
     // The homepage is a carousel: every industry has a card, and a few are on screen at a time.
-    for (const id of ['medical', 'automotive', 'tyres', 'mining', 'construction', 'realestate', 'legal', 'security', 'cleaning', 'education', 'mall']) await expect(page.getByTestId(`industry-${id}`)).toBeAttached();
+    for (const id of ['medical', 'automotive', 'tyres', 'mining', 'construction', 'realestate', 'legal', 'security', 'cleaning', 'education', 'mall', 'hr', 'recruitment']) await expect(page.getByTestId(`industry-${id}`)).toBeAttached();
     // Every module of every industry is a direct link: centre the industry, then open its module list.
     await page.getByTestId('coverflow-dot-mining').click();
     await page.getByTestId('modules-open-mining').click();

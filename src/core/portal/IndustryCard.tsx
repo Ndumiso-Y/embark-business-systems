@@ -1,13 +1,13 @@
 import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import type { IndustryConfig } from '../types';
-import { IcoArrow, IcoBriefcase, IcoCap, IcoCar, IcoCheck, IcoEye, IcoHelmet, IcoHome, IcoPickaxe, IcoScale, IcoShield, IcoStethoscope, IcoStore, IcoWrench } from '../components/Icons';
+import { IcoArrow, IcoBriefcase, IcoCap, IcoCar, IcoCheck, IcoEye, IcoHelmet, IcoHome, IcoPickaxe, IcoScale, IcoShield, IcoStethoscope, IcoStore, IcoUsers, IcoWrench } from '../components/Icons';
 import { cardLine } from './cardLines';
 import { cardCapture } from './media';
 
 const COVER_ICON: Record<string, typeof IcoEye> = {
   optometry: IcoEye, medical: IcoStethoscope, automotive: IcoWrench, tyres: IcoCar, mining: IcoPickaxe,
-  construction: IcoHelmet, realestate: IcoHome, legal: IcoScale, security: IcoShield, cleaning: IcoCheck, education: IcoCap, mall: IcoStore,
+  construction: IcoHelmet, realestate: IcoHome, legal: IcoScale, security: IcoShield, cleaning: IcoCheck, education: IcoCap, mall: IcoStore, hr: IcoUsers, recruitment: IcoBriefcase,
 };
 
 /**

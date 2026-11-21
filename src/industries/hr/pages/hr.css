@@ -1,0 +1,59 @@
+/* Human resources demo only: the who's-away calendar, the week strip and leave-type swatches.
+   Everything is scoped under .hr-… classes so no other industry is affected. */
+.hr-lv { --lv: var(--accent); }
+.hr-lv.annual { --lv: var(--accent); }
+.hr-lv.sick { --lv: #c27c77; }
+.hr-lv.family { --lv: #c39550; }
+.hr-lv.parent { --lv: #6f87a3; }
+.hr-lv.study { --lv: #6f9b7d; }
+.hr-lv.unpaid { --lv: #5a625b; }
+
+.hr-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; list-style: none; margin: 0 0 14px; padding: 0; font-size: 12px; color: var(--muted); }
+.hr-legend li { display: inline-flex; align-items: center; gap: 6px; }
+.hr-swatch { width: 14px; height: 10px; border-radius: 3px; background: var(--lv); display: inline-block; }
+.hr-swatch.pending { background: repeating-linear-gradient(135deg, var(--lv) 0 3px, transparent 3px 6px); border: 1px solid var(--lv); }
+
+/* Calendar: scrolls inside its own box on narrow screens; the page never scrolls sideways. */
+.hr-cal-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--line); border-radius: var(--r-card); }
+.hr-cal { display: grid; min-width: 720px; font-size: 11px; }
+.hr-cal > div { border-bottom: 1px solid var(--line-2); min-height: 30px; display: flex; align-items: center; }
+.hr-cal .hr-head { font-weight: 700; color: var(--muted); justify-content: center; flex-direction: column; padding: 6px 0; line-height: 1.2; background: var(--bg-subtle); }
+.hr-cal .hr-head.today { color: var(--accent-text); background: var(--accent-tint); }
+.hr-cal .hr-name { padding: 4px 10px; position: sticky; left: 0; background: var(--bg-panel); z-index: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; border-right: 1px solid var(--line-2); }
+.hr-cal .hr-name small { color: var(--muted-2); margin-left: 6px; font-weight: 600; }
+.hr-cal .hr-team { font-weight: 800; color: var(--ink-2); background: var(--bg-ivory); }
+.hr-cal .hr-team-cell { background: var(--bg-ivory); justify-content: center; font-weight: 800; color: var(--muted); }
+.hr-cal .hr-team-cell.over { color: #fff; background: #c27c77; }
+.hr-cal .hr-team-cell.full { color: var(--warn); }
+.hr-cal .hr-cell { justify-content: center; padding: 3px 1px; }
+.hr-cal .hr-cell.off { background: repeating-linear-gradient(45deg, var(--bg-subtle) 0 4px, transparent 4px 8px); }
+.hr-cal .hr-cell.today { box-shadow: inset 2px 0 0 var(--accent-soft), inset -2px 0 0 var(--accent-soft); }
+.hr-bar { width: 100%; height: 18px; border-radius: 4px; background: var(--lv); color: #fff; font-weight: 800; font-size: 10px; display: flex; align-items: center; justify-content: center; }
+.hr-bar.pending { background: repeating-linear-gradient(135deg, var(--lv) 0 3px, transparent 3px 6px); color: var(--ink-2); border: 1px solid var(--lv); }
+
+/* "Who's away this week" strip on the dashboard. */
+.hr-week { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.hr-day { border: 1px solid var(--line); border-radius: var(--r-card); padding: 10px; min-width: 0; background: var(--bg-panel); }
+.hr-day.today { border-color: var(--accent-soft); background: var(--accent-tint); }
+.hr-day header { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; font-weight: 800; color: var(--ink-2); margin-bottom: 8px; }
+.hr-day header small { color: var(--muted-2); font-weight: 700; }
+.hr-day ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+.hr-day li { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--ink-3); min-width: 0; }
+.hr-day li span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hr-day .hr-swatch { flex: none; }
+.hr-day .hr-none { color: var(--muted-3); font-size: 11px; }
+@media (max-width: 760px) {
+  .hr-week { grid-template-columns: minmax(0, 1fr); }
+  .hr-day ul { flex-direction: row; flex-wrap: wrap; gap: 6px 12px; }
+}
+
+/* Small progress bar for checklists. */
+.hr-progress { height: 6px; border-radius: 6px; background: var(--line-2); overflow: hidden; margin-top: 6px; }
+.hr-progress span { display: block; height: 100%; background: var(--accent); border-radius: 6px; }
+.hr-preview { white-space: pre-wrap; font-size: 12px; line-height: 1.6; color: var(--ink-3); background: var(--bg-ivory); border: 1px dashed var(--line-3); border-radius: var(--r-card); padding: 14px; }
+.hr-cal .hr-team-cell.off { background: repeating-linear-gradient(45deg, var(--bg-subtle) 0 4px, var(--bg-ivory) 4px 8px); }
+.hr-cal { --hr-name-w: minmax(140px, 190px); }
+@media (max-width: 600px) {
+  .hr-cal { --hr-name-w: 112px; min-width: 600px; }
+  .hr-cal .hr-name small { display: none; }
+}

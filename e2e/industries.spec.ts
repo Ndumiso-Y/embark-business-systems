@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-const INDUSTRIES = ['optometry', 'medical', 'automotive', 'tyres', 'mining', 'construction', 'realestate', 'legal', 'security', 'cleaning', 'education', 'mall'];
+const INDUSTRIES = ['optometry', 'medical', 'automotive', 'tyres', 'mining', 'construction', 'realestate', 'legal', 'security', 'cleaning', 'education', 'mall', 'hr', 'recruitment'];
 
 for (const id of INDUSTRIES) {
   test(`${id}: dashboard, every module, a record, admin and settings render without errors`, async ({ page }) => {

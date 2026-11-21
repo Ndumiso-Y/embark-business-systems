@@ -26,6 +26,11 @@ Score each candidate from 1 to 3 on five questions:
 | Contract services | Security, Cleaning | Staff deployed to client sites → rosters and attendance → site checks and inspections → incidents/complaints → contract billing with penalties | Landscaping & garden services, pest control, facilities management, staffing/labour brokers, catering contracts |
 | Education | School | Admissions → class registers → marks and moderation → report cards → fees and arrears → parent notices | Early-learning centres, colleges and training providers, tutoring centres, driving schools |
 | Property & professional services | Real estate, Shopping centre, Law firm | Pipeline of deals/matters → compliance checks → trust money → fees | Property management & body corporates (levies, arrears, maintenance), accounting & bookkeeping practices, insurance brokers |
+| People & talent | HR system, Recruitment agency | People records → leave and attendance → hiring pipeline → onboarding → performance and discipline; for agencies, job orders → candidates → submissions → placements and fees | HR outsourcing consultancies, labour brokers / temporary employment services, payroll bureaus, training providers |
+
+An HR system and a recruitment agency were added in November 2026 as the "People & talent" family at the owner's
+request. The HR system is a business tool rather than an industry: it sells to almost any company with staff, including
+every prospect for the industry demos.
 
 Security and cleaning were added in November 2026 as a fifth family because both are fast-growing, labour-intensive
 services run largely on WhatsApp and spreadsheets, with strong compliance and client-reporting pain.

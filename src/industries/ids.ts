@@ -1,6 +1,6 @@
 // Every industry id, in gallery order. Shared by the app and vite.config.ts.
 // To add an industry: add its folder under src/industries/<id>/ and its id here.
-export const INDUSTRY_IDS = ['optometry', 'medical', 'automotive', 'tyres', 'mining', 'construction', 'realestate', 'legal', 'security', 'cleaning', 'education', 'mall'] as const;
+export const INDUSTRY_IDS = ['optometry', 'medical', 'automotive', 'tyres', 'mining', 'construction', 'realestate', 'legal', 'security', 'cleaning', 'education', 'mall', 'hr', 'recruitment'] as const;
 
 /**
  * Industry families. Each family shares workflows and screens, so a new member
@@ -14,4 +14,5 @@ export const FAMILIES: Array<{ name: string; blurb: string; ids: string[] }> = [
   { name: 'Contract services', blurb: 'Staff deployed to client sites: rosters, site checks, inspections, contract billing', ids: ['security', 'cleaning'] },
   { name: 'Property & professional services', blurb: 'Pipelines of deals or matters, leases, compliance checks, trust money, fees', ids: ['realestate', 'mall', 'legal'] },
   { name: 'Education', blurb: 'Admissions, attendance, marks and reports, fees, parent communication', ids: ['education'] },
+  { name: 'People & talent', blurb: 'Employees, leave, hiring, performance and placements', ids: ['hr', 'recruitment'] },
 ];
