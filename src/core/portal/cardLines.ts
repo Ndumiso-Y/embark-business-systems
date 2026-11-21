@@ -17,6 +17,8 @@ export const CARD_LINES: Record<string, string> = {
   cleaning: 'Site contracts, shifts, inspections and complaints.',
   education: 'Admissions, registers, marks, reports and fees.',
   mall: 'Units, leases, rent roll, arrears and maintenance.',
+  hr: 'Employees, leave, onboarding, reviews and discipline.',
+  recruitment: 'Job orders, candidates, interviews and placements.',
 };
 
 export function cardLine(c: Pick<IndustryConfig, 'id' | 'summary'>): string {
