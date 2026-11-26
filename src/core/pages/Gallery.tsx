@@ -105,6 +105,20 @@ export default function Gallery() {
             <p>Interactive business system demonstrations, each tailored to the workflows, records and operations of a specific industry.</p>
           </div>
 
+          {/* Go straight to any industry without swiping: name buttons on wider screens, a dropdown on phones. */}
+          <div className="hp-jump" role="group" aria-label="Jump to an industry" data-testid="jump-chips">
+            {list.map((c, i) => (
+              <button key={c.id} type="button" aria-pressed={i === active} onClick={() => setActive(i)} data-testid={`jump-${c.id}`}>{c.industry}</button>
+            ))}
+          </div>
+          <label className="hp-jump-select">
+            <span>Jump to an industry</span>
+            <select value={current?.id ?? ''} data-testid="jump-select"
+              onChange={(e) => { const i = list.findIndex((c) => c.id === e.target.value); if (i >= 0) { setActive(i); stage.current?.scrollIntoView({ behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' }); } }}>
+              {list.map((c) => <option key={c.id} value={c.id}>{c.industry}</option>)}
+            </select>
+          </label>
+
           <CoverFlow
             items={list.map((c) => ({ id: c.id, label: c.industry, c }))}
             active={active}

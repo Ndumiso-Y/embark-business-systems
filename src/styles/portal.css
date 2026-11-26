@@ -80,6 +80,15 @@
 .hp-section-head h2, .hp-how h2 { margin: 0; font-size: clamp(30px, 3.2vw, 46px); line-height: 1.1; letter-spacing: -.03em; font-weight: 700; }
 .hp-section-head > p { margin: 0 0 6px; max-width: 31em; padding-left: clamp(20px, 4vw, 60px); border-left: 1px solid #cfd7e2; font-size: clamp(15px, 1.25vw, 18px); line-height: 1.45; color: var(--hp-body); }
 
+/* ---- Jump to an industry (no swiping needed) ---- */
+.hp-jump { max-width: 1448px; margin: 26px auto 0; padding-inline: var(--hp-pad); display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.hp-jump button { min-height: 40px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--hp-line); background: var(--hp-white); color: var(--hp-ink); font: inherit; font-size: 13.5px; font-weight: 500; cursor: pointer; transition: border-color .2s, background .2s, color .2s; }
+.hp-jump button:hover { border-color: var(--hp-ink); }
+.hp-jump button[aria-pressed="true"] { background: var(--hp-dark); border-color: var(--hp-dark); color: #fff; }
+.hp-jump-select { display: none; }
+.hp-jump-select span { display: block; margin-bottom: 6px; font-size: 12px; font-weight: 600; letter-spacing: 1.6px; text-transform: uppercase; color: var(--hp-muted); }
+.hp-jump-select select { width: 100%; min-height: 48px; padding: 0 14px; border-radius: 14px; border: 1px solid #cdd5df; background: var(--hp-white); color: var(--hp-ink); font: inherit; font-size: 16px; }
+
 /* ---- Cover Flow ---- */
 .cf { --cf-w: clamp(264px, 32.4vw, 468px); --cf-media: calc(var(--cf-w) * .44); --cf-info: 94px; margin-top: 22px; }
 .cf-stage { position: relative; height: calc(var(--cf-media) + var(--cf-info) + 54px); overflow: hidden; touch-action: pan-y; user-select: none; -webkit-user-select: none; cursor: grab; outline-offset: -4px; }
@@ -188,6 +197,8 @@
 }
 /* ---- Phone ---- */
 @media (max-width: 640px) {
+  .hp-jump { display: none; }
+  .hp-jump-select { display: block; max-width: 1448px; margin: 18px auto 0; padding-inline: var(--hp-pad); }
   .hp-top { padding-block: 12px; gap: 8px; }
   .hp-brand { gap: 8px; }
   .hp-brand img { height: 38px; }
@@ -219,6 +230,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .cf-slide, .cf-slide::after, .cf-dot i, .cf-arrow, .icard-go, .icard-go .ico, .hp-btn, .hp-nav-link::after, .hp-modules-btn .ico { transition: none !important; }
+  .hp-jump button, .cf-slide, .cf-slide::after, .cf-dot i, .cf-arrow, .icard-go, .icard-go .ico, .hp-btn, .hp-nav-link::after, .hp-modules-btn .ico { transition: none !important; }
   .hp-modules { animation: none; }
 }

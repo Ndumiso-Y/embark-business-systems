@@ -173,6 +173,32 @@ test.describe('Homepage', () => {
     await expect(page.getByRole('heading', { name: 'Recalls', level: 1 })).toBeVisible();
   });
 
+  test('jump buttons centre any industry in one click, without opening it', async ({ page }) => {
+    await page.goto('#/');
+    await expect(page.getByTestId('jump-chips').getByRole('button')).toHaveCount(N);
+    await page.getByTestId('jump-recruitment').click();
+    await expect(page).toHaveURL(/#\/$/);
+    await expect(centred(page).getByTestId('industry-recruitment')).toBeVisible();
+    await expect(page.getByTestId('jump-recruitment')).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByTestId('jump-chips').locator('[aria-pressed="true"]')).toHaveCount(1);
+    // The buttons follow the carousel when it is moved another way.
+    await page.getByTestId('coverflow-next').click();
+    await expect(page.getByTestId('jump-recruitment')).toHaveAttribute('aria-pressed', 'false');
+    await page.getByTestId('jump-legal').click();
+    await page.getByRole('link', { name: 'Open law firm demo' }).click();
+    await expect(page).toHaveURL(/#\/legal$/);
+  });
+
+  test('phone: a dropdown replaces the buttons and centres the chosen industry', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('#/');
+    await expect(page.getByTestId('jump-chips')).toBeHidden();
+    await page.getByTestId('jump-select').selectOption('hr');
+    await expect(centred(page).getByTestId('industry-hr')).toBeVisible();
+    await expect(centred(page)).toBeInViewport();
+    expect(await overflowX(page)).toBeLessThanOrEqual(1);
+  });
+
   test('reduced motion: the carousel still works and does not animate', async ({ browser }) => {
     const context = await browser.newContext({ reducedMotion: 'reduce' });
     const page = await context.newPage();

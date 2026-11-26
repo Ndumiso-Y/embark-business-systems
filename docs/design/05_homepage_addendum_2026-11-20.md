@@ -46,6 +46,12 @@ discipline only).
   `prefers-reduced-motion` all of it is switched off and the carousel still works.
 - Not included: mouse-wheel / trackpad horizontal scrolling of the carousel.
 
+## Change requested by the owner, 26 Nov 2026
+
+With 14 industries, swiping to reach one became tedious. A row of industry-name buttons now sits above the carousel:
+one click centres that industry (it does not open it), and the selected button follows the carousel. On phones the
+row is replaced by a "Jump to an industry" dropdown. The carousel itself is unchanged.
+
 ## Tokens (homepage only, `src/styles/portal.css`)
 
 | Family | Token | Value | Source |
