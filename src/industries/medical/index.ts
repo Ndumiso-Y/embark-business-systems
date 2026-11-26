@@ -385,7 +385,9 @@ const config: IndustryConfig = {
   tagline: 'Family GP practice management',
   summary: 'A family GP practice: today’s waiting room from check-in through triage, doctor and billing; SOAP consultations with ICD-10 samples; scripts checked against recorded allergies; a results inbox; a chronic care register; and medical aid claims.',
   priority: 2,
-  theme: { accent: '#3f7d5c', accent2: '#4c8f6b', accentSoft: '#a9d6bb', accentTint: '#e8f3ec', accentLine: '#cde5d6', accentText: '#2f6248' },
+  // Blue of the owner-approved medical dashboard concept (Nov 2026), derived with themeFromHex('#1f6fd6') so contrast holds.
+  theme: { accent: '#1e6acd', accent2: '#2979e0', accentSoft: '#a5c3e9', accentTint: '#ecf1f9', accentLine: '#cfdced', accentText: '#134586' },
+  shell: 'navy',
   roles: [
     { key: 'partner', label: 'GP partner' },
     { key: 'gp', label: 'GP / locum doctor' },

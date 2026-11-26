@@ -1,0 +1,69 @@
+/* Medical only: the pieces of the overview dashboard that are specific to the practice
+   (pages/Dashboard.tsx). Layout, KPI cards, lists and the navy shell come from
+   src/styles/overview.css. Design record: docs/design/08_medical_dashboard_addendum_2026-11.md. */
+.md-alert-chip { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--danger) 30%, #fff); background: #fff; color: var(--danger); font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; box-shadow: var(--od-shadow); }
+.md-alert-chip .ico { width: 17px; height: 17px; }
+.md-alert-chip:hover { border-color: var(--danger); }
+
+/* Overview panel: ring, legend and artwork on top; the hour chart underneath. */
+.md-overview { padding: 0; overflow: hidden; display: flex; flex-direction: column; }
+.md-overview-top { display: grid; grid-template-columns: minmax(0, 1.62fr) minmax(0, 1fr); flex: 1; }
+.md-overview .od-legend > div { padding: 6px 0; }
+.md-flow-note { margin: 0 28px; }
+.md-hours { margin: 14px 28px 22px; }
+.md-hours figcaption { font-size: 13px; font-weight: 600; color: var(--od-ink); margin-bottom: 8px; }
+.md-hours-bars { display: flex; align-items: stretch; gap: 6px; height: 92px; }
+.md-hour { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px; }
+.md-hour-count { font-size: 11px; font-weight: 600; color: var(--od-muted); min-height: 14px; font-variant-numeric: tabular-nums; }
+.md-hour-bar { width: 100%; max-width: 34px; min-height: 2px; border-radius: 6px 6px 2px 2px; background: color-mix(in srgb, var(--accent) 30%, #ffffff); }
+.md-hour.is-past .md-hour-bar { background: var(--accent); }
+.md-hour.is-now .md-hour-bar { background: color-mix(in srgb, var(--accent) 65%, #ffffff); box-shadow: 0 0 0 2px var(--accent); }
+.md-hour-label { font-size: 11px; color: var(--od-muted); font-variant-numeric: tabular-nums; }
+.md-hour.is-now .md-hour-label { color: var(--accent-text); font-weight: 700; }
+
+/* Artwork: abstract pulse line and cross in the practice colour (no people, no photo). */
+.md-art-glow { fill: #fff; opacity: .85; }
+.md-art-ring { fill: none; stroke: color-mix(in srgb, var(--accent) 20%, #fff); stroke-width: 12; }
+.md-art-orb { stroke: rgba(255, 255, 255, .95); stroke-width: 2; }
+.md-art-cross { fill: #fff; stroke: var(--accent); stroke-width: 2.5; stroke-linejoin: round; }
+.md-art-pulse { fill: none; stroke: var(--accent); stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; opacity: .9; }
+.md-stop-accent { stop-color: var(--accent); }
+
+/* Results inbox summary */
+.md-results { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin-top: 8px; }
+.md-results a { text-decoration: none; color: var(--od-ink) !important; }
+.md-results-big { display: flex; align-items: center; gap: 14px; padding: 14px 18px; border-radius: 18px; background: linear-gradient(180deg, var(--accent-tint), color-mix(in srgb, var(--accent-line) 70%, #fff)); }
+.md-results-big b { font-size: 40px; line-height: 1; letter-spacing: -.04em; font-weight: 700; font-variant-numeric: tabular-nums; }
+.md-results-big span { font-size: 13.5px; font-weight: 600; line-height: 1.3; }
+.md-with { color: var(--od-ink) !important; }
+.md-with a { text-decoration: underline; display: inline !important; }
+.md-results-rows { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.md-results-row { display: grid; justify-items: start; align-content: center; gap: 2px; min-height: 76px; padding: 10px 12px; border-radius: 14px; background: #f4f7fb; }
+.md-results-row .ico { width: 17px; height: 17px; flex: none; color: var(--od-muted); }
+.md-results-row b { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.md-results-row span { font-size: 12.5px; line-height: 1.25; color: var(--od-muted); }
+.md-results-row.is-red { background: var(--danger-bg); }
+.md-results-row.is-red .ico, .md-results-row.is-red b { color: var(--danger); }
+.md-results-row.is-amber { background: var(--warn-bg); }
+.md-results-row.is-amber .ico, .md-results-row.is-amber b { color: var(--warn); }
+.md-results a:hover b { text-decoration: underline; }
+.md-results-foot { margin: 12px 0 0; font-size: 12px; color: var(--od-muted); }
+
+/* Needs attention: two columns where there is room. */
+.md-attention { scroll-margin-top: 90px; outline: none; }
+.md-attention-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 28px; }
+.od-medal.is-small.is-blue { color: var(--info-text); }
+
+@container (max-width: 820px) {
+  .md-attention-list { grid-template-columns: minmax(0, 1fr); }
+}
+@container (max-width: 700px) {
+  .md-overview-top { grid-template-columns: minmax(0, 1fr); }
+  .md-flow-note { margin: 0 20px; }
+  .md-hours { margin: 12px 20px 18px; }
+  .md-hours-bars { gap: 3px; height: 80px; }
+  .md-hour-label { font-size: 10px; }
+  .md-results { grid-template-columns: minmax(0, 1fr); }
+  .od-head-actions .md-alert-chip { flex: 1 1 100%; justify-content: center; }
+}
+.md-clinicians small { white-space: normal; }

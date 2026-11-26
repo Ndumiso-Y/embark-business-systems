@@ -139,7 +139,7 @@ test.describe('Optometry dashboard', () => {
   });
 
   test('other industries keep their own look', async ({ page }) => {
-    for (const id of ['mining', 'medical']) {
+    for (const id of ['mining', 'cleaning']) {
       await page.goto(`#/${id}`);
       await expect(page.locator('.dash-hero')).toBeVisible();
       await expect(page.locator('.od')).toHaveCount(0);

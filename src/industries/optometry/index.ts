@@ -380,6 +380,7 @@ const config: IndustryConfig = {
   priority: 1,
   // Blue of the owner-approved optometry concept (Nov 2026), derived with themeFromHex('#2563c9') so contrast holds.
   theme: { accent: '#2462c6', accent2: '#3070d9', accentSoft: '#a5bfe9', accentTint: '#ecf1f9', accentLine: '#cfdaed', accentText: '#184081' },
+  shell: 'navy',
   roles: [
     { key: 'owner', label: 'Practice owner' },
     { key: 'optometrist', label: 'Optometrist' },

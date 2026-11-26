@@ -83,7 +83,7 @@ function Shell() {
   const style = { ...cover, '--accent': t.accent, '--accent-2': t.accent2, '--accent-soft': t.accentSoft, '--accent-tint': t.accentTint, '--accent-line': t.accentLine, '--accent-text': t.accentText } as CSSProperties;
 
   return (
-    <div className="app" style={style} data-industry={config.id} data-cover={config.image ? '' : undefined}>
+    <div className="app" style={style} data-industry={config.id} data-shell={config.shell} data-cover={config.image ? '' : undefined}>
       <a href="#main" className="sr-only" onClick={(e) => { e.preventDefault(); document.getElementById('main')?.focus(); }}>Skip to content</a>
       <div className={`drawer-backdrop ${open ? 'open' : ''}`} onClick={() => setOpen(false)} aria-hidden="true" />
       <aside className={`sidebar ${open ? 'open' : ''}`} aria-label="Main navigation">

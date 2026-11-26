@@ -3,7 +3,8 @@
 > **20 Nov 2026:** the homepage / portal presentation described here is superseded by
 > `05_homepage_addendum_2026-11-20.md` (owner-approved concept ED-HOME-2026-11-20, held for approval on a branch).
 > **Nov 2026:** the optometry dashboard and the optometry demo's shell colours are governed by
-> `06_optometry_dashboard_addendum_2026-11.md` (held for approval on a branch). All other industries are unchanged.
+> `06_optometry_dashboard_addendum_2026-11.md` (held for approval on a branch). The medical dashboard follows the same kit:
+> `08_medical_dashboard_addendum_2026-11.md` (also held). All other industries are unchanged.
 > The interior decisions below still stand. The portal sections are kept as the record of what was released on 12 Nov.
 
 Follows the Embark Digitals Living Web Experience Playbook (ED-WEB-001 v1.1 candidate): reference-led, tokens

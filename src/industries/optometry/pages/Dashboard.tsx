@@ -1,4 +1,4 @@
-import { useId, useState, type ComponentType, type KeyboardEvent, type ReactNode } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useBase, useData, useIndustry, useUser } from '../../../core/context';
 import { records, str, num } from '../../../core/engine';
@@ -7,14 +7,13 @@ import { daysBetween, formatDate, monthKeys, monthShort, parseIso, relativeWhen 
 import { BarChart, Empty, Panel, Pipeline, StatusTag, Tag } from '../../../core/components/ui';
 import { IcoAlert, IcoArrow, IcoCalendar, IcoCheck, IcoChevron, IcoEye, IcoFlask, IcoUsers } from '../../../core/components/Icons';
 import RoleBar from '../../../core/components/RoleBar';
+import { FlowRing, Kpi, MoreButton, type OverviewIcon as Icon } from '../../../core/components/overview';
+import { escapeCloses, initialsOf, WEEKDAYS } from '../../../core/lib/overview';
 import { APPOINTMENT_TYPES, PRACTITIONERS, label } from '../data';
 import { byDateTime, claimTotal, dueRecalls, patientName, todayStr } from '../helpers';
 import { flowSegments, flowSummary, nowAndNext, recentPatients } from '../dashboardModel';
 import '../optometry.css';
 
-type Icon = ComponentType<{ className?: string }>;
-const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const initialsOf = (name: string) => name.split(/\s+/).map((w) => w[0] ?? '').join('').slice(0, 2).toUpperCase();
 
 /**
  * Optometry dashboard. Approved concept and design record:
@@ -272,55 +271,6 @@ export default function Dashboard() {
 
       <RoleBar />
     </div>
-  );
-}
-
-function escapeCloses(e: KeyboardEvent<HTMLElement>, open: boolean, set: (v: boolean) => void) {
-  if (e.key !== 'Escape' || !open) return;
-  e.stopPropagation();
-  set(false);
-  e.currentTarget.querySelector<HTMLButtonElement>('.od-toggle')?.focus();
-}
-
-function MoreButton({ open, onToggle, controls, more, less, testid }: { open: boolean; onToggle: () => void; controls: string; more: string; less: string; testid: string }) {
-  return (
-    <button type="button" className="od-toggle" aria-expanded={open} aria-controls={controls} onClick={onToggle} data-testid={testid}>
-      {open ? less : more}<IcoChevron />
-    </button>
-  );
-}
-
-function Kpi({ icon: Icon, label, value, sub, to, featured, tone }: { icon: Icon; label: string; value: ReactNode; sub: string; to?: string; featured?: boolean; tone?: 'accent' | 'red' }) {
-  const body = (
-    <>
-      <span className="od-kpi-top"><span className="od-medal"><Icon /></span><span className="od-kpi-label">{label}</span></span>
-      <b className={`od-kpi-value${tone ? ` is-${tone}` : ''}${String(value).length > 5 ? ' is-long' : ''}`}>{value}</b>
-      <small className="od-kpi-sub">{sub}</small>
-    </>
-  );
-  const cls = `od-kpi${featured ? ' is-featured' : ''}`;
-  return to ? <Link className={cls} to={to}>{body}</Link> : <div className={cls}>{body}</div>;
-}
-
-/** Progress ring: the day's visits by state. The figure in the middle is completed ÷ visits not cancelled. */
-function FlowRing({ pct, segments, label }: { pct: number; segments: ReturnType<typeof flowSegments>; label: string }) {
-  const r = 52;
-  const c = 2 * Math.PI * r;
-  const id = useId();
-  let start = 0;
-  return (
-    <figure className="od-ring" role="img" aria-label={`${pct}% completed: ${label}`}>
-      <svg viewBox="0 0 132 132" aria-hidden="true" focusable="false">
-        <circle className="od-ring-track" cx="66" cy="66" r={r} />
-        {segments.map((s) => {
-          const len = Math.max(0, s.share * c - (segments.length > 1 ? 3 : 0));
-          const el = <circle key={`${id}-${s.key}`} className={`od-ring-seg is-${s.key.toLowerCase()}`} cx="66" cy="66" r={r} strokeDasharray={`${len} ${c}`} strokeDashoffset={-start * c} />;
-          start += s.share;
-          return el;
-        })}
-      </svg>
-      <figcaption><b>{pct}%</b><span>completed</span></figcaption>
-    </figure>
   );
 }
 

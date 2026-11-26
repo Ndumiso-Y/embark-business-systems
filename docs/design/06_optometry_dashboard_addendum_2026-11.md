@@ -96,6 +96,11 @@ file or the Settings branding tool re-tints the sidebar, featured card, ring and
 
 ## Files
 
+> **26 Nov 2026:** the reusable parts (navy shell, KPI cards, ring, lists, toggles) moved to a shared kit —
+> `src/core/components/overview.tsx` and `src/styles/overview.css`, opted into with `shell: 'navy'`. Only the
+> lens artwork stays in `optometry.css`. Optometry is pixel-identical before and after; see `08_medical_dashboard_addendum_2026-11.md`.
+
+
 | File | Role |
 | --- | --- |
 | `src/industries/optometry/pages/Dashboard.tsx` | The dashboard |

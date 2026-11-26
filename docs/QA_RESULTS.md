@@ -1,5 +1,33 @@
 # QA results
 
+## Medical dashboard redesign + shared dashboard kit — 26 Nov 2026 (branch `design/medical-dashboard-2026-11`, not merged)
+
+Design record: `docs/design/08_medical_dashboard_addendum_2026-11.md`. Captures: `docs/design/evidence/2026-11-medical-dashboard/`.
+The branch contains the optometry redesign (rebased onto the live site) plus this work.
+
+| Check | Command | Exit | Result |
+| --- | --- | --- | --- |
+| Typecheck | `npm run typecheck` | 0 | Pass |
+| Lint | `npm run lint` | 0 | 0 errors, 6 warnings (the same six as on main) |
+| Unit tests | `npm test` | 0 | **463 passed** in 19 files (8 new: medical dashboard figures) |
+| Browser tests, dev server | `npm run e2e` | 0 | **196 passed**, 16 skipped (client-link checks need the built site) |
+| Browser tests, built site | client-links + homepage + both dashboards against `dist-pages` | 0 | **53 passed** |
+| Production build | `npm run build` | 0 | Pass — JS 2,462 kB (727 kB gzip) |
+| Multi-link build | `npm run build:pages` | 0 | Pass |
+
+New tests (`e2e/medical-dashboard.spec.ts`, 11): the legend adds up to visits today; the ring's percentage is done ÷
+visits and spelled out; the waiting-room card, the legend and the waiting-longest list agree; the hour chart adds up
+to the day; claims stay a Rand amount; no contact button or invented badge; the "need attention" button jumps to the
+list, which expands to every item and collapses with Escape; every row opens its record; previews expand by keyboard;
+the chart, activity and role bar stay reachable; each of the six users only gets links to modules in their own menu,
+cards for modules they lack are absent, and the receptionist sees no vitals alerts; branding renames and recolours;
+layout at 1440, 1280, 1024, 768, 390 and 360 px.
+
+Kit extraction check: optometry dashboard (1440, 390), optometry diary and mining dashboard pixel-identical before and
+after moving the shared parts into `overview.tsx` / `overview.css`.
+
+---
+
 ## HR system and recruitment agency added — 21 Nov 2026
 
 | Check | Command | Exit | Result |

@@ -209,6 +209,8 @@ export type IndustryConfig = {
   /** Set at runtime by client branding (see core/brand.ts): the client's logo and name. */
   logo?: string;
   brandedFor?: string;
+  /** Opt into the navy sidebar and overview-dashboard look (src/styles/overview.css). Default: the shared light skin. */
+  shell?: 'navy';
   /** Guided walkthrough shown on the dashboard: the few things a first-time visitor should try. */
   guide?: GuideStep[];
 };
