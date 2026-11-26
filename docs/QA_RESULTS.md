@@ -1,5 +1,35 @@
 # QA results
 
+## Automotive dashboard redesign — 26 Nov 2026 (branch `design/automotive-dashboard-2026-11`, not merged)
+
+Design record: `docs/design/09_automotive_dashboard_addendum_2026-11.md`. Captures: `docs/design/evidence/2026-11-automotive-dashboard/`.
+The branch contains the optometry and medical redesigns as well. Results below are for the whole branch.
+
+| Check | Command | Exit | Result |
+| --- | --- | --- | --- |
+| Typecheck | `npm run typecheck` | 0 | Pass |
+| Lint | `npm run lint` | 0 | 0 errors, 6 warnings (the same six as on main) |
+| Unit tests | `npm test` | 0 | **469 passed** in 20 files (6 new: automotive dashboard figures) |
+| Browser tests, dev server | `npm run e2e` | 0 | **208 passed**, 16 skipped (client-link checks need the built site) |
+| Browser tests, built site | client-links + homepage + the three dashboards against `dist-pages` | 0 | **65 passed** |
+| Production build | `npm run build` | 0 | Pass — JS 2,474 kB (731 kB gzip) |
+| Multi-link build | `npm run build:pages` | 0 | Pass |
+
+New tests (`e2e/automotive-dashboard.spec.ts`, 12): ring, legend, stage track and the in-workshop card agree; legend
+shares are count ÷ on site; awaiting-approval and ready cards match their lists; the approval-before-work line is
+shown; the bookings card, list and bay capacity agree; unpaid invoices stay a Rand amount; no invented trend or weekly
+capacity; the attention button jumps to the list, which expands and collapses with Escape; open job cards expand;
+revenue, low stock, activity and the role bar stay reachable; every KPI card and row opens the right screen; all five
+users only get links to their own modules, and the technician sees "Parts low" instead of invoices; a branded link
+renames and recolours while the sidebar stays dark and the vehicle neutral; mining and tyres unchanged; layout at
+1440, 1280, 1024, 768, 390 and 360 px.
+
+Found and fixed while building: with a warm brand colour the shared navy sidebar turned brown; it now keeps only a
+touch of the brand colour (optometry and medical sidebars are a shade deeper navy as a result). Medical was
+pixel-identical after its attention button moved into the shared kit.
+
+---
+
 ## Medical dashboard redesign + shared dashboard kit — 26 Nov 2026 (branch `design/medical-dashboard-2026-11`, not merged)
 
 Design record: `docs/design/08_medical_dashboard_addendum_2026-11.md`. Captures: `docs/design/evidence/2026-11-medical-dashboard/`.

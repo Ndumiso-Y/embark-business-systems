@@ -31,19 +31,21 @@ export function Kpi({ icon: Icon, label, value, sub, to, featured, tone, testid 
   return to ? <Link className={cls} to={to} data-testid={testid}>{body}</Link> : <div className={cls} data-testid={testid}>{body}</div>;
 }
 
-export type RingSegment = { key: string; share: number; tone?: 'muted' | 'a40' | 'a65' | 'a85' | 'accent' | 'warn' };
+export type RingSegment = { key: string; share: number; tone?: 'muted' | 'a40' | 'a65' | 'a85' | 'accent' | 'warn' | 'ok' };
 
 /**
- * Progress ring: a day's work split by state. `pct` and `caption` describe the figure in the
- * middle; the caller documents how it is calculated. `label` is spelled out for screen readers.
+ * Progress ring: a day's work split by state. The middle shows `pct`% (or `value`, a count,
+ * when given) with `caption`; the caller documents how it is calculated. `label` is spelled
+ * out for screen readers.
  */
-export function FlowRing({ pct, segments, label, caption = 'completed' }: { pct: number; segments: RingSegment[]; label: string; caption?: string }) {
+export function FlowRing({ pct = 0, value, segments, label, caption = 'completed' }: { pct?: number; value?: string; segments: RingSegment[]; label: string; caption?: string }) {
+  const shown = value ?? `${pct}%`;
   const r = 52;
   const c = 2 * Math.PI * r;
   const id = useId();
   let start = 0;
   return (
-    <figure className="od-ring" role="img" aria-label={`${pct}% ${caption}: ${label}`}>
+    <figure className="od-ring" role="img" aria-label={`${shown} ${caption}: ${label}`}>
       <svg viewBox="0 0 132 132" aria-hidden="true" focusable="false">
         <circle className="od-ring-track" cx="66" cy="66" r={r} />
         {segments.map((s) => {
@@ -53,7 +55,7 @@ export function FlowRing({ pct, segments, label, caption = 'completed' }: { pct:
           return el;
         })}
       </svg>
-      <figcaption><b>{pct}%</b><span>{caption}</span></figcaption>
+      <figcaption><b>{shown}</b><span>{caption}</span></figcaption>
     </figure>
   );
 }

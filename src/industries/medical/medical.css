@@ -1,9 +1,6 @@
 /* Medical only: the pieces of the overview dashboard that are specific to the practice
    (pages/Dashboard.tsx). Layout, KPI cards, lists and the navy shell come from
    src/styles/overview.css. Design record: docs/design/08_medical_dashboard_addendum_2026-11.md. */
-.md-alert-chip { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--danger) 30%, #fff); background: #fff; color: var(--danger); font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; box-shadow: var(--od-shadow); }
-.md-alert-chip .ico { width: 17px; height: 17px; }
-.md-alert-chip:hover { border-color: var(--danger); }
 
 /* Overview panel: ring, legend and artwork on top; the hour chart underneath. */
 .md-overview { padding: 0; overflow: hidden; display: flex; flex-direction: column; }
@@ -64,6 +61,5 @@
   .md-hours-bars { gap: 3px; height: 80px; }
   .md-hour-label { font-size: 10px; }
   .md-results { grid-template-columns: minmax(0, 1fr); }
-  .od-head-actions .md-alert-chip { flex: 1 1 100%; justify-content: center; }
 }
 .md-clinicians small { white-space: normal; }

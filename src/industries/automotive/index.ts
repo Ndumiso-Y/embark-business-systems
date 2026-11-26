@@ -360,6 +360,7 @@ const config: IndustryConfig = {
   tagline: 'Service & repair workshop management',
   summary: 'An independent service and repair workshop: job cards on a workshop board from booking to collection, bay and technician planning, parts-and-labour estimates that need customer approval before work starts, parts stock, invoices and service reminders.',
   priority: 3,
+  shell: 'navy',
   theme: { accent: '#b4572e', accent2: '#c66a40', accentSoft: '#f0b89a', accentTint: '#faece4', accentLine: '#f0d3c3', accentText: '#8c3f1f' },
   roles: [
     { key: 'owner', label: 'Workshop owner' },

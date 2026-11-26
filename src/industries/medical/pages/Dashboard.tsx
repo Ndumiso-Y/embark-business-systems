@@ -93,7 +93,7 @@ export default function Dashboard() {
         <div className="od-head-actions">
           <span className="od-date"><IcoCalendar />{weekday}, {formatDate(today)}</span>
           {attention.length > 0 && (
-            <button type="button" className="md-alert-chip" onClick={jumpToAttention} data-testid="attention-jump">
+            <button type="button" className="od-alert-chip" onClick={jumpToAttention} data-testid="attention-jump">
               <IcoAlert />{attention.length} need{attention.length === 1 ? 's' : ''} attention
             </button>
           )}

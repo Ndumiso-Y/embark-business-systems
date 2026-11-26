@@ -8,8 +8,9 @@
    ========================================================================== */
 .app[data-shell="navy"] {
   /* Navy that leans towards the brand colour; never pure black. */
-  --shell-navy: color-mix(in srgb, var(--accent-text) 24%, #0a1727);
-  --shell-navy-2: color-mix(in srgb, var(--accent-text) 46%, #0c1c31);
+  /* Mostly navy, a touch of the brand: stays navy even for warm brand colours. */
+  --shell-navy: color-mix(in srgb, var(--accent-text) 12%, #0a1727);
+  --shell-navy-2: color-mix(in srgb, var(--accent-text) 22%, #0c1c31);
   --shell-canvas: #f2f5fa;
   background:
     radial-gradient(60% 50% at 78% 0%, color-mix(in srgb, var(--accent-tint) 80%, transparent) 0%, transparent 70%),
@@ -19,7 +20,7 @@
 /* ---- Sidebar: deep navy, same markup and destinations as every other demo ---- */
 .app[data-shell="navy"] .sidebar {
   background:
-    radial-gradient(120% 40% at 0% 100%, color-mix(in srgb, var(--accent-2) 30%, transparent) 0%, transparent 70%),
+    radial-gradient(120% 40% at 0% 100%, color-mix(in srgb, var(--accent-2) 20%, transparent) 0%, transparent 70%),
     linear-gradient(172deg, var(--shell-navy-2) 0%, var(--shell-navy) 46%, #07101c 100%);
   color: #d8e2ef;
   box-shadow: 0 24px 46px -24px rgba(8, 20, 38, .7);
@@ -148,12 +149,14 @@ a.od-kpi:hover { transform: translateY(-2px); box-shadow: inset 0 1px 0 rgba(255
 .od-ring-seg.tone-a85 { stroke: color-mix(in srgb, var(--accent) 85%, #ffffff); }
 .od-ring-seg.tone-accent { stroke: var(--accent); }
 .od-ring-seg.tone-warn { stroke: var(--warn); }
+.od-ring-seg.tone-ok { stroke: #1c7a43; }
 .od-legend i.tone-muted { background: var(--od-booked); }
 .od-legend i.tone-a40 { background: color-mix(in srgb, var(--accent) 40%, #ffffff); }
 .od-legend i.tone-a65 { background: color-mix(in srgb, var(--accent) 65%, #ffffff); }
 .od-legend i.tone-a85 { background: color-mix(in srgb, var(--accent) 85%, #ffffff); }
 .od-legend i.tone-accent { background: var(--accent); }
 .od-legend i.tone-warn { background: var(--warn); }
+.od-legend i.tone-ok { background: #1c7a43; }
 .od-legend i.tone-none { background: transparent; box-shadow: inset 0 0 0 2px #c4cfde; }
 .od-flow-note { margin: 16px 0 0; font-size: 13px; line-height: 1.5; color: var(--od-muted); }
 .od-flow-note b { color: var(--od-ink); font-weight: 600; }
@@ -162,6 +165,11 @@ a.od-kpi:hover { transform: translateY(-2px); box-shadow: inset 0 1px 0 rgba(255
 .od-art { position: relative; min-height: 250px; background: linear-gradient(120deg, rgba(255, 255, 255, 0) 0%, color-mix(in srgb, var(--accent-tint) 86%, #fff) 38%, color-mix(in srgb, var(--accent-line) 78%, #fff) 100%); -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 30%); mask-image: linear-gradient(90deg, transparent 0, #000 30%); }
 .od-art svg, .od-art img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .od-art img { object-fit: cover; }
+
+/* "N need attention" button in the header: jumps to the alert list. */
+.od-alert-chip { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--danger) 30%, #fff); background: #fff; color: var(--danger); font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; box-shadow: var(--od-shadow); }
+.od-alert-chip .ico { width: 17px; height: 17px; }
+.od-alert-chip:hover { border-color: var(--danger); }
 
 /* Lists (diary, recent patients, attention) */
 .od-list { list-style: none; margin: 0; padding: 0; }
@@ -232,6 +240,7 @@ a.od-kpi:hover { transform: translateY(-2px); box-shadow: inset 0 1px 0 rgba(255
   .od-flow { padding: 0; }
   .od-head-actions { width: 100%; }
   .od-head-actions .btn { flex: 1; justify-content: center; min-height: 44px; }
+  .od-head-actions .od-alert-chip { flex: 1 1 100%; justify-content: center; }
 }
 @container (max-width: 420px) {
   .od-kpi { padding: 14px 14px 16px; border-radius: 20px; }
